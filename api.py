@@ -1,0 +1,324 @@
+import asyncio
+from urllib.parse  import quote_plus, quote
+from aiohttp.helpers import BasicAuth
+import json
+
+import config
+from tool import html, xml, jsonxml, fetch, htmlparse
+
+@asyncio.coroutine
+def arxiv(arg, send):
+    print('arxiv')
+    n = int(arg['n']) if arg['n'] else 5
+    url = 'http://export.arxiv.org/api/query?search_query={0}&max_results={1}'.format(quote_plus(arg['query']), n)
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = arg['xpath'] or '//ns:entry/ns:title'
+    arg['field'] = None
+    arg['format'] = None
+
+    return (yield from xml(arg, send))
+
+@asyncio.coroutine
+def wolfram(arg, send):
+    print('wolfram')
+    key = config.key['wolfram']
+    n = int(arg['n']) if arg['n'] else 5
+    url = 'http://api.wolframalpha.com/v2/query?appid={0}&input={1}'.format(key, quote_plus(arg['query']))
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = arg['xpath'] or '//pod'
+    field = [('.', 'title', '\x0304{}:\x0f'), ('.//plaintext', 'text', '{}')]
+    arg['format'] = None
+
+    return (yield from xml(arg, send, field=field))
+
+@asyncio.coroutine
+def ip(arg, send):
+    print('ip')
+    url = 'http://ip-api.com/json/' + quote_plus(arg['addr'])
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '/root'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['country', 'regionName', 'city', 'isp']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+@asyncio.coroutine
+def aqi(arg, send):
+    print('aqi')
+    key = config.key['pm25']
+    url = 'http://www.pm25.in/api/querys/aqi_details.json?token={0}&avg=true&stations=no&city={1}'.format(key, quote_plus(arg['city']))
+    #all = True if arg['all'] else False
+
+    arg['n'] = 3
+    arg['url'] = url
+    arg['xpath'] = '/root/item'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['area', 'quality', 'aqi', 'primary_pollutant', 'time_point']))
+    arg['format'] = None
+
+    #yield from jsonxml(arg, send, field=field)
+    #field = list(map(lambda x: ('./' + x, 'text'), ['pm2_5', 'pm10', 'co', 'no2', 'o3', 'o3_8h', 'so2']))
+    return (yield from jsonxml(arg, send, field=field))
+
+    #yield from jsonxml(arg, send)
+    #send('污染物: (1h平均 24h平均)')
+    #f = lambda k: '{0}: ({1} {2})'.format(k.replace('_', '.'), str(j.get(k)), str(j.get(k + '_24h')))
+    #arg['field'] = ' '.join(map(lambda , ['pm2_5', 'pm10', 'co', 'no2', 'o3', 'o3_8h', 'so2']))
+    #yield from jsonxml(arg, send)
+
+    #@asyncio.coroutine
+    #def func(byte):
+    #    j = json.loads(byte.decode('utf-8'))[0]
+    #    l = [' '.join(map(lambda k: str(j.get(k)), ['area', 'quality', 'aqi', 'primary_pollutant', 'time_point']))]
+    #    if all:
+    #        f = lambda k: '{0}: ({1} {2})'.format(k.replace('_', '.'), str(j.get(k)), str(j.get(k + '_24h')))
+    #        l.append('污染物: (1h平均 24h平均)')
+    #        l.append(', '.join(map(f, ['pm2_5', 'pm10', 'co', 'no2', 'o3', 'o3_8h', 'so2'])))
+    #    return l
+
+    #return (yield from fetch(url, 3, func, send))
+
+
+# baidu
+
+@asyncio.coroutine
+def bip(arg, send):
+    print('bip')
+    url = 'http://apistore.baidu.com/microservice/'
+    url = url + 'iplookup?ip=' + quote_plus(arg['addr'])
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//retData'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['country', 'province', 'city', 'district', 'carrier']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+@asyncio.coroutine
+def bid(arg, send):
+    print('bid')
+    url = 'http://apistore.baidu.com/microservice/'
+    url = url + 'icardinfo?id=' + quote_plus(arg['id'])
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//retData'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['sex', 'birthday', 'address']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+@asyncio.coroutine
+def bphone(arg, send):
+    print('bphone')
+    url = 'http://apistore.baidu.com/microservice/'
+    url = url + 'mobilephone?tel=' + quote_plus(arg['tel'])
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//retData'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['telString', 'province', 'carrier']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+@asyncio.coroutine
+def baqi(arg, send):
+    print('baqi')
+    url = 'http://apistore.baidu.com/microservice/'
+    url = url + 'aqi?city=' + quote_plus(arg['city'])
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//retData'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['city', 'level', 'aqi', 'core', 'time']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+@asyncio.coroutine
+def bweather(arg, send):
+    print('bweather')
+    url = 'http://apistore.baidu.com/microservice/'
+    url = url + 'weather?cityname=' + quote_plus(arg['city'])
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//retData'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['city', 'weather', 'temp', 'WS', 'time', 'date']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+@asyncio.coroutine
+def btran(arg, send):
+    print('btran')
+    to = arg['to'] or 'zh'
+    url = 'http://apistore.baidu.com/microservice/'
+    url = url + 'translate?from=auto&to={0}&query={1}'.format(quote_plus(to), quote_plus(arg['text']))
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//retData/trans_result/item'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['dst']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+# microsoft
+
+@asyncio.coroutine
+def bing(arg, send):
+    print('bing')
+    n = int(arg['n']) if arg['n'] else 1
+    #market = 'zh-CN'
+    market = 'en-US'
+    url = 'https://api.datamarket.azure.com/Bing/Search/v1/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(arg['query']))
+
+    key = config.key['microsoft']
+    auth = BasicAuth(key, key)
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//d/results/item/Web/item'
+    field = [('./Title', 'text', '{}'), ('./Url', 'text', '[\x0302{}\x0f]'), ('./Description', 'text', '{}')]
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, auth=auth, field=field))
+
+@asyncio.coroutine
+def mtran(arg, send):
+    print('mtran')
+    to = arg['to'] or 'zh-CHS'
+    url = 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/v1/Translate?$format=json&To=%27{0}%27&Text=%27{1}%27'.format(quote_plus(to), quote_plus(arg['text']))
+
+    key = config.key['microsoft']
+    auth = BasicAuth(key, key)
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//d/results/item'
+    field = [('./Text', 'text', '{}')]
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, auth=auth, field=field))
+
+
+
+@asyncio.coroutine
+def dict(arg, send):
+    print('dict')
+    n = int(arg['n']) if arg['n'] else 5
+    url = 'https://glosbe.com/gapi/translate?format=json&from={0}&dest={1}&phrase={2}'.format(quote_plus(arg['from']), quote_plus(arg['to']), quote_plus(arg['text']))
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//tuc/item/meanings/item/text'
+    arg['field'] = None
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send))
+
+@asyncio.coroutine
+def cdict(arg, send):
+    print('cdict')
+    n = int(arg['n']) if arg['n'] else 5
+    dict = arg['dict'] or 'english'
+    url = 'https://api.collinsdictionary.com/api/v1/dictionaries/{0}/search/first/?format=html&q={1}'.format(quote_plus(dict), quote_plus(arg['text']))
+
+    key = config.key['collins']
+    headers = {'accessKey': key}
+
+    #arg['n'] = n
+    #arg['url'] = url
+    #arg['xpath'] = '//entryContent'
+    #arg['field'] = None
+    ##get = lambda e, f: htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]').xpath('string()')
+    #def get(e, f):
+    #    print(htmlparse(e.text))
+    #    return htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]').xpath('string()')
+
+    #return (yield from jsonxml(arg, send, get=get, headers=headers))
+
+    @asyncio.coroutine
+    def func(byte):
+        j = json.loads(byte.decode('utf-8'))
+        l = htmlparse(j.get('entryContent')).xpath('//span[@class = "pos"] | //span[@class = "def"]')
+        # html is well formed, no <br> in e
+        return map(lambda e: e.xpath('string()'), l)
+
+    return (yield from fetch(url, n, func, send, headers=headers))
+
+@asyncio.coroutine
+def urban(arg, send):
+    print('urban')
+    n = int(arg['n']) if arg['n'] else 1
+    url = 'https://mashape-community-urban-dictionary.p.mashape.com/define?term=' + quote_plus(arg['text'])
+
+    # unofficial
+    key = config.key['mashape']
+    headers = {'X-Mashape-Key': key}
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//list/item'
+    field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[\x0302{}\x0f]')]
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field, headers=headers))
+
+@asyncio.coroutine
+def breezo(arg, send):
+    print('breezo')
+    key = config.key['breezo']
+    url = 'http://api-beta.breezometer.com/baqi/?key={0}&location={1}'.format(key, quote_plus(arg['city']))
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '/root'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['breezometer_description', 'breezometer_aqi', 'dominant_pollutant_text/main', 'random_recommendations/health']))
+    arg['format'] = None
+
+    return (yield from jsonxml(arg, send, field=field))
+
+@asyncio.coroutine
+def watson(arg, send):
+    pass
+
+
+help = {
+    'ip'             : 'ip <ip address>',
+    #'aqi'            : 'aqi <city> [all]',
+    'aqi'            : 'aqi <city>',
+    'btran'          : 'btran [to:target lang] <text>',
+    'bing'           : 'bing <query> [max number]',
+    'mtran'          : 'mtran [to:target lang] <text>',
+    'urban'          : 'urban <text> [max number]',
+    'wolfram'        : 'wolfram <query> [max number]',
+}
+
+func = [
+    (ip,              r"ip\s+(?P<addr>.+)"),
+    #(aqi,             r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
+    (aqi,             r"aqi\s+(?P<city>.+?)"),
+    (bip,             r"bip\s+(?P<addr>.+)"),
+    (bid,             r"bid\s+(?P<id>.+)"),
+    (bphone,          r"bphone\s+(?P<tel>.+)"),
+    (baqi,            r"baqi\s+(?P<city>.+)"),
+    (bweather,        r"bweather\s+(?P<city>.+)"),
+    (btran,           r"btran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
+    (bing,            r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(?P<n>\d+))?"),
+    (mtran,           r"mtran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
+    (dict,            r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
+    (cdict,           r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
+    (breezo,          r"breezo\s+(?P<city>.+)"),
+    (urban,           r"urban\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
+    (arxiv,           r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(?P<n>\d+))?"),
+    (wolfram,         r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(?P<n>\d+))?"),
+]
