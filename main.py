@@ -1,6 +1,7 @@
 import bottom
 import asyncio
 import re
+import time
 
 import config
 import simple
@@ -12,13 +13,16 @@ import acg
 import logging
 #logging.basicConfig(level=logging.DEBUG)
 
+loop = asyncio.get_event_loop()
+
 bot = bottom.Client(config.host, config.port, **config.option)
 
 bot.nick = config.nick
 bot.password = config.password
 bot.channel = config.channel
 
-bot.lines = ''
+bot.lines = {}
+bot.time = 60
 
 @bot.on('CLIENT_CONNECT')
 def connect():
@@ -60,9 +64,8 @@ def send(command, *, target='', message='', to='', linelimit=None, color=None, *
     limit = 430
     line = linelimit or 1
 
-    prefix = ((to + ': ') if to else '')
+    prefix = (to + ': ') if to else ''
 
-    #normalize = lambda f: '\x0304\\n\x0f '.join(map(lambda l: ' '.join(l.split()), str(f).splitlines()))
     message = prefix + normalize(message, **kw)
     print(message)
     m = list(map(lambda c: len(c.encode('utf-8')), message))
@@ -81,8 +84,7 @@ def send(command, *, target='', message='', to='', linelimit=None, color=None, *
         if linelimit:
             line = line - 1
     if line <= 0:
-        bot.send(command, target=target, message=prefix + 'too long...')
-
+        bot.send(command, target=target, message=prefix + '太多啦...')
 
 @bot.on('PRIVMSG')
 def message(nick, target, message):
@@ -92,23 +94,37 @@ def message(nick, target, message):
     if nick == bot.nick:
         return
     # prefix
-    #print('lines')
-    #print(bot.lines)
+    if message[:4] == "... ":
+        l = message[4:].rstrip() + '\n'
+        if nick not in bot.lines:
+            bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
+        else:
+            bot.lines[nick][0] += l
+        return
     if message[0] != "'":
         return
     if message[:4] == "'.. ":
-        bot.lines = bot.lines + message[4:].rstrip() + '\n'
+        l = message[4:].rstrip() + '\n'
+        if nick not in bot.lines:
+            bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
+        else:
+            bot.lines[nick][0] += l
         return
+
     message = message[1:].rstrip()
+    item = bot.lines.pop(nick, None)
+    if item:
+        lines = item[0]
+        item[1].cancel()
+    else:
+        lines = ''
     # Direct message to bot
     if target == bot.nick:
-        yield from reply(nick, message, bot.lines, lambda m, **kw: send("PRIVMSG", target=nick, message=m, **kw))
+        yield from reply(nick, message, lines, lambda m, **kw: send("PRIVMSG", target=nick, message=m, **kw))
     # Message in channel
     else:
-        yield from reply(nick, message, bot.lines, lambda m, **kw: send("PRIVMSG", target=target, message=m, to=nick, **kw))
+        yield from reply(nick, message, lines, lambda m, **kw: send("PRIVMSG", target=target, message=m, to=nick, **kw))
         #yield from reply(nick, message, lambda m: send("PRIVMSG", target=target, message=m))
-
-    bot.lines = ''
 
 help = {}
 help.update(simple.help)
@@ -147,4 +163,14 @@ def reply(nick, message, lines, send):
         raise
 
 
-asyncio.get_event_loop().run_until_complete(bot.run())
+@asyncio.coroutine
+def dump(loop):
+    while True:
+        print('dump lines')
+        print(bot.lines)
+        yield from asyncio.sleep(1)
+
+#tasks = [bot.run(), dump(loop)]
+tasks = [bot.run()]
+
+loop.run_until_complete(asyncio.wait(tasks))
