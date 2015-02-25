@@ -4,10 +4,11 @@ from aiohttp       import request, TCPConnector
 
 
 def unsafesend(m, send):
-    limit = 1000
-    if len(m) > limit:
-        send('too long... strip to ' + str(limit))
-    send(m[:limit])
+    #limit = 1000
+    #if len(m) > limit:
+    #    send('too long... strip to ' + str(limit))
+    #send(m[:limit])
+    send(m, linelimit=5)
 
 
 @asyncio.coroutine

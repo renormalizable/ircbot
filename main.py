@@ -32,8 +32,8 @@ def connect():
 def keepalive(message):
     bot.send('PONG', message=message)
 
-def normalize(message):
-    dict = {
+def normalize(message, stripspace=True, stripline=True, convert=True, newline=True):
+    alias = {
         '　': '  ',
         '，': ', ',
         '。': '. ',
@@ -41,21 +41,32 @@ def normalize(message):
         '？': '? ',
         '：': ': ',
     }
-    line = map(lambda l: ' '.join(l.split()), str(message).splitlines())
-    line = filter(lambda l: l, line)
-    line = map(lambda l: l.translate(str.maketrans(dict)), line)
-    return '\x0304\\n\x0f '.join(line)
 
-def send(command, *, target='', message='', to='', color=None):
+    line = str(message).splitlines() if stripline else [message]
+    if stripspace:
+        line = map(lambda l: ' '.join(l.split()), line)
+    if stripline:
+        line = filter(lambda l: l, line)
+    if convert:
+        line = map(lambda l: l.translate(str.maketrans(alias)), line)
+    if newline:
+        return '\x0304\\n\x0f '.join(line)
+    else:
+        return ' '.join(line)
+
+def send(command, *, target='', message='', to='', linelimit=None, color=None, **kw):
     # (512 - 2) / 3 = 170
     # 430 bytes should be safe
     limit = 430
+    line = linelimit or 1
+
+    prefix = ((to + ': ') if to else '')
 
     #normalize = lambda f: '\x0304\\n\x0f '.join(map(lambda l: ' '.join(l.split()), str(f).splitlines()))
-    message = ((to + ': ') if to else '') + normalize(message)
+    message = prefix + normalize(message, **kw)
     print(message)
     m = list(map(lambda c: len(c.encode('utf-8')), message))
-    while len(m) > 0:
+    while line > 0 and len(m) > 0:
         i = 0
         s = 0
         while i < len(m):
@@ -67,6 +78,10 @@ def send(command, *, target='', message='', to='', color=None):
         bot.send(command, target=target, message=message[:i])
         message = message[i:]
         m = m[i:]
+        if linelimit:
+            line = line - 1
+    if line <= 0:
+        bot.send(command, target=target, message=prefix + 'too long...')
 
 
 @bot.on('PRIVMSG')
@@ -87,10 +102,10 @@ def message(nick, target, message):
     message = message[1:].rstrip()
     # Direct message to bot
     if target == bot.nick:
-        yield from reply(nick, message, bot.lines, lambda m: send("PRIVMSG", target=nick, message=m))
+        yield from reply(nick, message, bot.lines, lambda m, **kw: send("PRIVMSG", target=nick, message=m, **kw))
     # Message in channel
     else:
-        yield from reply(nick, message, bot.lines, lambda m: send("PRIVMSG", target=target, message=m, to=nick))
+        yield from reply(nick, message, bot.lines, lambda m, **kw: send("PRIVMSG", target=target, message=m, to=nick, **kw))
         #yield from reply(nick, message, lambda m: send("PRIVMSG", target=target, message=m))
 
     bot.lines = ''

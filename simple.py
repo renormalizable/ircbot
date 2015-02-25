@@ -58,7 +58,7 @@ def color(arg, send):
         ('14', 'grey'),
         ('15', 'light grey'),
     ]
-    #send('\x02bold\x0f \x1ditalic\x0f \x1funderline\x0f')
+    send('\x02bold\x0f \x1ditalic\x0f \x1funderline\x0f', stripspace=False, stripline=False)
     send(' '.join(map(lambda x: '\x03{0}{0} {1}\x0f'.format(*x), c[:8])))
     send(' '.join(map(lambda x: '\x03{0}{0} {1}\x0f'.format(*x), c[8:])))
 
