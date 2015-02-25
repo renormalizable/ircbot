@@ -212,8 +212,8 @@ def mtran(arg, send):
 
 
 @asyncio.coroutine
-def dict(arg, send):
-    print('dict')
+def dictg(arg, send):
+    print('dictg')
     n = int(arg['n']) if arg['n'] else 5
     url = 'https://glosbe.com/gapi/translate?format=json&from={0}&dest={1}&phrase={2}'.format(quote_plus(arg['from']), quote_plus(arg['to']), quote_plus(arg['text']))
 
@@ -315,7 +315,7 @@ func = [
     (btran,           r"btran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
     (bing,            r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(?P<n>\d+))?"),
     (mtran,           r"mtran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
-    (dict,            r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
+    (dictg,           r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
     (cdict,           r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
     (breezo,          r"breezo\s+(?P<city>.+)"),
     (urban,           r"urban\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
