@@ -153,6 +153,12 @@ def rextester(arg, lines, send):
     if result:
         unsafesend(result, send)
 
+@asyncio.coroutine
+def python3(arg, lines, send):
+    lines = lines + arg['code']
+    arg['lang'] = 'python3'
+    arg['args'] = None
+    return (yield from rextester(arg, lines, send))
 
 help = {
     'clear'          : 'clear',
@@ -166,4 +172,5 @@ func = [
     (rust,            r"rust(?:\s+(?P<code>.+))?"),
     (codepad,         r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run))?(?:\s+(?P<code>.+))?"),
     (rextester,       r"rex:(?P<lang>\S+)(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
+    (python3,         r">>\s+(?P<code>.+)"),
 ]
