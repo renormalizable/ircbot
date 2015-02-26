@@ -174,7 +174,7 @@ def jsonxml(arg, send, field=None, get=None, **kw):
 def regex(arg, send, **kw):
     print('regex')
 
-    n = int(arg.get('n', 5))
+    n = int(arg.get('n') or 5)
     url = arg['url']
 
     reg = re.compile(arg['regex'])
