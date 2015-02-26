@@ -9,14 +9,12 @@ from tool import html, xml, jsonxml, fetch, htmlparse
 @asyncio.coroutine
 def arxiv(arg, send):
     print('arxiv')
-    n = int(arg['n']) if arg['n'] else 5
+    n = int(arg['n'] or 5)
     url = 'http://export.arxiv.org/api/query?search_query={0}&max_results={1}'.format(quote_plus(arg['query']), n)
 
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = arg['xpath'] or '//ns:entry/ns:title'
-    arg['field'] = None
-    arg['format'] = None
 
     return (yield from xml(arg, send))
 
@@ -24,14 +22,13 @@ def arxiv(arg, send):
 def wolfram(arg, send):
     print('wolfram')
     key = config.key['wolfram']
-    n = int(arg['n']) if arg['n'] else 5
+    n = int(arg['n'] or 5)
     url = 'http://api.wolframalpha.com/v2/query?appid={0}&input={1}'.format(key, quote_plus(arg['query']))
 
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = arg['xpath'] or '//pod'
     field = [('.', 'title', '\x0304{}:\x0f'), ('.//plaintext', 'text', '{}')]
-    arg['format'] = None
 
     return (yield from xml(arg, send, field=field))
 
@@ -44,7 +41,6 @@ def ip(arg, send):
     arg['url'] = url
     arg['xpath'] = '/root'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['country', 'regionName', 'city', 'isp']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
 
@@ -59,7 +55,6 @@ def aqi(arg, send):
     arg['url'] = url
     arg['xpath'] = '/root/item'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['area', 'quality', 'aqi', 'primary_pollutant', 'time_point']))
-    arg['format'] = None
 
     #yield from jsonxml(arg, send, field=field)
     #field = list(map(lambda x: ('./' + x, 'text'), ['pm2_5', 'pm10', 'co', 'no2', 'o3', 'o3_8h', 'so2']))
@@ -96,7 +91,6 @@ def bip(arg, send):
     arg['url'] = url
     arg['xpath'] = '//retData'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['country', 'province', 'city', 'district', 'carrier']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
 
@@ -110,7 +104,6 @@ def bid(arg, send):
     arg['url'] = url
     arg['xpath'] = '//retData'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['sex', 'birthday', 'address']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
 
@@ -124,7 +117,6 @@ def bphone(arg, send):
     arg['url'] = url
     arg['xpath'] = '//retData'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['telString', 'province', 'carrier']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
 
@@ -138,7 +130,6 @@ def baqi(arg, send):
     arg['url'] = url
     arg['xpath'] = '//retData'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['city', 'level', 'aqi', 'core', 'time']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
 
@@ -152,31 +143,39 @@ def bweather(arg, send):
     arg['url'] = url
     arg['xpath'] = '//retData'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['city', 'weather', 'temp', 'WS', 'time', 'date']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
 
 @asyncio.coroutine
 def btran(arg, send):
     print('btran')
+    key = config.key['baidu']
     to = arg['to'] or 'zh'
-    url = 'http://apistore.baidu.com/microservice/'
-    url = url + 'translate?from=auto&to={0}&query={1}'.format(quote_plus(to), quote_plus(arg['text']))
+    url = 'http://openapi.baidu.com/public/2.0/bmt/translate?client_id={0}&from=auto&to={1}&q={2}'.format(key, quote_plus(to), quote_plus(arg['text']))
 
     arg['n'] = 1
     arg['url'] = url
-    arg['xpath'] = '//retData/trans_result/item'
+    arg['xpath'] = '//trans_result/item'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['dst']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
+
+    #url = 'http://apistore.baidu.com/microservice/'
+    #url = url + 'translate?from=auto&to={0}&query={1}'.format(quote_plus(to), quote_plus(arg['text']))
+
+    #arg['n'] = 1
+    #arg['url'] = url
+    #arg['xpath'] = '//retData/trans_result/item'
+    #field = list(map(lambda x: ('./' + x, 'text', '{}'), ['dst']))
+
+    #return (yield from jsonxml(arg, send, field=field))
 
 # microsoft
 
 @asyncio.coroutine
 def bing(arg, send):
     print('bing')
-    n = int(arg['n']) if arg['n'] else 1
+    n = int(arg['n'] or 1)
     #market = 'zh-CN'
     market = 'en-US'
     url = 'https://api.datamarket.azure.com/Bing/Search/v1/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(arg['query']))
@@ -188,7 +187,6 @@ def bing(arg, send):
     arg['url'] = url
     arg['xpath'] = '//d/results/item/Web/item'
     field = [('./Title', 'text', '{}'), ('./Url', 'text', '[\x0302{}\x0f]'), ('./Description', 'text', '{}')]
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, auth=auth, field=field))
 
@@ -205,7 +203,6 @@ def mtran(arg, send):
     arg['url'] = url
     arg['xpath'] = '//d/results/item'
     field = [('./Text', 'text', '{}')]
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, auth=auth, field=field))
 
@@ -214,21 +211,19 @@ def mtran(arg, send):
 @asyncio.coroutine
 def dictg(arg, send):
     print('dictg')
-    n = int(arg['n']) if arg['n'] else 5
+    n = int(arg['n'] or 5)
     url = 'https://glosbe.com/gapi/translate?format=json&from={0}&dest={1}&phrase={2}'.format(quote_plus(arg['from']), quote_plus(arg['to']), quote_plus(arg['text']))
 
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//tuc/item/meanings/item/text'
-    arg['field'] = None
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send))
 
 @asyncio.coroutine
 def cdict(arg, send):
     print('cdict')
-    n = int(arg['n']) if arg['n'] else 5
+    n = int(arg['n'] or 5)
     dict = arg['dict'] or 'english'
     url = 'https://api.collinsdictionary.com/api/v1/dictionaries/{0}/search/first/?format=html&q={1}'.format(quote_plus(dict), quote_plus(arg['text']))
 
@@ -258,7 +253,7 @@ def cdict(arg, send):
 @asyncio.coroutine
 def urban(arg, send):
     print('urban')
-    n = int(arg['n']) if arg['n'] else 1
+    n = int(arg['n'] or 1)
     url = 'https://mashape-community-urban-dictionary.p.mashape.com/define?term=' + quote_plus(arg['text'])
 
     # unofficial
@@ -269,7 +264,6 @@ def urban(arg, send):
     arg['url'] = url
     arg['xpath'] = '//list/item'
     field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[\x0302{}\x0f]')]
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field, headers=headers))
 
@@ -283,7 +277,6 @@ def breezo(arg, send):
     arg['url'] = url
     arg['xpath'] = '/root'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['breezometer_description', 'breezometer_aqi', 'dominant_pollutant_text/main', 'random_recommendations/health']))
-    arg['format'] = None
 
     return (yield from jsonxml(arg, send, field=field))
 

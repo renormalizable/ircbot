@@ -9,6 +9,7 @@ password = ''
 channel = '#chan'
 
 key = {
+    'baidu'          : '',
     'microsoft'      : '',
     'collins'        : '',
     'mashape'        : '',
