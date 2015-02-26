@@ -3,23 +3,43 @@ import json
 from urllib.parse  import quote_plus
 from aiohttp       import request
 
-from tool import fetch, htmltostr, html
+from tool import fetch, htmltostr, html, addstyle
 
+@asyncio.coroutine
+def moegirl(arg, send):
+    print('moegirl')
+    n = int(arg['n']) if arg['n'] else 5
+    url = 'http://zh.moegirl.org/' + quote_plus(arg['query'])
 
-#@asyncio.coroutine
-#def moegirl(arg, send):
-#    print('moegirl')
-#    url = 'http://zh.moegirl.org/api.php?format=json&action=query&prop=revisions&rvprop=content&rvgeneratexml&titles=' + quote_plus(arg['query'])
-#
-#    @asyncio.coroutine
-#    def func(byte):
-#        j = json.loads(byte.decode('utf-8'))
-#        d = j.get('query').get('pages').popitem()[1]
-#        t = d.get('revisions')[0].get('parsetree')
-#        print(t)
-#        return [', '.join(map(lambda x: str(x), [j.get('breezometer_description'), j.get('breezometer_aqi'), j.get('dominant_pollutant_text').get('main'), j.get('random_recommendations').get('health')]))]
-#
-#    return (yield from fetch(url, 1, func, send))
+    def hidden(e):
+        for b in e.xpath('.//b'):
+            b.text = '\\x0300' + b.text if b.text else '\\x0300'
+            b.tail = '\\x0f' + b.tail if b.tail else '\\x0f'
+        for span in e.xpath('.//span[@class="heimu"]'):
+            span.text = '\\x0301' + span.text if span.text else '\\x0301'
+            span.tail = '\\x0f' + span.tail if span.tail else '\\x0f'
+        return e
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//*[@id="mw-content-text"]/p'
+    field = [('.', 'text_content', '{}')]
+    get = lambda e, f: addstyle(hidden(e)).xpath('string()')
+    arg['format'] = None
+
+    return (yield from html(arg, send, field=field, get=get))
+
+    #url = 'http://zh.moegirl.org/api.php?format=json&action=query&prop=revisions&rvprop=content&rvgeneratexml&titles=' + quote_plus(arg['query'])
+
+    #@asyncio.coroutine
+    #def func(byte):
+    #    j = json.loads(byte.decode('utf-8'))
+    #    d = j.get('query').get('pages').popitem()[1]
+    #    t = d.get('revisions')[0].get('parsetree')
+    #    print(t)
+    #    return [', '.join(map(lambda x: str(x), [j.get('breezometer_description'), j.get('breezometer_aqi'), j.get('dominant_pollutant_text').get('main'), j.get('random_recommendations').get('health')]))]
+
+    #return (yield from fetch(url, 1, func, send))
 
 @asyncio.coroutine
 def nmb(arg, send):
@@ -69,12 +89,13 @@ def acfun(arg, send):
     return (yield from fetch(url + '1', 1, func, send))
 
 help = {
+    'moegirl'        : 'moegirl <title> [max number]',
     'nmb'            : 'nmb [#forum id] [rthread id] [max number] -- 丧失你好',
     'acfun'          : 'acfun [acpage id] <#comment number>',
 }
 
 func = [
-    #(moegirl,         r"moegirl\s+(?P<query>.+)"),
+    (moegirl,         r"moegirl\s+(?P<query>.+?)(\s+(?P<n>\d+))?"),
     (nmb,             r"nmb(\s+#(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(?P<n>\d+))?(\s+(?P<show>show))?"),
     (acfun,           r"acfun\s+ac(?P<id>\d+)\s+#(?P<count>\d+)"),
 ]
