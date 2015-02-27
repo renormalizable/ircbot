@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from urllib.parse  import quote_plus
 from aiohttp       import request
 
@@ -11,6 +12,8 @@ def moegirl(arg, send):
     n = int(arg['n']) if arg['n'] else 5
     url = 'http://zh.moegirl.org/' + quote_plus(arg['query'])
 
+    # apply function before addstyle()
+    # \x0f should be the last character before tail
     def hidden(e):
         for b in e.xpath('.//b'):
             b.text = '\\x0300' + b.text if b.text else '\\x0300'
@@ -23,11 +26,9 @@ def moegirl(arg, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//*[@id="mw-content-text"]/p'
-    field = [('.', 'text_content', '{}')]
     get = lambda e, f: addstyle(hidden(e)).xpath('string()')
-    arg['format'] = None
 
-    return (yield from html(arg, send, field=field, get=get))
+    return (yield from html(arg, send, get=get))
 
     #url = 'http://zh.moegirl.org/api.php?format=json&action=query&prop=revisions&rvprop=content&rvgeneratexml&titles=' + quote_plus(arg['query'])
 
@@ -48,18 +49,17 @@ def nmb(arg, send):
     url = 'http://h.adnmb.com/home/forum/'
 
     arg['n'] = n
-    arg['format'] = None
     if arg['id']:
         arg['url'] = url + 'thread/id/{0}/page/1.html'.format(arg['id'])
         arg['xpath'] = '//div[@id="threads"]/div'
-        field = [('.', 'id', '[\x0304{}\x0f]'), ('.//div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '<\x0302http://h.adnmb.com{}\x0f>')]
+        field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[\\x0302http://h.adnmb.com{}\\x0f]')]
         if arg['show']:
             send(arg['url'])
     else:
         forum = arg['forum'] or '1'
         arg['url'] = url + 'showt/id/{0}.html'.format(forum)
         arg['xpath'] = '//div[@id="threads"]/div[@class="threadpost"]'
-        field = [('.', 'id', '[\x0304{}\x0f]'), ('./div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '<\x0302http://h.adnmb.com{}\x0f>')]
+        field = [('.', 'id', '[\\x0304{}\\x0f]'), ('./div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[\\x0302http://h.adnmb.com{}\\x0f]')]
 
     return (yield from html(arg, send, field=field))
 
@@ -69,14 +69,33 @@ def acfun(arg, send):
     count = int(arg['count'])
     url = 'http://www.acfun.tv/comment_list_json.aspx?contentId={0}&currentPage='.format(quote_plus(arg['id']))
 
+    def ubb(s):
+        # color inside b, i, u will cause problem
+        table = [
+            (r"\[size=\S+?\](.*?)\[\/size\]"                           , r"\1"), 
+            (r"\[s?\](.*?)\[\/s\]"                                     , r"\1"), 
+            (r"\[img=\S+\](.*?)\[\/img\]"                              , r"[\x0302\1\x0f]"), 
+            (r"\[b\](.*?)\[\/b\]"                                      , r"\x02\1\x02"), 
+            (r"\[i\](.*?)\[\/i\]"                                      , r"\x1d\1\x1d"), 
+            (r"\[u\](.*?)\[\/u\]"                                      , r"\x1f\1\x1f"), 
+            (r"\[color=#(?!00)[0-9a-zA-Z]{2}0000\](.*?)\[\/color\]"    , r"\x0304\1\x0f"), 
+            (r"\[color=#00(?!00)[0-9a-zA-Z]{2}00\](.*?)\[\/color\]"    , r"\x0303\1\x0f"), 
+            (r"\[color=#0000(?!00)[0-9a-zA-Z]{2}\](.*?)\[\/color\]"    , r"\x0302\1\x0f"), 
+        ]
+        for (r, f) in table:
+            s = re.sub(r, f, s)
+        return s
+
     @asyncio.coroutine
     def func(byte):
         j = json.loads(byte.decode('utf-8'))
-        d = j.get('commentContentArr').values()
-        e = next((x for x in d if x.get('count') == count), None)
-        if e:
-            return [', '.join([e.get('userName'), htmltostr(e.get('content'))])]
-        else:
+        d = j.get('commentContentArr')
+        try:
+            while True:
+                e = d.popitem()[1]
+                if e.get('count') == count:
+                    return [', '.join([e.get('userName'), ubb(htmltostr(e.get('content')))])]
+        except KeyError:
             n = j.get('totalPage')
             i = j.get('page')
             if i >= n:
