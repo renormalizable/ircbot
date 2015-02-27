@@ -28,7 +28,7 @@ def wolfram(arg, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = arg['xpath'] or '//pod'
-    field = [('.', 'title', '\x0304{}:\x0f'), ('.//plaintext', 'text', '{}')]
+    field = [('.', 'title', '\\x0304{}:\\x0f'), ('.//plaintext', 'text', '{}')]
 
     return (yield from xml(arg, send, field=field))
 
@@ -170,6 +170,7 @@ def btran(arg, send):
 
     #return (yield from jsonxml(arg, send, field=field))
 
+
 # microsoft
 
 @asyncio.coroutine
@@ -186,7 +187,7 @@ def bing(arg, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//d/results/item/Web/item'
-    field = [('./Title', 'text', '{}'), ('./Url', 'text', '[\x0302{}\x0f]'), ('./Description', 'text', '{}')]
+    field = [('./Title', 'text', '{}'), ('./Url', 'text', '[\\x0302{}\\x0f]'), ('./Description', 'text', '{}')]
 
     return (yield from jsonxml(arg, send, auth=auth, field=field))
 
@@ -230,25 +231,24 @@ def cdict(arg, send):
     key = config.key['collins']
     headers = {'accessKey': key}
 
-    #arg['n'] = n
-    #arg['url'] = url
-    #arg['xpath'] = '//entryContent'
-    #arg['field'] = None
-    ##get = lambda e, f: htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]').xpath('string()')
-    #def get(e, f):
-    #    print(htmlparse(e.text))
-    #    return htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]').xpath('string()')
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//entryContent'
+    #get = lambda e, f: htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]').xpath('string()')
+    def get(e, f):
+        l = htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]')
+        return '\n'.join(map(lambda e: e.xpath('string()').strip(), l))
 
-    #return (yield from jsonxml(arg, send, get=get, headers=headers))
+    return (yield from jsonxml(arg, send, get=get, headers=headers))
 
-    @asyncio.coroutine
-    def func(byte):
-        j = json.loads(byte.decode('utf-8'))
-        l = htmlparse(j.get('entryContent')).xpath('//span[@class = "pos"] | //span[@class = "def"]')
-        # html is well formed, no <br> in e
-        return map(lambda e: e.xpath('string()'), l)
+    #@asyncio.coroutine
+    #def func(byte):
+    #    j = json.loads(byte.decode('utf-8'))
+    #    l = htmlparse(j.get('entryContent')).xpath('//span[@class = "pos"] | //span[@class = "def"]')
+    #    # html is well formed, no <br> in e
+    #    return map(lambda e: e.xpath('string()'), l)
 
-    return (yield from fetch(url, n, func, send, headers=headers))
+    #return (yield from fetch(url, n, func, send, headers=headers))
 
 @asyncio.coroutine
 def urban(arg, send):
@@ -263,7 +263,7 @@ def urban(arg, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//list/item'
-    field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[\x0302{}\x0f]')]
+    field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[\\x0302{}\\x0f]')]
 
     return (yield from jsonxml(arg, send, field=field, headers=headers))
 

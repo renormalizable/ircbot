@@ -65,7 +65,7 @@ def codepad(arg, lines, send):
         byte = yield from r.read()
         result = htmlparse(byte).xpath('/html/body/div/table/tbody/tr/td/div[2]/table/tbody/tr/td[2]/div/pre')[0].xpath('string()')
         unsafesend(result, send)
-    send('[\x0302{0}\x0f]'.format(r.url))
+    send('[\\x0302{0}\\x0f]'.format(r.url))
 
 @asyncio.coroutine
 def rextester(arg, lines, send):
@@ -147,9 +147,9 @@ def rextester(arg, lines, send):
     errors = j.get('Errors')
     result = j.get('Result')
     if warnings:
-        unsafesend('\x0304warnings:\x0f {0}'.format(warnings), send)
+        unsafesend('\\x0304warnings:\\x0f {0}'.format(warnings), send)
     if errors:
-        unsafesend('\x0304errors:\x0f {0}'.format(errors), send)
+        unsafesend('\\x0304errors:\\x0f {0}'.format(errors), send)
     if result:
         unsafesend(result, send)
 

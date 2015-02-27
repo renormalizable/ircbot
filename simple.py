@@ -9,7 +9,7 @@ def echo(arg, send):
 @asyncio.coroutine
 def ping(arg, send):
     send("ping!")
-    #send("\x0305ping!\x0f")
+    #send("\\x0305ping!\\x0f")
 
 @asyncio.coroutine
 def pong(arg, send):
@@ -30,10 +30,10 @@ class ping2c():
        elif self.i <= 0:
           send('好累啊...')
        if self.i == 1:
-          send("\x0304ping!!!!!!!!!\x0f")
+          send("\\x0304ping!!!!!!!!!\\x0f")
           self.i = self.i - 1
        elif self.i > 0:
-          send("\x0304ping!\x0f")
+          send("\\x0304ping!\\x0f")
           self.i = self.i - 1
 
 ping2 = ping2c()
@@ -58,15 +58,15 @@ def color(arg, send):
         ('14', 'grey'),
         ('15', 'light grey'),
     ]
-    send('\x02bold\x0f \x1ditalic\x0f \x1funderline\x0f', stripspace=False, stripline=False)
-    send(' '.join(map(lambda x: '\x03{0}{0} {1}\x0f'.format(*x), c[:8])))
-    send(' '.join(map(lambda x: '\x03{0}{0} {1}\x0f'.format(*x), c[8:])))
+    send('\\x02bold\\x02 \\x1ditalic\\x1d \\x1funderline\\x1f')
+    send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[:8])))
+    send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[8:])))
 
 
 help = {
     'ping!'          : 'ping!',
     'pong!'          : 'pong!',
-    'color'          : 'color -- let\'s puke \x0304r\x0307a\x0308i\x0303n\x0310b\x0302o\x0306w\x0fs!',
+    'color'          : 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!',
 }
 
 func = [
