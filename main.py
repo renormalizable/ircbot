@@ -54,11 +54,23 @@ def normalize(message, stripspace=True, stripline=True, convert=True, newline=Tr
     if convert:
         line = map(lambda l: l.translate(str.maketrans(alias)), line)
     if newline:
-        return '\x0304\\n\x0f '.join(line)
+        return '\\x0304\\n\\x0f '.join(line)
     else:
         return ' '.join(line)
 
-def send(command, *, target='', message='', to='', linelimit=None, color=None, **kw):
+def ircescape(t):
+    table = [
+        ('\\x0f', '\x0f'),
+        ('\\x03', '\x03'),
+        ('\\x02', '\x02'),
+        ('\\x1d', '\x1d'),
+        ('\\x1f', '\x1f'),
+    ]
+    for (s, e) in table:
+        t = t.replace(s, e)
+    return t
+
+def send(command, *, target='', message='', to='', linelimit=None, escape=True, color=None, **kw):
     # (512 - 2) / 3 = 170
     # 430 bytes should be safe
     limit = 430
@@ -66,7 +78,10 @@ def send(command, *, target='', message='', to='', linelimit=None, color=None, *
 
     prefix = (to + ': ') if to else ''
 
-    message = prefix + normalize(message, **kw)
+    message = normalize(message, **kw)
+    if escape:
+        message = ircescape(message)
+    message = prefix + message
     print(message)
     m = list(map(lambda c: len(c.encode('utf-8')), message))
     while line > 0 and len(m) > 0:

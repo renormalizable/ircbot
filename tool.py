@@ -12,6 +12,7 @@ from dicttoxml import dicttoxml
 @asyncio.coroutine
 def fetch(url, n, func, send, **kw):
     print('fetch')
+    #r = yield from asyncio.wait_for(request('GET', urldefrag(url)[0], **kw), 1)
     r = yield from request('GET', urldefrag(url)[0], **kw)
     byte = yield from r.read()
     print('get byte')
@@ -39,7 +40,13 @@ def addstyle(e):
         br.tail = '\n' + br.tail if br.tail else '\n'
     for b in e.xpath('.//b'):
         b.text = '\\x02' + b.text if b.text else '\\x02'
-        b.tail = '\\x0f' + b.tail if b.tail else '\\x0f'
+        b.tail = '\\x02' + b.tail if b.tail else '\\x02'
+    for i in e.xpath('.//i'):
+        i.text = '\\x1d' + i.text if i.text else '\\x1d'
+        i.tail = '\\x1d' + i.tail if i.tail else '\\x1d'
+    for u in e.xpath('.//u'):
+        u.text = '\\x1f' + u.text if u.text else '\\x1f'
+        u.tail = '\\x1f' + u.tail if u.tail else '\\x1f'
     return e
 
 # use html5lib for standard compliance
@@ -51,26 +58,13 @@ def htmlparsefast(t, *, parser=None):
 def htmltostr(t):
     return addstyle(htmlparse(t)).xpath('string()')
 
-def strtoesc(t):
-    table = [
-        ('\\x0f', '\x0f'),
-        ('\\x03', '\x03'),
-        ('\\x02', '\x02'),
-        ('\\x1d', '\x1d'),
-        ('\\x1f', '\x1f'),
-    ]
-    for (s, e) in table:
-        t = t.replace(s, e)
-    return t
-    #return t.encode('utf-8').decode('unicode_escape')
-
 def parsefield(field):
     if field:
         # no # in xpath
         f = re.finditer(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?", field)
         def getitem(e):
             d = e.groupdict()
-            return (d['xpath'] or '.', d['field'] or 'text_content', strtoesc(d['format']) if d['format'] else '{}')
+            return (d['xpath'] or '.', d['field'] or 'text_content', d['format'] if d['format'] else '{}')
         return list(map(getitem, f))
     else:
         return [('.', 'text_content', '{}')]
@@ -78,10 +72,10 @@ def parsefield(field):
 def getfield(field, get):
     def getl(e, f):
         def gete(e):
-            item = strtoesc(get(e, f[1]).strip())
-            return str(item) if item else ''
-        l = ', '.join(map(gete, e.xpath(f[0])))
-        return f[2].format(l) if l else ''
+            item = get(e, f[1])
+            return str(item).strip() if item else ''
+        l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0]))))
+        return f[2].format(', '.join(l)) if l else ''
 
     def getf(e):
         return list(map(lambda f: getl(e, f), field))
@@ -100,7 +94,7 @@ def html(arg, send, *, field=None, get=None, **kw):
     #field = field or parsefield(arg['field'])
     field = field or parsefield(arg.get('field'))
     #formatl = (lambda l: strtoesc(arg['format']).format(*l)) if arg['format'] else (lambda l: ' '.join(l))
-    formatl = (lambda l: strtoesc(arg['format']).format(*l)) if arg.get('format') else (lambda l: ' '.join(l))
+    formatl = (lambda l: arg['format'].format(*l)) if arg.get('format') else (lambda l: ' '.join(l))
 
     print(field)
     ns = {'re': 'http://exslt.org/regular-expressions'}
@@ -124,7 +118,7 @@ def xml(arg, send, *, field=None, get=None, **kw):
     url = arg['url']
     xpath = arg['xpath']
     field = field or parsefield(arg.get('field'))
-    formatl = (lambda l: strtoesc(arg['format']).format(*l)) if arg.get('format') else (lambda l: ' '.join(l))
+    formatl = (lambda l: arg['format'].format(*l)) if arg.get('format') else (lambda l: ' '.join(l))
 
     print(field)
     ns = {'re': 'http://exslt.org/regular-expressions'}
@@ -152,7 +146,7 @@ def jsonxml(arg, send, field=None, get=None, **kw):
     url = arg['url']
     xpath = arg['xpath']
     field = field or parsefield(arg.get('field'))
-    formatl = (lambda l: strtoesc(arg['format']).format(*l)) if arg.get('format') else (lambda l: ' '.join(l))
+    formatl = (lambda l: arg['format'].format(*l)) if arg.get('format') else (lambda l: ' '.join(l))
 
     print(field)
     ns = {'re': 'http://exslt.org/regular-expressions'}
