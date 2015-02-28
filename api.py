@@ -45,6 +45,21 @@ def ip(arg, send):
     return (yield from jsonxml(arg, send, field=field))
 
 @asyncio.coroutine
+def whois(arg, send):
+    print('whois')
+    url = 'http://jsonwhois.com/api/v1/whois?domain=' + quote_plus(arg['domain'])
+
+    key = config.key['jsonwhois']
+    headers = {'Accept': 'application/json', 'Authorization': 'Token token=' + key}
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '/root'
+    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['status | ./status/item', 'created_on', 'updated_on']))
+
+    return (yield from jsonxml(arg, send, field=field, headers=headers))
+
+@asyncio.coroutine
 def aqi(arg, send):
     print('aqi')
     key = config.key['pm25']
@@ -287,6 +302,7 @@ def watson(arg, send):
 
 help = {
     'ip'             : 'ip <ip address>',
+    #'whois'          : 'whois <domain>',
     #'aqi'            : 'aqi <city> [all]',
     'aqi'            : 'aqi <city>',
     'btran'          : 'btran [to:target lang] <text>',
@@ -298,6 +314,7 @@ help = {
 
 func = [
     (ip,              r"ip\s+(?P<addr>.+)"),
+    (whois,           r"whois\s+(?P<domain>.+)"),
     #(aqi,             r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
     (aqi,             r"aqi\s+(?P<city>.+?)"),
     (bip,             r"bip\s+(?P<addr>.+)"),

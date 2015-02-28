@@ -14,6 +14,7 @@ key = {
     'collins'        : '',
     'mashape'        : '',
     'breezo'         : '',
+    'jsonwhois'      : '',
     'wolfram'        : '',
     'pm25'           : '',
 }
