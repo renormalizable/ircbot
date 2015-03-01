@@ -173,5 +173,5 @@ func = [
     (rust,            r"rust(?:\s+(?P<code>.+))?"),
     (codepad,         r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run))?(?:\s+(?P<code>.+))?"),
     (rextester,       r"rex:(?P<lang>\S+)(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
-    (python3,         r">>\s+(?P<code>.+)"),
+    (python3,         r">> (?P<code>.+)"),
 ]
