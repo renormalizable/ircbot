@@ -23,7 +23,7 @@ def wolfram(arg, send):
     print('wolfram')
     key = config.key['wolfram']
     n = int(arg['n'] or 5)
-    url = 'http://api.wolframalpha.com/v2/query?appid={0}&input={1}'.format(key, quote_plus(arg['query']))
+    url = 'http://api.wolframalpha.com/v2/query?appid={0}&units=metric&input={1}'.format(key, quote_plus(arg['query']))
 
     arg['n'] = n
     arg['url'] = url
@@ -305,6 +305,8 @@ help = {
     #'whois'          : 'whois <domain>',
     #'aqi'            : 'aqi <city> [all]',
     'aqi'            : 'aqi <city>',
+    'bip'            : 'bip <ip address>',
+    'bweather'       : 'bweather <city>',
     'btran'          : 'btran [to:target lang] <text>',
     'bing'           : 'bing <query> [max number]',
     'mtran'          : 'mtran [to:target lang] <text>',
