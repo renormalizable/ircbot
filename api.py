@@ -4,7 +4,7 @@ from aiohttp.helpers import BasicAuth
 import json
 
 import config
-from tool import html, xml, jsonxml, fetch, htmlparse
+from tool import xml, jsonxml, htmlparse
 
 @asyncio.coroutine
 def arxiv(arg, send):
@@ -64,22 +64,21 @@ def aqi(arg, send):
     print('aqi')
     key = config.key['pm25']
     url = 'http://www.pm25.in/api/querys/aqi_details.json?token={0}&avg=true&stations=no&city={1}'.format(key, quote_plus(arg['city']))
-    #all = True if arg['all'] else False
 
     arg['n'] = 3
     arg['url'] = url
     arg['xpath'] = '/root/item'
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['area', 'quality', 'aqi', 'primary_pollutant', 'time_point']))
+    if arg.get('all'):
+        l = [('pm2_5', 'PM 2.5'), ('pm10', 'PM 10'), ('co', 'CO'), ('no2', 'NO2'), ('o3', 'O3'), ('o3_8h', 'O3 8h'), ('so2', 'SO2')]
+        field += list(map(lambda x: ('./' + x[0], 'text', '\\x0300{0}\\x0f'.format(x[1]) + ': {}'), l))
+        def format(l):
+            e = list(l)[0]
+            return [' '.join(e[:5]), ', '.join(e[5:])]
+    else:
+        format = None
 
-    #yield from jsonxml(arg, send, field=field)
-    #field = list(map(lambda x: ('./' + x, 'text'), ['pm2_5', 'pm10', 'co', 'no2', 'o3', 'o3_8h', 'so2']))
-    return (yield from jsonxml(arg, send, field=field))
-
-    #yield from jsonxml(arg, send)
-    #send('污染物: (1h平均 24h平均)')
-    #f = lambda k: '{0}: ({1} {2})'.format(k.replace('_', '.'), str(j.get(k)), str(j.get(k + '_24h')))
-    #arg['field'] = ' '.join(map(lambda , ['pm2_5', 'pm10', 'co', 'no2', 'o3', 'o3_8h', 'so2']))
-    #yield from jsonxml(arg, send)
+    return (yield from jsonxml(arg, send, field=field, format=format))
 
     #@asyncio.coroutine
     #def func(byte):
@@ -222,6 +221,26 @@ def mtran(arg, send):
 
     return (yield from jsonxml(arg, send, auth=auth, field=field))
 
+@asyncio.coroutine
+def couplet(arg, send):
+    print('couplet')
+    n = int(arg['n'] or 1)
+    url = 'http://couplet.msra.cn/app/CoupletsWS_V2.asmx/GetXiaLian'
+
+    shanglian = arg['shanglian'][:10]
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//d/XialianSystemGeneratedSets/item/XialianCandidates/item'
+
+    data = {
+        'shanglian': shanglian,
+        'xialianLocker': '0' * len(shanglian),
+        'isUpdate': False,
+    }
+    headers = {'Content-Type': 'application/json'}
+
+    return (yield from jsonxml(arg, send, method='POST', data=json.dumps(data), headers=headers))
 
 
 @asyncio.coroutine
@@ -249,21 +268,9 @@ def cdict(arg, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//entryContent'
-    #get = lambda e, f: htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]').xpath('string()')
-    def get(e, f):
-        l = htmlparse(e.text).xpath('//span[@class = "pos"] | //span[@class = "def"]')
-        return '\n'.join(map(lambda e: e.xpath('string()').strip(), l))
+    transform = lambda l: htmlparse(l[0].text).xpath('//span[@class = "pos"] | //span[@class = "def"]')
 
-    return (yield from jsonxml(arg, send, get=get, headers=headers))
-
-    #@asyncio.coroutine
-    #def func(byte):
-    #    j = json.loads(byte.decode('utf-8'))
-    #    l = htmlparse(j.get('entryContent')).xpath('//span[@class = "pos"] | //span[@class = "def"]')
-    #    # html is well formed, no <br> in e
-    #    return map(lambda e: e.xpath('string()'), l)
-
-    #return (yield from fetch(url, n, func, send, headers=headers))
+    return (yield from jsonxml(arg, send, transform=transform, headers=headers))
 
 @asyncio.coroutine
 def urban(arg, send):
@@ -310,6 +317,7 @@ help = {
     'btran'          : 'btran [to:target lang] <text>',
     'bing'           : 'bing <query> [max number]',
     'mtran'          : 'mtran [to:target lang] <text>',
+    'couplet'        : 'couplet <shanglian (max ten chinese characters)> [max number] -- 公门桃李争荣日 法国荷兰比利时',
     'urban'          : 'urban <text> [max number]',
     'wolfram'        : 'wolfram <query> [max number]',
 }
@@ -317,8 +325,8 @@ help = {
 func = [
     (ip,              r"ip\s+(?P<addr>.+)"),
     (whois,           r"whois\s+(?P<domain>.+)"),
-    #(aqi,             r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
-    (aqi,             r"aqi\s+(?P<city>.+?)"),
+    (aqi,             r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
+    #(aqi,             r"aqi\s+(?P<city>.+?)"),
     (bip,             r"bip\s+(?P<addr>.+)"),
     (bid,             r"bid\s+(?P<id>.+)"),
     (bphone,          r"bphone\s+(?P<tel>.+)"),
@@ -327,6 +335,7 @@ func = [
     (btran,           r"btran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
     (bing,            r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(?P<n>\d+))?"),
     (mtran,           r"mtran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
+    (couplet,         r"couplet\s+(?P<shanglian>\S+)(\s+(?P<n>\d+))?"),
     (dictg,           r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
     (cdict,           r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
     (breezo,          r"breezo\s+(?P<city>.+)"),
