@@ -3,7 +3,7 @@ import json
 from aiohttp       import request, TCPConnector
 from urllib.parse  import urlsplit
 
-from tool import htmlparse, html
+from tool import html, htmlparse, jsonparse
 
 def unsafesend(m, send, *, raw=False):
     #limit = 1000
@@ -73,7 +73,7 @@ def rust(arg, lines, send):
     r = yield from request('POST', url, data=json.dumps(data), headers=headers, connector=conn)
     byte = yield from r.read()
 
-    result = json.loads(byte.decode('utf-8')).get('result')
+    result = jsonparse(byte).get('result')
     unsafesend(result, send, raw=raw)
 
 @asyncio.coroutine
@@ -181,7 +181,7 @@ def rextester(arg, lines, send):
     r = yield from request('POST', url, data=data, headers=headers)
     byte = yield from r.read()
 
-    j = json.loads(byte.decode('utf-8'))
+    j = jsonparse(byte)
     warnings = j.get('Warnings')
     errors = j.get('Errors')
     result = j.get('Result')

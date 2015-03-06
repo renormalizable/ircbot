@@ -1,10 +1,9 @@
 import asyncio
-import json
 import re
 from urllib.parse  import quote_plus
 from aiohttp       import request
 
-from tool import fetch, htmltostr, html, addstyle
+from tool import fetch, htmltostr, html, addstyle, jsonparse
 
 @asyncio.coroutine
 def moegirl(arg, send):
@@ -52,14 +51,13 @@ def nmb(arg, send):
     if arg['id']:
         arg['url'] = url + 'thread/id/{0}/page/1.html'.format(arg['id'])
         arg['xpath'] = '//div[@id="threads"]/div'
-        field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[\\x0302http://h.adnmb.com{}\\x0f]')]
         if arg['show']:
             send(arg['url'])
     else:
         forum = arg['forum'] or '1'
         arg['url'] = url + 'showt/id/{0}.html'.format(forum)
         arg['xpath'] = '//div[@id="threads"]/div[@class="threadpost"]'
-        field = [('.', 'id', '[\\x0304{}\\x0f]'), ('./div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[\\x0302http://h.adnmb.com{}\\x0f]')]
+    field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[\\x0302http://h.adnmb.com{}\\x0f]')]
 
     return (yield from html(arg, send, field=field))
 
@@ -71,10 +69,13 @@ def acfun(arg, send):
 
     def ubb(s):
         # color inside b, i, u will cause problem
+        # nested tag not handled
         table = [
             (r"\[size=\S+?\](.*?)\[\/size\]"                           , r"\1"), 
-            (r"\[s?\](.*?)\[\/s\]"                                     , r"\1"), 
-            (r"\[img=\S+\](.*?)\[\/img\]"                              , r"[\x0302\1\x0f]"), 
+            #(r"\[s\](.*?)\[\/s\]"                                     , r"\1"), 
+            (r"\[at\](.*?)\[\/at\]"                                    , r"\x0300@\1\x0f"), 
+            (r"\[img=\S+?\](.*?)\[\/img\]"                             , r"[\x0302\1\x0f]"), 
+            (r"\[ac=\S+?\](.*?)\[\/ac\]"                               , r"[\x0302http://www.acfun.tv/v/\1\x0f]"), 
             (r"\[b\](.*?)\[\/b\]"                                      , r"\x02\1\x02"), 
             (r"\[i\](.*?)\[\/i\]"                                      , r"\x1d\1\x1d"), 
             (r"\[u\](.*?)\[\/u\]"                                      , r"\x1f\1\x1f"), 
@@ -88,13 +89,14 @@ def acfun(arg, send):
 
     @asyncio.coroutine
     def func(byte):
-        j = json.loads(byte.decode('utf-8'))
+        j = jsonparse(byte)
         d = j.get('commentContentArr')
         try:
             while True:
                 e = d.popitem()[1]
                 if e.get('count') == count:
-                    return [', '.join([e.get('userName'), ubb(htmltostr(e.get('content')))])]
+                    #return [', '.join([e.get('userName'), ubb(htmltostr(e.get('content')))])]
+                    return ['\\x0300{0}\\x0f: {1}'.format(e.get('userName'), ubb(htmltostr(e.get('content'))))]
         except KeyError:
             n = j.get('totalPage')
             i = j.get('page')
