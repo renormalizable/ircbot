@@ -1,16 +1,51 @@
 import asyncio
 import json
 from aiohttp       import request, TCPConnector
+from urllib.parse  import urlsplit
 
-from tool import htmlparse
+from tool import htmlparse, html
 
-def unsafesend(m, send):
+def unsafesend(m, send, *, raw=False):
     #limit = 1000
     #if len(m) > limit:
     #    send('too long... strip to ' + str(limit))
     #send(m[:limit])
-    send(m, linelimit=5)
+    limit = 16
+    if raw:
+        l = str(m).splitlines()
+        for e in l[:limit]:
+            send(e, linelimit=5, toall=True)
+        if len(l) > limit:
+            send("太长了啦...")
+    else:
+        send(m, linelimit=5)
 
+class Get:
+    def __init__(self):
+        self.l = ''
+    def __call__(self, m, **kw):
+        self.l += m
+
+@asyncio.coroutine
+def getcode(url):
+    site = {
+        'codepad.org': '/html/body/div/table/tbody/tr/td/div[1]/table/tbody/tr/td[2]/div/pre',
+        'paste.ubuntu.com': '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
+        'cfp.vim-cn.com': '.',
+        'p.vim-cn.com': '.',
+    }
+
+    get = Get()
+    u = urlsplit(url)
+    xpath = site.get(u[1])
+    if xpath:
+        arg = {}
+        arg['url'] = url
+        arg['xpath'] = xpath
+        yield from html(arg, get)
+    else:
+        raise Exception()
+    return get.l + '\n'
 
 @asyncio.coroutine
 def clear(arg, lines, send):
@@ -22,6 +57,7 @@ def rust(arg, lines, send):
 
     url = 'https://play.rust-lang.org/evaluate.json'
     code = lines or arg['code']
+    raw = arg['raw']
 
     if not code:
         raise Exception()
@@ -38,7 +74,7 @@ def rust(arg, lines, send):
     byte = yield from r.read()
 
     result = json.loads(byte.decode('utf-8')).get('result')
-    unsafesend(result, send)
+    unsafesend(result, send, raw=raw)
 
 @asyncio.coroutine
 def codepad(arg, lines, send):
@@ -48,6 +84,7 @@ def codepad(arg, lines, send):
     code = lines or arg['code']
     lang = arg['lang'].title()
     run = bool(arg['run'])
+    raw = arg['raw']
 
     if not code:
         raise Exception()
@@ -65,7 +102,7 @@ def codepad(arg, lines, send):
     if run:
         byte = yield from r.read()
         result = htmlparse(byte).xpath('/html/body/div/table/tbody/tr/td/div[2]/table/tbody/tr/td[2]/div/pre')[0].xpath('string()')
-        unsafesend(result, send)
+        unsafesend(result, send, raw=raw)
     send('[\\x0302{0}\\x0f]'.format(r.url))
 
 @asyncio.coroutine
@@ -129,6 +166,7 @@ def rextester(arg, lines, send):
     args = '{0} {1}'.format(conf[1], arg['args'] or '')
     #input = arg['input'] or ''
     input = ''
+    raw = arg['raw']
 
     if not code:
         raise Exception()
@@ -152,7 +190,7 @@ def rextester(arg, lines, send):
     if errors:
         unsafesend('\\x0304errors:\\x0f {0}'.format(errors), send)
     if result:
-        unsafesend(result, send)
+        unsafesend(result, send, raw=raw)
 
 @asyncio.coroutine
 def python3(arg, lines, send):
@@ -170,8 +208,8 @@ help = {
 
 func = [
     (clear,           r"clear"),
-    (rust,            r"rust(?:\s+(?P<code>.+))?"),
-    (codepad,         r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run))?(?:\s+(?P<code>.+))?"),
-    (rextester,       r"rex:(?P<lang>\S+)(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
+    (rust,            r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
+    (codepad,         r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
+    (rextester,       r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
     (python3,         r">> (?P<code>.+)"),
 ]

@@ -6,7 +6,7 @@ import time
 import config
 import simple
 import tool
-import eval
+import lang
 import api
 import acg
 
@@ -36,27 +36,39 @@ def connect():
 def keepalive(message):
     bot.send('PONG', message=message)
 
-def normalize(message, stripspace=True, stripline=True, convert=True, newline=True):
-    alias = {
-        '　': '  ',
-        '，': ', ',
-        '。': '. ',
-        '！': '! ',
-        '？': '? ',
-        '：': ': ',
-    }
+alias = {
+    '　': '  ',
+    '，': ', ',
+    '。': '. ',
+    '！': '! ',
+    '？': '? ',
+    '：': ': ',
+}
+alias = str.maketrans(alias)
+esc = [
+    ('\\x0f', '\x0f'),
+    ('\\x03', '\x03'),
+    ('\\x02', '\x02'),
+    ('\\x1d', '\x1d'),
+    ('\\x1f', '\x1f'),
+]
 
+def normalize(message, stripspace=True, stripline=True, newline=True, convert=True, escape=True):
     line = str(message).splitlines() if stripline else [message]
     if stripspace:
         line = map(lambda l: ' '.join(l.split()), line)
     if stripline:
         line = filter(lambda l: l, line)
-    if convert:
-        line = map(lambda l: l.translate(str.maketrans(alias)), line)
     if newline:
-        return '\\x0304\\n\\x0f '.join(line)
+        line = '\\x0304\\n\\x0f '.join(line)
     else:
-        return ' '.join(line)
+        line = ' '.join(line)
+    if convert:
+        line = line.translate(alias)
+    if escape:
+        for (s, e) in esc:
+            line = line.replace(s, e)
+    return line
 
 def ircescape(t):
     table = [
@@ -70,18 +82,18 @@ def ircescape(t):
         t = t.replace(s, e)
     return t
 
-def send(command, *, target='', message='', to='', linelimit=None, escape=True, color=None, **kw):
+def send(command, *, target='', message='', to='', toall=False, linelimit=None, color=None, **kw):
     # (512 - 2) / 3 = 170
     # 430 bytes should be safe
     limit = 430
     line = linelimit or 1
 
     prefix = (to + ': ') if to else ''
+    #prefix = '' if toall else (to + ': ') if to else ''
 
     message = normalize(message, **kw)
-    if escape:
-        message = ircescape(message)
-    message = prefix + message
+    #message = prefix + message
+    message = ('' if toall else prefix) + message
     print(message)
     m = list(map(lambda c: len(c.encode('utf-8')), message))
     while line > 0 and len(m) > 0:
@@ -99,7 +111,21 @@ def send(command, *, target='', message='', to='', linelimit=None, escape=True, 
         if linelimit:
             line = line - 1
     if line <= 0:
-        bot.send(command, target=target, message=prefix + '太多啦...')
+        bot.send(command, target=target, message=prefix + '太多了啦...')
+
+def addlines(nick, l):
+    if nick not in bot.lines:
+        bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
+    else:
+        bot.lines[nick][0] += l
+
+def getlines(nick):
+    item = bot.lines.pop(nick, None)
+    if item:
+        item[1].cancel()
+        return item[0]
+    else:
+        return ''
 
 @bot.on('PRIVMSG')
 def message(nick, target, message):
@@ -109,30 +135,32 @@ def message(nick, target, message):
     if nick == bot.nick:
         return
     # prefix
-    if message[:4] == "... ":
-        l = message[4:].rstrip() + '\n'
-        if nick not in bot.lines:
-            bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
-        else:
-            bot.lines[nick][0] += l
-        return
+    #if message[:4] == "... ":
+    #    l = message[4:].rstrip() + '\n'
+    #    if nick not in bot.lines:
+    #        bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
+    #    else:
+    #        bot.lines[nick][0] += l
+    #    return
     if message[0] != "'":
         return
     if message[:4] == "'.. ":
         l = message[4:].rstrip() + '\n'
-        if nick not in bot.lines:
-            bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
-        else:
-            bot.lines[nick][0] += l
+        addlines(nick, l)
+        return
+    if message[:4] == "':: ":
+        try:
+            l = yield from lang.getcode(message[4:].rstrip())
+            addlines(nick, l)
+            #send("PRIVMSG", target=target, message=l, to=nick, stripspace=False, convert=False)
+            #send("PRIVMSG", target=target, message="imported", to=nick, stripspace=False, convert=False)
+        except:
+            send("PRIVMSG", target=target, message="出错啦...", to=nick)
+            raise
         return
 
     message = message[1:].rstrip()
-    item = bot.lines.pop(nick, None)
-    if item:
-        lines = item[0]
-        item[1].cancel()
-    else:
-        lines = ''
+    lines = getlines(nick)
     # Direct message to bot
     if target == bot.nick:
         yield from reply(nick, message, lines, lambda m, **kw: send("PRIVMSG", target=nick, message=m, **kw))
@@ -146,7 +174,7 @@ help.update(simple.help)
 help.update(tool.help)
 help.update(api.help)
 help.update(acg.help)
-help.update(eval.help)
+help.update(lang.help)
 
 @asyncio.coroutine
 def helper(arg, send):
@@ -163,7 +191,7 @@ func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), simple.func))
 func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), tool.func))
 func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), api.func))
 func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), acg.func))
-func.extend(map(lambda f: (f[0], reg(f[1])), eval.func))
+func.extend(map(lambda f: (f[0], reg(f[1])), lang.func))
 
 @asyncio.coroutine
 def reply(nick, message, lines, send):
@@ -173,6 +201,7 @@ def reply(nick, message, lines, send):
             if arg:
                 print(arg.groupdict())
                 return (yield from f(arg.groupdict(), lines, send))
+        send('need some help?')
     except:
         send('╮(￣▽￣)╭')
         raise
