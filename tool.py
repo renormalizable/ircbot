@@ -58,6 +58,15 @@ def htmlparsefast(t, *, parser=None):
 def htmltostr(t):
     return addstyle(htmlparse(t)).xpath('string()')
 
+def xmlparse(t):
+    return etree.XML(t)
+
+def jsonparse(t):
+    try:
+        return json.loads(t)
+    except:
+        return json.loads(t.decode('utf-8'))
+
 def parsefield(field):
     if field:
         # no # in xpath
@@ -83,7 +92,7 @@ def getfield(field, get):
     return getf
 
 @asyncio.coroutine
-def html(arg, send, *, field=None, get=None, **kw):
+def html(arg, send, *, field=None, get=None, transform=None, **kw):
     print('html')
 
     #n = int(arg['n']) if arg['n'] else 5
@@ -100,17 +109,19 @@ def html(arg, send, *, field=None, get=None, **kw):
     ns = {'re': 'http://exslt.org/regular-expressions'}
     get = get or (lambda e, f: addstyle(e).xpath('string()') if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
     getf = getfield(field, get)
+    transform = transform or (lambda l: l)
 
     @asyncio.coroutine
     def func(byte):
-        l = htmlparse(byte).xpath(xpath, namespaces=ns)[offset:]
+        l = htmlparse(byte).xpath(xpath, namespaces=ns)
+        l = transform(l)[offset:]
         l = filter(lambda e: any(e), map(getf, l))
         return map(lambda e: formatl(e), l)
 
     return (yield from fetch(url, n, func, send, **kw))
 
 @asyncio.coroutine
-def xml(arg, send, *, field=None, get=None, **kw):
+def xml(arg, send, *, field=None, get=None, transform=None, **kw):
     print('xml')
 
     n = int(arg.get('n') or 5)
@@ -124,21 +135,24 @@ def xml(arg, send, *, field=None, get=None, **kw):
     ns = {'re': 'http://exslt.org/regular-expressions'}
     get = get or (lambda e, f: htmltostr(e.text) if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
     getf = getfield(field, get)
+    transform = transform or (lambda l: l)
 
     @asyncio.coroutine
     def func(byte):
-        ns.update(etree.XML(byte).nsmap)
+        t = xmlparse(byte)
+        ns.update(t.nsmap)
         xmlns = ns.pop(None, None)
         if xmlns:
             ns['ns'] = xmlns
-        l = etree.XML(byte).xpath(xpath, namespaces=ns)[offset:]
+        l = t.xpath(xpath, namespaces=ns)
+        l = transform(l)[offset:]
         l = filter(lambda e: any(e), map(getf, l))
         return map(lambda e: formatl(e), l)
 
     return (yield from fetch(url, n, func, send, **kw))
 
 @asyncio.coroutine
-def jsonxml(arg, send, field=None, get=None, **kw):
+def jsonxml(arg, send, field=None, get=None, transform=None, **kw):
     print('jsonxml')
 
     n = int(arg.get('n') or 5)
@@ -152,13 +166,17 @@ def jsonxml(arg, send, field=None, get=None, **kw):
     ns = {'re': 'http://exslt.org/regular-expressions'}
     get = get or (lambda e, f: e.text)
     getf = getfield(field, get)
+    transform = transform or (lambda l: l)
 
     @asyncio.coroutine
     def func(byte):
-        j = json.loads(byte.decode('utf-8'))
+        #j = json.loads(byte.decode('utf-8'))
+        j = jsonparse(byte)
         #print(j)
         #print(dicttoxml(j))
-        l = etree.XML(dicttoxml(j)).xpath(xpath, namespaces=ns)[offset:]
+        #l = etree.XML(dicttoxml(j)).xpath(xpath, namespaces=ns)
+        l = xmlparse(dicttoxml(j)).xpath(xpath, namespaces=ns)
+        l = transform(l)[offset:]
         l = filter(lambda e: any(e), map(getf, l))
         return map(lambda e: formatl(e), l)
 
