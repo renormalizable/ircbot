@@ -10,10 +10,10 @@ from dicttoxml import dicttoxml
 
 
 @asyncio.coroutine
-def fetch(url, n, func, send, **kw):
+def fetch(method, url, n, func, send, **kw):
     print('fetch')
     #r = yield from asyncio.wait_for(request('GET', urldefrag(url)[0], **kw), 1)
-    r = yield from request('GET', urldefrag(url)[0], **kw)
+    r = yield from request(method, urldefrag(url)[0], **kw)
     byte = yield from r.read()
     print('get byte')
     l = yield from func(byte)
@@ -92,7 +92,7 @@ def getfield(field, get):
     return getf
 
 @asyncio.coroutine
-def html(arg, send, *, field=None, get=None, transform=None, **kw):
+def html(arg, send, *, method='GET', field=None, get=None, transform=None, **kw):
     print('html')
 
     #n = int(arg['n']) if arg['n'] else 5
@@ -118,10 +118,10 @@ def html(arg, send, *, field=None, get=None, transform=None, **kw):
         l = filter(lambda e: any(e), map(getf, l))
         return map(lambda e: formatl(e), l)
 
-    return (yield from fetch(url, n, func, send, **kw))
+    return (yield from fetch(method, url, n, func, send, **kw))
 
 @asyncio.coroutine
-def xml(arg, send, *, field=None, get=None, transform=None, **kw):
+def xml(arg, send, *, method='GET', field=None, get=None, transform=None, **kw):
     print('xml')
 
     n = int(arg.get('n') or 5)
@@ -149,10 +149,10 @@ def xml(arg, send, *, field=None, get=None, transform=None, **kw):
         l = filter(lambda e: any(e), map(getf, l))
         return map(lambda e: formatl(e), l)
 
-    return (yield from fetch(url, n, func, send, **kw))
+    return (yield from fetch(method, url, n, func, send, **kw))
 
 @asyncio.coroutine
-def jsonxml(arg, send, field=None, get=None, transform=None, **kw):
+def jsonxml(arg, send, *, method='GET', field=None, get=None, transform=None, **kw):
     print('jsonxml')
 
     n = int(arg.get('n') or 5)
@@ -170,17 +170,15 @@ def jsonxml(arg, send, field=None, get=None, transform=None, **kw):
 
     @asyncio.coroutine
     def func(byte):
-        #j = json.loads(byte.decode('utf-8'))
         j = jsonparse(byte)
         #print(j)
         #print(dicttoxml(j))
-        #l = etree.XML(dicttoxml(j)).xpath(xpath, namespaces=ns)
         l = xmlparse(dicttoxml(j)).xpath(xpath, namespaces=ns)
         l = transform(l)[offset:]
         l = filter(lambda e: any(e), map(getf, l))
         return map(lambda e: formatl(e), l)
 
-    return (yield from fetch(url, n, func, send, **kw))
+    return (yield from fetch(method, url, n, func, send, **kw))
 
 @asyncio.coroutine
 def regex(arg, send, **kw):
@@ -196,7 +194,7 @@ def regex(arg, send, **kw):
         l = reg.finditer(byte.decode('utf-8'))
         return map(lambda e: ', '.join(e.groups()), l)
 
-    return (yield from fetch(url, n, func, send, **kw))
+    return (yield from fetch('GET', url, n, func, send, **kw))
 
 
 help = {
