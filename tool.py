@@ -14,7 +14,12 @@ def fetch(method, url, n, func, send, **kw):
     print('fetch')
     #r = yield from asyncio.wait_for(request('GET', urldefrag(url)[0], **kw), 1)
     r = yield from request(method, urldefrag(url)[0], **kw)
-    byte = yield from r.read()
+    #byte = yield from r.read()
+    try:
+        byte = yield from r.text()
+    except:
+        print('bad encoding')
+        byte = yield from r.read()
     print('get byte')
     l = yield from func(byte)
     #l = func(byte)
