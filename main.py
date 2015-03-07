@@ -9,6 +9,7 @@ import tool
 import lang
 import api
 import acg
+import handy
 
 import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -128,27 +129,16 @@ def getlines(nick):
         return ''
 
 @bot.on('PRIVMSG')
-def message(nick, target, message):
-    ''' Echo all messages '''
-
-    # Don't echo ourselves
-    if nick == bot.nick:
-        return
-    # prefix
-    #if message[:4] == "... ":
-    #    l = message[4:].rstrip() + '\n'
-    #    if nick not in bot.lines:
-    #        bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
-    #    else:
-    #        bot.lines[nick][0] += l
-    #    return
-    if message[0] != "'":
-        return
-    if message[:4] == "'.. ":
+def multiline(nick, target, message):
+    if nick != bot.nick and message[:4] == "'.. ":
+        print('multiline')
         l = message[4:].rstrip() + '\n'
         addlines(nick, l)
-        return
-    if message[:4] == "':: ":
+
+@bot.on('PRIVMSG')
+def importline(nick, target, message):
+    if nick != bot.nick and message[:4] == "':: ":
+        print('importline')
         try:
             l = yield from lang.getcode(message[4:].rstrip())
             addlines(nick, l)
@@ -157,17 +147,28 @@ def message(nick, target, message):
         except:
             send("PRIVMSG", target=target, message="出错啦...", to=nick)
             raise
+
+@bot.on('PRIVMSG')
+def message(nick, target, message):
+    ''' Echo all messages '''
+
+    # Don't echo ourselves
+    if nick == bot.nick:
+        return
+    # prefix
+    if message[0] != "'" or message[:4] == "'.. " or message[:4] == "':: ":
         return
 
     message = message[1:].rstrip()
     lines = getlines(nick)
     # Direct message to bot
     if target == bot.nick:
-        yield from reply(nick, message, lines, lambda m, **kw: send("PRIVMSG", target=nick, message=m, **kw))
+        sender = lambda m, **kw: send("PRIVMSG", target=nick, message=m, **kw)
     # Message in channel
     else:
-        yield from reply(nick, message, lines, lambda m, **kw: send("PRIVMSG", target=target, message=m, to=nick, **kw))
+        sender = lambda m, **kw: send("PRIVMSG", target=target, message=m, to=nick, **kw)
         #yield from reply(nick, message, lambda m: send("PRIVMSG", target=target, message=m))
+    return (yield from reply(nick, message, lines, sender))
 
 help = {}
 help.update(simple.help)
@@ -191,6 +192,7 @@ func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), simple.func))
 func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), tool.func))
 func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), api.func))
 func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), acg.func))
+func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), handy.func))
 func.extend(map(lambda f: (f[0], reg(f[1])), lang.func))
 
 @asyncio.coroutine
