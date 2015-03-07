@@ -158,6 +158,7 @@ def rextester(arg, lines, send):
         'py':               'python',
         'py3':              'python3',
         'rb':               'ruby',
+        'python2':          'python',
     }
 
     code = lines or arg['code']
@@ -197,6 +198,7 @@ def python3(arg, lines, send):
     lines = lines + arg['code']
     arg['lang'] = 'python3'
     arg['args'] = None
+    arg['raw'] = None
     return (yield from rextester(arg, lines, send))
 
 help = {
