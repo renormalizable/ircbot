@@ -3,12 +3,13 @@ import json
 from aiohttp       import request, TCPConnector
 from urllib.parse  import urlsplit
 
-from tool import html, htmlparse, jsonparse, output
+from tool import html, htmlparse, jsonparse
+from output import sendl
 
 def unsafesend(m, send, *, raw=False):
     if raw:
         l = str(m).splitlines()
-        output(l, len(l), send, olimit=16, llimit=5, toall=True)
+        sendl(l, len(l), send, olimit=16, llimit=5, toall=True)
     else:
         send(m, llimit=5)
 

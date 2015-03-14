@@ -8,19 +8,7 @@ import lxml.html
 import html5lib
 from dicttoxml import dicttoxml
 
-def output(l, n, send, *, olimit=0, **kw):
-    print('output')
-    i = 0
-    for e in l:
-        if i < n and (olimit == 0 or i < olimit):
-            send(e, **kw)
-            i = i + 1
-        else:
-            break
-    if i == 0:
-        raise Exception()
-    if i == olimit and n > olimit:
-        send('太长了啦...')
+from output import sendl
 
 @asyncio.coroutine
 def fetch(method, url, n, func, send, **kw):
@@ -35,7 +23,7 @@ def fetch(method, url, n, func, send, **kw):
         byte = yield from r.read()
     print('get byte')
     l = yield from func(byte)
-    output(l, n, send, olimit=10)
+    sendl(l, n, send, olimit=10)
 
 def addstyle(e):
     # br to newline
