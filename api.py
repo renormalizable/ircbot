@@ -2,9 +2,10 @@ import asyncio
 from urllib.parse  import quote_plus, quote
 from aiohttp.helpers import BasicAuth
 import json
+import re
 
 import config
-from tool import xml, jsonxml, htmlparse
+from tool import html, xml, jsonxml, htmlparse
 
 @asyncio.coroutine
 def arxiv(arg, send):
@@ -184,6 +185,44 @@ def btran(arg, send):
 
     #return (yield from jsonxml(arg, send, field=field))
 
+class Get:
+    def __init__(self):
+        self.l = ''
+    def __call__(self, m, **kw):
+        self.l += m
+
+@asyncio.coroutine
+def bim(arg, send):
+    print('bim')
+    n = int(arg['n'] or 1)
+    url = 'http://olime.baidu.com/py?inputtype=py&bg=0&ed=20&result=hanzi&resultcoding=unicode&ch_en=0&clientinfo=web&version=1&input='
+
+    l = re.split(r'([^a-z\']+)', arg['pinyin'])
+    w = re.split(r'[^a-z\']+', arg['pinyin'])
+
+    print(l)
+    print(w)
+    if len(l) == 1:
+         arg['n'] = n
+         arg['url'] = url + quote_plus(l[0])
+         arg['xpath'] = '//result/item[1]/item/item[1]'
+         return (yield from jsonxml(arg, send))
+
+    get = Get()
+    for e in l:
+        if w and e == w[0]:
+            try:
+                arg['n'] = 1
+                arg['url'] = url + quote_plus(e)
+                arg['xpath'] = '//result/item[1]/item/item[1]'
+                yield from jsonxml(arg, get)
+            except:
+                get(e)
+            w = w[1:]
+        else:
+            get(e)
+
+    return send(get.l)
 
 # microsoft
 
@@ -242,6 +281,25 @@ def couplet(arg, send):
 
     return (yield from jsonxml(arg, send, method='POST', data=json.dumps(data), headers=headers))
 
+@asyncio.coroutine
+def mice(arg, send):
+    print('mice')
+    url = 'http://www.msxiaoice.com/v2/context'
+
+    input = arg['input']
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//d/XialianSystemGeneratedSets/item/XialianCandidates/item'
+
+    data = {
+        'requirement': 1,
+        'input': input,
+        'args': '',
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+    return (yield from jsonxml(arg, send, method='POST', data=data, headers=headers))
 
 @asyncio.coroutine
 def dictg(arg, send):
@@ -303,43 +361,58 @@ def breezo(arg, send):
     return (yield from jsonxml(arg, send, field=field))
 
 @asyncio.coroutine
+def btdigg(arg, send):
+    print('btdigg')
+    n = int(arg['n'] or 1)
+    url = 'http://btdigg.org/search?info_hash=&q=' + quote_plus(arg['query'])
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//*[@id="search_res"]/table/tbody/tr'
+    field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '[\\x0302{}\\x0f]')]
+
+    return (yield from html(arg, send, field=field))
+
+
+@asyncio.coroutine
 def watson(arg, send):
     pass
-
 
 help = {
     'ip'             : 'ip <ip address>',
     #'whois'          : 'whois <domain>',
-    #'aqi'            : 'aqi <city> [all]',
-    'aqi'            : 'aqi <city>',
+    'aqi'            : 'aqi <city> [all]',
     'bip'            : 'bip <ip address>',
     'bweather'       : 'bweather <city>',
     'btran'          : 'btran [to:target lang] <text>',
-    'bing'           : 'bing <query> [max number]',
+    'bim'            : 'bim <pinyin>',
+    'bing'           : 'bing <query> [#max number][+offset]',
     'mtran'          : 'mtran [to:target lang] <text>',
-    'couplet'        : 'couplet <shanglian (max ten chinese characters)> [max number] -- 公门桃李争荣日 法国荷兰比利时',
-    'urban'          : 'urban <text> [max number]',
-    'wolfram'        : 'wolfram <query> [max number]',
+    'couplet'        : 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时',
+    'urban'          : 'urban <text> [#max number][+offset]',
+    'wolfram'        : 'wolfram <query> [#max number]',
 }
 
 func = [
     (ip,              r"ip\s+(?P<addr>.+)"),
     (whois,           r"whois\s+(?P<domain>.+)"),
     (aqi,             r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
-    #(aqi,             r"aqi\s+(?P<city>.+?)"),
     (bip,             r"bip\s+(?P<addr>.+)"),
     (bid,             r"bid\s+(?P<id>.+)"),
     (bphone,          r"bphone\s+(?P<tel>.+)"),
     (baqi,            r"baqi\s+(?P<city>.+)"),
     (bweather,        r"bweather\s+(?P<city>.+)"),
     (btran,           r"btran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
-    (bing,            r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(?P<n>\d+))?"),
+    (bim,             r"bim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (bing,            r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (mtran,           r"mtran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
-    (couplet,         r"couplet\s+(?P<shanglian>\S+)(\s+(?P<n>\d+))?"),
-    (dictg,           r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
-    (cdict,           r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
+    (couplet,         r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(mice,            r"mice\s+(?P<input>.+)"),
+    (dictg,           r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
+    (cdict,           r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (breezo,          r"breezo\s+(?P<city>.+)"),
-    (urban,           r"urban\s+(?P<text>.+?)(\s+(?P<n>\d+))?"),
-    (arxiv,           r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(?P<n>\d+))?"),
-    (wolfram,         r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(?P<n>\d+))?"),
+    (btdigg,          r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (urban,           r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (arxiv,           r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+#(?P<n>\d+))?"),
+    (wolfram,         r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+#(?P<n>\d+))?"),
 ]
