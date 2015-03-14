@@ -8,8 +8,6 @@ import lxml.html
 import html5lib
 from dicttoxml import dicttoxml
 
-from output import sendl
-
 @asyncio.coroutine
 def fetch(method, url, n, func, send, **kw):
     print('fetch')
@@ -23,7 +21,7 @@ def fetch(method, url, n, func, send, **kw):
         byte = yield from r.read()
     print('get byte')
     l = yield from func(byte)
-    sendl(l, n, send, olimit=10)
+    send(l, n=n, llimit=10)
 
 def addstyle(e):
     # br to newline

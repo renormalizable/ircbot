@@ -4,14 +4,13 @@ from aiohttp       import request, TCPConnector
 from urllib.parse  import urlsplit
 
 from tool import html, htmlparse, jsonparse
-from output import sendl
 
 def unsafesend(m, send, *, raw=False):
     if raw:
         l = str(m).splitlines()
-        sendl(l, len(l), send, olimit=16, llimit=5, toall=True)
+        send(l, n=len(l), llimit=16, mlimit=5, raw=True)
     else:
-        send(m, llimit=5)
+        send(m, mlimit=5)
 
 class Get:
     def __init__(self):
