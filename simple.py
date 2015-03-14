@@ -39,6 +39,14 @@ class ping2c():
 ping2 = ping2c()
 
 @asyncio.coroutine
+def pia(arg, send):
+    send('(╯°Д°)╯ ┻━┻ ' + (arg['content'] or ''))
+
+@asyncio.coroutine
+def mua(arg, send):
+    send('o(*￣3￣)o ' + (arg['content'] or ''))
+
+@asyncio.coroutine
 def color(arg, send):
     c = [
         ('00', 'white'),
@@ -74,5 +82,7 @@ func = [
     (ping,            r"pong!"),
     #(ping2,           r"(?:.*): pong!"),
     (color,           r"color"),
+    (pia,             r"pia( (?P<content>.*))?"),
+    (mua,             r"mua( (?P<content>.*))?"),
     #(echo,            r"(.*)"),
 ]
