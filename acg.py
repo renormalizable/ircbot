@@ -107,16 +107,16 @@ def acfun(arg, send):
                 b = yield from r.read()
                 return (yield from func(b))
 
-    return (yield from fetch(url + '1', 1, func, send))
+    return (yield from fetch('GET', url + '1', 1, func, send))
 
 help = {
-    'moegirl'        : 'moegirl <title> [max number]',
-    'nmb'            : 'nmb [#forum id] [rthread id] [max number] -- 丧失你好',
+    'moegirl'        : 'moegirl <title> [#max number]',
+    'nmb'            : 'nmb [fforum id] [rthread id] [#max number] -- 丧失你好',
     'acfun'          : 'acfun [acpage id] <#comment number>',
 }
 
 func = [
-    (moegirl,         r"moegirl\s+(?P<query>.+?)(\s+(?P<n>\d+))?"),
-    (nmb,             r"nmb(\s+#(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(?P<n>\d+))?(\s+(?P<show>show))?"),
+    (moegirl,         r"moegirl\s+(?P<query>.+?)(\s+#(?P<n>\d+))?"),
+    (nmb,             r"nmb(\s+f(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+#(?P<n>\d+))?(\s+(?P<show>show))?"),
     (acfun,           r"acfun\s+ac(?P<id>\d+)\s+#(?P<count>\d+)"),
 ]
