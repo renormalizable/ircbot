@@ -1,10 +1,9 @@
-import bottom
 import asyncio
 import re
 import time
 
 import config
-import output
+import client
 import simple
 import tool
 import lang
@@ -17,14 +16,11 @@ import logging
 
 loop = asyncio.get_event_loop()
 
-bot = bottom.Client(config.host, config.port, **config.option)
+bot = client.Client(config.host, config.port, **config.option)
 
 bot.nick = config.nick
 bot.password = config.password
 bot.channel = config.channel
-
-bot.lines = {}
-bot.time = 60
 
 @bot.on('CLIENT_CONNECT')
 def connect():
@@ -39,26 +35,10 @@ def keepalive(message):
     bot.send('PONG', message=message)
 
 
-send = lambda command, **kw: output.send(bot, command, **kw)
-
-def addlines(nick, l):
-    if nick not in bot.lines:
-        bot.lines[nick] = [l, loop.call_later(bot.time, lambda key: bot.lines.pop(key, None), nick)]
-    else:
-        bot.lines[nick][0] += l
-
-def getlines(nick):
-    item = bot.lines.pop(nick, None)
-    if item:
-        item[1].cancel()
-        return item[0]
-    else:
-        return ''
-
 class dePrefix:
     def __init__(self):
         #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
-        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>.+?): )?(?P<message>.*)')
+        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>\w+?): )?(?P<message>.*)')
     def __call__(self, n, m):
         r = self.r.fullmatch(m).groupdict()
         #return (r['nick'].strip() if r['nick'] else n, r['message'])
@@ -71,7 +51,7 @@ def multiline(nick, target, message):
     if nick != bot.nick and message[:4] == "'.. ":
         print('multiline')
         l = message[4:].rstrip() + '\n'
-        addlines(nick, l)
+        bot.addlines(nick, l)
 
 @bot.on('PRIVMSG')
 def importline(nick, target, message):
@@ -80,11 +60,11 @@ def importline(nick, target, message):
         print('importline')
         try:
             l = yield from lang.getcode(message[4:].rstrip())
-            addlines(nick, l)
+            bot.addlines(nick, l)
             #send("PRIVMSG", target=target, message=l, to=nick, stripspace=False, convert=False)
             #send("PRIVMSG", target=target, message="imported", to=nick, stripspace=False, convert=False)
         except:
-            send("PRIVMSG", target=target, message="出错啦...", to=nick)
+            bot.sendm(target, "出错啦...", to=nick)
             raise
 
 @bot.on('PRIVMSG')
@@ -100,14 +80,13 @@ def message(nick, target, message):
         return
 
     message = message[1:].rstrip()
-    lines = getlines(nick)
+    lines = bot.getlines(nick)
     # Direct message to bot
     if target == bot.nick:
-        sender = lambda m, **kw: send("PRIVMSG", target=nick, message=m, **kw)
+        sender = lambda m, **kw: bot.sender(nick, m, **kw)
     # Message in channel
     else:
-        sender = lambda m, **kw: send("PRIVMSG", target=target, message=m, to=nick, **kw)
-        #yield from reply(nick, message, lambda m: send("PRIVMSG", target=target, message=m))
+        sender = lambda m, **kw: bot.sender(target, m, to=nick, **kw)
     return (yield from reply(nick, message, lines, sender))
 
 help = {}
