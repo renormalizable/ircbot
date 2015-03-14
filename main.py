@@ -83,36 +83,31 @@ def ircescape(t):
         t = t.replace(s, e)
     return t
 
-def send(command, *, target='', message='', to='', toall=False, linelimit=None, color=None, **kw):
+def splitmessage(s, n):
+    while len(s) > n:
+        i = n
+        while (s[i] & 0xc0) == 0x80:
+            i = i - 1
+        print(i)
+        yield s[:i]
+        s = s[i:]
+    yield s
+
+def send(command, *, target='', message='', to='', toall=False, llimit=0, color=None, **kw):
     # (512 - 2) / 3 = 170
     # 430 bytes should be safe
     limit = 430
-    line = linelimit or 1
 
     prefix = (to + ': ') if to else ''
-    #prefix = '' if toall else (to + ': ') if to else ''
 
-    message = normalize(message, **kw)
-    #message = prefix + message
-    message = ('' if toall else prefix) + message
+    #message = normalize(message, **kw)
+    message = ('' if toall else prefix) + normalize(message, **kw)
     print(message)
-    m = list(map(lambda c: len(c.encode('utf-8')), message))
-    while line > 0 and len(m) > 0:
-        i = 0
-        s = 0
-        while i < len(m):
-            s = s + m[i]
-            if s > limit:
-                break
-            i = i + 1
-        print(sum(m[:i]))
-        bot.send(command, target=target, message=message[:i])
-        message = message[i:]
-        m = m[i:]
-        if linelimit:
-            line = line - 1
-    if line <= 0:
-        bot.send(command, target=target, message=prefix + '太多了啦...')
+    for (i, m) in enumerate(splitmessage(message.encode('utf-8'), limit)):
+        if llimit and i >= llimit:
+            bot.send(command, target=target, message=prefix + '太多了啦...')
+            break
+        bot.send(command, target=target, message=m.decode('utf-8'))
 
 def addlines(nick, l):
     if nick not in bot.lines:
@@ -128,8 +123,19 @@ def getlines(nick):
     else:
         return ''
 
+class dePrefix:
+    def __init__(self):
+        #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
+        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>.+?): )?(?P<message>.*)')
+    def __call__(self, n, m):
+        r = self.r.fullmatch(m).groupdict()
+        #return (r['nick'].strip() if r['nick'] else n, r['message'])
+        return (r['to'].strip() if r['to'] else r['nick'].strip() if r['nick'] else n, r['message'])
+deprefix = dePrefix()
+
 @bot.on('PRIVMSG')
 def multiline(nick, target, message):
+    (nick, message) = deprefix(nick, message)
     if nick != bot.nick and message[:4] == "'.. ":
         print('multiline')
         l = message[4:].rstrip() + '\n'
@@ -137,6 +143,7 @@ def multiline(nick, target, message):
 
 @bot.on('PRIVMSG')
 def importline(nick, target, message):
+    (nick, message) = deprefix(nick, message)
     if nick != bot.nick and message[:4] == "':: ":
         print('importline')
         try:
@@ -155,6 +162,7 @@ def message(nick, target, message):
     # Don't echo ourselves
     if nick == bot.nick:
         return
+    (nick, message) = deprefix(nick, message)
     # prefix
     if message[0] != "'" or message[:4] == "'.. " or message[:4] == "':: ":
         return
@@ -183,6 +191,7 @@ def helper(arg, send):
         send('<...> is mandatory, [...] is optional')
         send('{0}: {1}'.format(arg['command'], help[arg['command']]))
     else:
+        send('help: help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
         send('(づ￣ω￣)づ  -->>  ' + ', '.join(sorted(help.keys())))
 
 wrap = lambda f: lambda arg, lines, send: f(arg, send)
