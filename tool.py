@@ -8,6 +8,19 @@ import lxml.html
 import html5lib
 from dicttoxml import dicttoxml
 
+def output(l, n, send, *, olimit=0, **kw):
+    print('output')
+    i = 0
+    for e in l:
+        if i < n and (olimit == 0 or i < olimit):
+            send(e, **kw)
+            i = i + 1
+        else:
+            break
+    if i == 0:
+        raise Exception()
+    if i == olimit and n > olimit:
+        send('太长了啦...')
 
 @asyncio.coroutine
 def fetch(method, url, n, func, send, **kw):
@@ -22,25 +35,11 @@ def fetch(method, url, n, func, send, **kw):
         byte = yield from r.read()
     print('get byte')
     l = yield from func(byte)
-    #l = func(byte)
-    #print(l)
-    #if len(l) == 0:
-    #    raise Exception()
-    #else:
-    #    for e in l[:n]:
-    #        send(e)
-    i = 0
-    for e in l:
-        if i < n:
-            send(e)
-            i = i + 1
-        else:
-            break
-    if i == 0:
-        raise Exception()
+    output(l, n, send, olimit=10)
 
 def addstyle(e):
     # br to newline
+    #print(etree.tostring(e))
     for br in e.xpath('.//br'):
         br.tail = '\n' + br.tail if br.tail else '\n'
     for b in e.xpath('.//b'):
@@ -64,7 +63,10 @@ def htmltostr(t):
     return addstyle(htmlparse(t)).xpath('string()')
 
 def xmlparse(t):
-    return etree.XML(t)
+    try:
+        return etree.XML(t)
+    except:
+        return etree.XML(t.encode('utf-8'))
 
 def jsonparse(t):
     try:
@@ -204,16 +206,16 @@ def regex(arg, send, **kw):
 
 
 help = {
-    'html'           : 'html <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no { allowed)]#[attrib][\'format\']})] [max number][+offset]',
-    'xml'            : 'xml <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no { allowed)]#[attrib][\'format\']})] [max number][+offset]',
-    'json'           : 'json <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no { allowed)]#[attrib][\'format\']})] [max number][+offset]',
+    'html'           : 'html <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no { allowed)]#[attrib][\'format\']})] [#max number][+offset]',
+    'xml'            : 'xml <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no { allowed)]#[attrib][\'format\']})] [#max number][+offset]',
+    'json'           : 'json <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no { allowed)]#[attrib][\'format\']})] [#max number][+offset]',
     'regex'          : 'regex <url> <regex> [max number]',
 }
 
 func = [
     # no { in xpath
-    (html,            r"html\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(?P<n>\d+)?(\+(?P<offset>\d+))?)?"),
-    (xml,             r"xml\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(?P<n>\d+)?(\+(?P<offset>\d+))?)?"),
-    (jsonxml,         r"json\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(?P<n>\d+)?(\+(?P<offset>\d+))?)?"),
-    (regex,           r"regex\s+(?P<url>\S+)\s+(?P<regex>.+?)(\s+(?P<n>\d+))?"),
+    (html,            r"html\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (xml,             r"xml\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (jsonxml,         r"json\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (regex,           r"regex\s+(?P<url>\S+)\s+(?P<regex>.+?)(\s+#(?P<n>\d+))?"),
 ]

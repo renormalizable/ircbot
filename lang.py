@@ -3,22 +3,14 @@ import json
 from aiohttp       import request, TCPConnector
 from urllib.parse  import urlsplit
 
-from tool import html, htmlparse, jsonparse
+from tool import html, htmlparse, jsonparse, output
 
 def unsafesend(m, send, *, raw=False):
-    #limit = 1000
-    #if len(m) > limit:
-    #    send('too long... strip to ' + str(limit))
-    #send(m[:limit])
-    limit = 16
     if raw:
         l = str(m).splitlines()
-        for e in l[:limit]:
-            send(e, linelimit=5, toall=True)
-        if len(l) > limit:
-            send("太长了啦...")
+        output(l, len(l), send, olimit=16, llimit=5, toall=True)
     else:
-        send(m, linelimit=5)
+        send(m, llimit=5)
 
 class Get:
     def __init__(self):
