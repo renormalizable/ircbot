@@ -90,7 +90,8 @@ def acfun(arg, send):
     @asyncio.coroutine
     def func(byte):
         j = jsonparse(byte)
-        d = j.get('commentContentArr')
+        # or is for older comment format
+        d = j.get('commentContentArr') or j.get('data').get('commentContentArr')
         try:
             while True:
                 e = d.popitem()[1]
