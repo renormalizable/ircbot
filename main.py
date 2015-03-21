@@ -16,7 +16,7 @@ import logging
 
 loop = asyncio.get_event_loop()
 
-bot = client.Client(config.host, config.port, **config.option)
+bot = client.Client(loop, config.host, config.port, **config.option)
 
 bot.nick = config.nick
 bot.password = config.password
@@ -38,7 +38,7 @@ def keepalive(message):
 class dePrefix:
     def __init__(self):
         #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
-        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>\w+?): )?(?P<message>.*)')
+        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
     def __call__(self, n, m):
         r = self.r.fullmatch(m).groupdict()
         #return (r['nick'].strip() if r['nick'] else n, r['message'])
@@ -123,7 +123,7 @@ def reply(nick, message, lines, send):
             if arg:
                 print(arg.groupdict())
                 return (yield from f(arg.groupdict(), lines, send))
-        send('need some help?')
+        #send('need some help?')
     except:
         send('╮(￣▽￣)╭')
         raise
