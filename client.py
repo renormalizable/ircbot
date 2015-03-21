@@ -11,11 +11,11 @@ class Normalize:
             '：': ': ',
         })
         self.esc = [
-            ('\\x0f', '\x0f'),
-            ('\\x03', '\x03'),
-            ('\\x02', '\x02'),
-            ('\\x1d', '\x1d'),
-            ('\\x1f', '\x1f'),
+            (r'\x0f', '\x0f'),
+            (r'\x03', '\x03'),
+            (r'\x02', '\x02'),
+            (r'\x1d', '\x1d'),
+            (r'\x1f', '\x1f'),
         ]
     def __call__(self, message, *, stripspace=True, stripline=True, newline=True, convert=True, escape=True):
         line = str(message).splitlines() if stripline else [message]
@@ -48,8 +48,9 @@ def splitmessage(s, n):
 
 
 class Client(bottom.Client):
-    def __init__(self, host, port, **kw):
+    def __init__(self, loop, host, port, **kw):
         super().__init__(host, port, **kw)
+        self.loop = loop
         self.lines = {}
         self.time = 60
         # (512 - 2) / 3 = 170
@@ -58,7 +59,7 @@ class Client(bottom.Client):
 
     def addlines(self, nick, l):
         if nick not in self.lines:
-            self.lines[nick] = [l, loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
+            self.lines[nick] = [l, self.loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
         else:
             self.lines[nick][0] += l
 
