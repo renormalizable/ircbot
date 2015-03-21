@@ -12,11 +12,22 @@ def unsafesend(m, send, *, raw=False):
     else:
         send(m, mlimit=5)
 
+#class Get:
+#    def __init__(self):
+#        self.l = ''
+#    def __call__(self, m, **kw):
+#        self.l += m
 class Get:
     def __init__(self):
         self.l = ''
-    def __call__(self, m, **kw):
-        self.l += m
+    def __call__(self, l, n=-1, **kw):
+        if n < 0:
+            self.l += l
+        else:
+            for (i, m) in enumerate(l):
+                if i >= n:
+                    break
+                self.l += m
 
 @asyncio.coroutine
 def getcode(url):
