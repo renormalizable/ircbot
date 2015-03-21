@@ -188,8 +188,14 @@ def btran(arg, send):
 class Get:
     def __init__(self):
         self.l = ''
-    def __call__(self, m, **kw):
-        self.l += m
+        self.len = 0
+    def __call__(self, l, n=-1, **kw):
+        if n < 0:
+            self.l += l
+        else:
+            l = list(l)[0]
+            self.l += l[0]
+            self.len = int(l[1])
 
 @asyncio.coroutine
 def bim(arg, send):
@@ -198,29 +204,34 @@ def bim(arg, send):
     url = 'http://olime.baidu.com/py?inputtype=py&bg=0&ed=20&result=hanzi&resultcoding=unicode&ch_en=0&clientinfo=web&version=1&input='
 
     l = re.split(r'([^a-z\']+)', arg['pinyin'])
-    w = re.split(r'[^a-z\']+', arg['pinyin'])
+    pinyin = re.compile(r'[a-z\']')
+    letter = re.compile(r'[^\']')
 
     print(l)
-    print(w)
-    if len(l) == 1:
-         arg['n'] = n
-         arg['url'] = url + quote_plus(l[0])
-         arg['xpath'] = '//result/item[1]/item/item[1]'
-         return (yield from jsonxml(arg, send))
 
     get = Get()
+    arg['n'] = 1
+    arg['xpath'] = '//result/item[1]/item'
+    field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
+    format = lambda x: x
     for e in l:
-        if w and e == w[0]:
-            try:
-                arg['n'] = 1
+        try:
+            if not pinyin.match(e):
+                raise Exception()
+            while len(e) > 0:
+                print(e)
                 arg['url'] = url + quote_plus(e)
-                arg['xpath'] = '//result/item[1]/item/item[1]'
-                yield from jsonxml(arg, get)
-            except:
-                get(e)
-            w = w[1:]
-        else:
+                yield from jsonxml(arg, get, field=field, format=format)
+                pos = len(e)
+                for (i, c) in enumerate(letter.finditer(e)):
+                    if i == get.len:
+                        pos = c.start()
+                        break
+                e = e[pos:]
+        except:
             get(e)
+
+    line = get.l or 'Σ(っ °Д °;)っ 怎么什么都没有呀'
 
     return send(get.l)
 
@@ -266,7 +277,11 @@ def couplet(arg, send):
     n = int(arg['n'] or 1)
     url = 'http://couplet.msra.cn/app/CoupletsWS_V2.asmx/GetXiaLian'
 
-    shanglian = arg['shanglian'][:10]
+    shanglian = arg['shanglian']
+
+    if len(shanglian) > 10:
+        send('最多十个汉字喔')
+        return
 
     arg['n'] = n
     arg['url'] = url
