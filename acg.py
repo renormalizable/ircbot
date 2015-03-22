@@ -97,7 +97,7 @@ def acfun(arg, send):
                 e = d.popitem()[1]
                 if e.get('count') == count:
                     #return [', '.join([e.get('userName'), ubb(htmltostr(e.get('content')))])]
-                    return ['\\x0300{0}\\x0f: {1}'.format(e.get('userName'), ubb(htmltostr(e.get('content'))))]
+                    return ['\\x0300{0}:\\x0f {1}'.format(e.get('userName'), ubb(htmltostr(e.get('content'))))]
         except KeyError:
             n = j.get('totalPage')
             i = j.get('page')

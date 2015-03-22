@@ -72,7 +72,7 @@ def aqi(arg, send):
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['area', 'quality', 'aqi', 'primary_pollutant', 'time_point']))
     if arg.get('all'):
         l = [('pm2_5', 'PM 2.5'), ('pm10', 'PM 10'), ('co', 'CO'), ('no2', 'NO2'), ('o3', 'O3'), ('o3_8h', 'O3 8h'), ('so2', 'SO2')]
-        field += list(map(lambda x: ('./' + x[0], 'text', '\\x0300{0}\\x0f'.format(x[1]) + ': {}'), l))
+        field += list(map(lambda x: ('./' + x[0], 'text', '\\x0300{0}:\\x0f'.format(x[1]) + ' {}'), l))
         def format(l):
             e = list(l)[0]
             return [' '.join(e[:5]), ', '.join(e[5:])]
@@ -218,6 +218,9 @@ def bim(arg, send):
         try:
             if not pinyin.match(e):
                 raise Exception()
+            if e[0] == "'":
+                get(e[1:])
+                continue
             while len(e) > 0:
                 print(e)
                 arg['url'] = url + quote_plus(e)
@@ -233,7 +236,7 @@ def bim(arg, send):
 
     line = get.l or 'Σ(っ °Д °;)っ 怎么什么都没有呀'
 
-    return send(get.l)
+    return send(line)
 
 # microsoft
 
@@ -400,7 +403,7 @@ help = {
     'bip'            : 'bip <ip address>',
     'bweather'       : 'bweather <city>',
     'btran'          : 'btran [to:target lang] <text>',
-    'bim'            : 'bim <pinyin>',
+    'bim'            : 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letter or \')',
     'bing'           : 'bing <query> [#max number][+offset]',
     'mtran'          : 'mtran [to:target lang] <text>',
     'couplet'        : 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时',
