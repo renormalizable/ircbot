@@ -77,7 +77,10 @@ def rust(arg, lines, send):
     byte = yield from r.read()
 
     result = jsonparse(byte).get('result')
-    unsafesend(result, send, raw=raw)
+    if result:
+        unsafesend(result, send, raw=raw)
+    else:
+        unsafesend('no output', send, raw=raw)
 
 @asyncio.coroutine
 def codepad(arg, lines, send):
@@ -104,8 +107,12 @@ def codepad(arg, lines, send):
 
     if run:
         byte = yield from r.read()
-        result = htmlparse(byte).xpath('/html/body/div/table/tbody/tr/td/div[2]/table/tbody/tr/td[2]/div/pre')[0].xpath('string()')
-        unsafesend(result, send, raw=raw)
+        t = htmlparse(byte)
+        try:
+            result = t.xpath('/html/body/div/table/tbody/tr/td/div[2]/table/tbody/tr/td[2]/div/pre')[0].xpath('string()')
+            unsafesend(result, send, raw=raw)
+        except IndexError:
+            unsafesend('no output', send, raw=raw)
     send('[\\x0302{0}\\x0f]'.format(r.url))
 
 @asyncio.coroutine
@@ -195,10 +202,14 @@ def rextester(arg, lines, send):
         unsafesend('\\x0304errors:\\x0f {0}'.format(errors), send)
     if result:
         unsafesend(result, send, raw=raw)
+    else:
+        unsafesend('no output', send, raw=raw)
 
 @asyncio.coroutine
 def python3(arg, lines, send):
     lines = lines + arg['code']
+    #lines = 'import code\ncode.InteractiveInterpreter().runsource(repr({}))'.format(lines)
+    #lines = 'import code\ni = code.InteractiveInterpreter()\ntry:\n    i.runsource("{}")\nexcept:\n    i.showsyntaxerror()'.format(lines.replace('"', '\\"'))
     arg['lang'] = 'python3'
     arg['args'] = None
     arg['raw'] = None
