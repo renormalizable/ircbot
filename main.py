@@ -64,7 +64,7 @@ def importline(nick, target, message):
             #send("PRIVMSG", target=target, message=l, to=nick, stripspace=False, convert=False)
             #send("PRIVMSG", target=target, message="imported", to=nick, stripspace=False, convert=False)
         except:
-            bot.sendm(target, "出错啦...", to=nick)
+            bot.sendm(target, "出错了啦...", to=nick)
             raise
 
 @bot.on('PRIVMSG')
