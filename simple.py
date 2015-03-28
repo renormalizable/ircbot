@@ -1,5 +1,7 @@
 import asyncio
 import time
+import random
+import math
 
 
 @asyncio.coroutine
@@ -124,6 +126,79 @@ def mode(arg, send):
     send('\\x0304cont.\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), c[12:])))
     send('see [\\x0302https://freenode.net/using_the_network.shtml\\x0f] for more infomation')
 
+def getrandom(show):
+    # http://en.wikipedia.org/wiki/Mathematical_constant
+    # http://pdg.lbl.gov/2014/reviews/rpp2014-rev-phys-constants.pdf
+    const = [
+        # math
+        (0,                              'zero'),
+        (1,                              'unity'),
+        ('i',                            'imaginary unit'),
+        (3.1415926535,                   'pi'),
+        (2.7182818284,                   'e'),
+        (1.4142135623,                   'Pythagoras constant'),
+        (0.5772156649,                   'Euler-Mascheroni constant'),
+        (1.6180339887,                   'golden ratio'),
+        # physics
+        (299792458,                      'speed of light in vacuum'),
+        (6.62606957,                     'Planck constant'),
+        (1.054571726,                    'Planck constant, reduced'),
+        (6.58211928,                     'Planck constant, reduced'),
+        (1.602176565,                    'electron charge magnitude'),
+        (0.510998928,                    'electron mass'),
+        (9.10938291,                     'electron mass'),
+        (938.272046,                     'proton mass'),
+        (1.672621777,                    'proton mass'),
+        (1836.15267245,                  'proton mass'),
+        (8.854187817,                    'permittivity of free space'),
+        (12.566370614,                   'permeability of free space'),
+        (7.2973525698,                   'fine-structure constant'),
+        (137.035999074,                  'fine-structure constant'),
+        (2.8179403267,                   'classical electron radius'),
+        (3.8615926800,                   'electron Compton wavelength, reduced'),
+        (6.67384,                        'gravitational constant'),
+        (6.70837,                        'gravitational constant'),
+        (6.02214129,                     'Avogadro constant'),
+        (1.3806488,                      'Boltzmann constant'),
+        (8.6173324,                      'Boltzmann constant'),
+        (1.1663787,                      'Fermi coupling constant'),
+        (0.23126,                        'weak-mixing angle'),
+        (80.385,                         'W boson mass'),
+        (91.1876,                        'Z boson mass'),
+        (0.1185,                         'strong coupling constant'),
+        # other
+        (9,                              'Cirno'),
+        (1024,                           'caoliu'),
+        (1984,                           'Orwell'),
+        (10086,                          'China Mobile'),
+        (233,                            'LOL'),
+        (2333,                           'LOL'),
+        (23333,                          'LOL'),
+    ]
+    rand = [
+        # random
+        (random.randint(0, 9),           'random number'),
+        (random.randint(10, 99),         'random number'),
+        (random.randint(100, 999),       'random number'),
+        (random.randint(1000, 9999),     'random number'),
+        (random.randint(10000, 99999),   'random number'),
+        #math.sqrt(random.randint(0, 100000)),
+    ]
+
+    if show:
+        get = lambda e: '{0} -- {1}'.format(str(e[0]), e[1])
+    else:
+        get = lambda e: str(e[0])
+    l = random.choice([const, rand])
+    return get(random.choice(l))
+
+@asyncio.coroutine
+def up(arg, send):
+    send('+' + getrandom(arg['show']))
+
+@asyncio.coroutine
+def down(arg, send):
+    send('-' + getrandom(arg['show']))
 
 @asyncio.coroutine
 def latex(arg, send):
@@ -191,6 +266,8 @@ help = {
     'pong!'          : 'pong!',
     'color'          : 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!',
     'mode'           : 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!',
+    'up'             : 'up [show] -- nice boat!',
+    'down'           : 'down [show]',
 }
 
 func = [
@@ -200,6 +277,8 @@ func = [
     #(ping2,           r"(?:.*): pong!"),
     (color,           r"color"),
     (mode,            r"mode"),
+    (up,              r"up(?:\s+(?P<show>show))?"),
+    (down,            r"down(?:\s+(?P<show>show))?"),
     (pia,             r"pia( (?P<content>.*))?"),
     (mua,             r"mua( (?P<content>.*))?"),
     (latex,           r"latex\s+(?P<content>.*)"),
