@@ -3,6 +3,7 @@ from urllib.parse  import quote_plus, quote
 from aiohttp.helpers import BasicAuth
 import json
 import re
+import time
 
 import config
 from tool import html, xml, jsonxml, htmlparse
@@ -165,8 +166,9 @@ def bweather(arg, send):
 def btran(arg, send):
     print('btran')
     key = config.key['baidu']
-    to = arg['to'] or 'zh'
-    url = 'http://openapi.baidu.com/public/2.0/bmt/translate?client_id={0}&from=auto&to={1}&q={2}'.format(key, quote_plus(to), quote_plus(arg['text']))
+    f = arg['from'] or 'auto'
+    t = arg['to'] or 'zh'
+    url = 'http://openapi.baidu.com/public/2.0/bmt/translate?client_id={0}&from={1}&to={2}&q={3}'.format(key, quote_plus(f), quote_plus(t), quote_plus(arg['text']))
 
     arg['n'] = 1
     arg['url'] = url
@@ -240,13 +242,49 @@ def bim(arg, send):
 
 # microsoft
 
+class Microsoft:
+    class Get:
+        def __init__(self):
+            self.key = ''
+            self.expire = 0
+        def __call__(self, l, n=-1, **kw):
+            e = list(l)[0]
+            self.key = e[0]
+            self.expire = int(e[1])
+    def __init__(self, client, scope, type):
+        self.arg = {
+            'url': 'https://datamarket.accesscontrol.windows.net/v2/OAuth2-13',
+            'xpath': '/root',
+        }
+        self.field = [('./access_token', 'text', '{}'), ('./expires_in', 'text', '{}')]
+        self.format = lambda x: x
+        self.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        self.data = 'client_id={0}&client_secret={1}&scope={2}&grant_type={3}'.format(quote_plus(client[0]), quote_plus(client[1]), quote_plus(scope), quote_plus(type))
+        self.key = ''
+        self.time = 0
+        self.expire = 0
+    @asyncio.coroutine
+    def getkey(self):
+        t = time.time()
+        if (t - self.time) > self.expire:
+            yield from self.renew()
+        return self.key
+    @asyncio.coroutine
+    def renew(self):
+        get = Microsoft.Get()
+        yield from jsonxml(self.arg, get, method='POST', data=self.data, headers=self.headers, field=self.field, format=self.format)
+        self.time = time.time()
+        self.expire = get.expire - 60
+        self.key = get.key
+
 @asyncio.coroutine
 def bing(arg, send):
     print('bing')
     n = int(arg['n'] or 1)
     #market = 'zh-CN'
     market = 'en-US'
-    url = 'https://api.datamarket.azure.com/Bing/Search/v1/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(arg['query']))
+    #url = 'https://api.datamarket.azure.com/Bing/Search/v1/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(arg['query']))
+    url = 'https://api.datamarket.azure.com/Bing/Search/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(arg['query']))
 
     key = config.key['microsoft']
     auth = BasicAuth(key, key)
@@ -258,11 +296,34 @@ def bing(arg, send):
 
     return (yield from jsonxml(arg, send, auth=auth, field=field))
 
+#class Mtran(Microsoft):
+#    def __init__(self):
+#        super().__init__(config.key['microsoft'], 'http://api.microsofttranslator.com', 'client_credentials')
+#    @asyncio.coroutine
+#    def __call__(self, arg, send):
+#        print('mtran')
+#        f = arg['from'] or ''
+#        t = arg['to'] or 'zh-CHS'
+#        url = 'http://api.microsofttranslator.com/V2/Http.svc/Translate?format=json&text={0}&from={1}&to={2}'.format(quote_plus(arg['text']), quote_plus(f), quote_plus(t))
+#
+#        key = yield from self.getkey()
+#        headers = {'Authorization': 'Bearer ' + key}
+#
+#        arg['n'] = 1
+#        arg['url'] = url
+#        arg['xpath'] = '/ns:string'
+#
+#        return (yield from xml(arg, send, headers=headers))
+#
+#mtran = Mtran()
+
 @asyncio.coroutine
 def mtran(arg, send):
     print('mtran')
-    to = arg['to'] or 'zh-CHS'
-    url = 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/v1/Translate?$format=json&To=%27{0}%27&Text=%27{1}%27'.format(quote_plus(to), quote_plus(arg['text']))
+    f = '&From=%27{0}%27'.format(quote_plus(arg['from'])) if arg['from'] else ''
+    t = arg['to'] or 'zh-CHS'
+    #url = 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/v1/Translate?$format=json{0}&To=%27{1}%27&Text=%27{2}%27'.format(quote_plus(f), quote_plus(t), quote_plus(arg['text']))
+    url = 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/Translate?$format=json{0}&To=%27{1}%27&Text=%27{2}%27'.format(f, quote_plus(t), quote_plus(arg['text']))
 
     key = config.key['microsoft']
     auth = BasicAuth(key, key)
@@ -402,10 +463,10 @@ help = {
     'aqi'            : 'aqi <city> [all]',
     'bip'            : 'bip <ip address>',
     'bweather'       : 'bweather <city>',
-    'btran'          : 'btran [to:target lang] <text>',
+    'btran'          : 'btran [source lang:target lang] <text>',
     'bim'            : 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letter or \')',
     'bing'           : 'bing <query> [#max number][+offset]',
-    'mtran'          : 'mtran [to:target lang] <text>',
+    'mtran'          : 'mtran [source lang:target lang] <text>',
     'couplet'        : 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时',
     'urban'          : 'urban <text> [#max number][+offset]',
     'wolfram'        : 'wolfram <query> [#max number]',
@@ -420,10 +481,10 @@ func = [
     (bphone,          r"bphone\s+(?P<tel>.+)"),
     (baqi,            r"baqi\s+(?P<city>.+)"),
     (bweather,        r"bweather\s+(?P<city>.+)"),
-    (btran,           r"btran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
+    (btran,           r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (bim,             r"bim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (bing,            r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (mtran,           r"mtran(\s+to:(?P<to>\S+))?\s+(?P<text>.+)"),
+    (mtran,           r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (couplet,         r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(mice,            r"mice\s+(?P<input>.+)"),
     (dictg,           r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
