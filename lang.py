@@ -36,7 +36,11 @@ def getcode(url):
         'paste.ubuntu.com': '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
         'cfp.vim-cn.com': '.',
         'p.vim-cn.com': '.',
+        'www.fpaste.org': '//*[@id="paste_form"]/div[1]/div/div[3]',
     }
+    #raw = {
+    #    'www.fpaste.org': lambda u: 
+    #}
 
     get = Get()
     u = urlsplit(url)
@@ -48,6 +52,7 @@ def getcode(url):
         yield from html(arg, get)
     else:
         raise Exception()
+    #print(get.l)
     return get.l + '\n'
 
 @asyncio.coroutine
