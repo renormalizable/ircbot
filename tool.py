@@ -280,7 +280,10 @@ def regex(arg, send, **kw):
 
     @asyncio.coroutine
     def func(byte):
-        l = reg.finditer(byte.decode('utf-8'))
+        try:
+            l = reg.finditer(byte)
+        except:
+            l = reg.finditer(byte.decode('utf-8'))
         return map(lambda e: ', '.join(e.groups()), l)
 
     return (yield from fetch('GET', url, n, func, send, **kw))
