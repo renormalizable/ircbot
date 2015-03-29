@@ -60,119 +60,247 @@ def jsonparse(t):
     except:
         return json.loads(t.decode('utf-8'))
 
-def parsefield(field):
-    if field:
-        # no # in xpath
-        f = re.finditer(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?", field)
-        def getitem(e):
-            d = e.groupdict()
-            return (d['xpath'] or '.', d['field'] or 'text_content', d['format'] if d['format'] else '{}')
-        return list(map(getitem, f))
-    else:
-        return [('.', 'text_content', '{}')]
+class Request:
+    def __init__(self):
+        self.n = 0
+        self.offset = 0
+        self.method = ''
+        self.url = ''
+        self.xpath = ''
+        self.field = []
+        self.transform = lambda l: l
+        self.ns = {'re': 'http://exslt.org/regular-expressions'}
 
-def getfield(ns, field, get):
-    def getl(e, f):
-        def gete(e):
-            item = get(e, f[1])
-            return str(item).strip() if item else ''
-        l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=ns))))
-        return f[2].format(', '.join(l)) if l else ''
+    def parsefield(self, field):
+        if field:
+            # no # in xpath
+            f = re.finditer(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?", field)
+            def getitem(e):
+                d = e.groupdict()
+                return (d['xpath'] or '.', d['field'] or 'text_content', d['format'] if d['format'] else '{}')
+            return list(map(getitem, f))
+        else:
+            return [('.', 'text_content', '{}')]
 
-    def getf(e):
-        return list(map(lambda f: getl(e, f), field))
+    def getfield(self, get):
+        def getl(e, f):
+            def gete(e):
+                item = get(e, f[1])
+                return str(item).strip() if item else ''
+            l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=self.ns))))
+            return f[2].format(', '.join(l)) if l else ''
+    
+        def getf(e):
+            return list(map(lambda f: getl(e, f), self.field))
+    
+        return getf
 
-    return getf
+    def parse(self, byte):
+        pass
 
-@asyncio.coroutine
-def html(arg, send, *, method='GET', field=None, get=None, transform=None, format=None, **kw):
-    print('html')
+    def get(self, e, f):
+        pass
 
-    #n = int(arg['n']) if arg['n'] else 5
-    n = int(arg.get('n') or 5)
-    offset = int(arg.get('offset') or 0)
-    url = arg['url']
-    xpath = arg['xpath']
-    #field = field or parsefield(arg['field'])
-    field = field or parsefield(arg.get('field'))
+    def format(self, l):
+        return map(lambda e: ' '.join(e), l)
 
-    print(field)
-    ns = {'re': 'http://exslt.org/regular-expressions'}
-    transform = transform or (lambda l: l)
-    get = get or (lambda e, f: addstyle(e).xpath('string()') if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
-    #formatl = (lambda l: strtoesc(arg['format']).format(*l)) if arg['format'] else (lambda l: ' '.join(l))
-    format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
-
-    @asyncio.coroutine
-    def func(byte):
-        l = htmlparse(byte).xpath(xpath, namespaces=ns)
-        l = transform(l)[offset:]
-        getf = getfield(ns, field, get)
-        l = filter(lambda e: any(e), map(getf, l))
-        #return map(lambda e: formatl(e), l)
-        return format(l)
-
-    return (yield from fetch(method, url, n, func, send, **kw))
-
-@asyncio.coroutine
-def xml(arg, send, *, method='GET', field=None, get=None, transform=None, format=None, **kw):
-    print('xml')
-
-    n = int(arg.get('n') or 5)
-    offset = int(arg.get('offset') or 0)
-    url = arg['url']
-    xpath = arg['xpath']
-    field = field or parsefield(arg.get('field'))
-
-    print(field)
-    ns = {'re': 'http://exslt.org/regular-expressions'}
-    transform = transform or (lambda l: l)
-    get = get or (lambda e, f: htmltostr(e.text) if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
-    format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
+    def addns(self, t):
+        pass
 
     @asyncio.coroutine
-    def func(byte):
-        t = xmlparse(byte)
-        ns.update(t.nsmap)
-        xmlns = ns.pop(None, None)
+    def fetch(self, method, url, **kw):
+        r = yield from request(method, urldefrag(url)[0], **kw)
+        print('get byte')
+        try:
+            return (yield from r.text())
+        except:
+            print('bad encoding')
+            return (yield from r.read())
+
+    @asyncio.coroutine
+    def func(self, get, **kw):
+        byte = yield from self.fetch(self.method, self.url, **kw)
+        t = self.parse(byte)
+        self.addns(t)
+        l = t.xpath(self.xpath, namespaces=self.ns)
+        l = self.transform(l)[self.offset:]
+        getf = self.getfield(get)
+        return filter(lambda e: any(e), map(getf, l))
+
+    @asyncio.coroutine
+    def __call__(self, arg, send, *, method='GET', field=None, transform=None, get=None, format=None, **kw):
+        self.n = int(arg.get('n') or 5)
+        self.offset = int(arg.get('offset') or 0)
+        self.method = method
+        self.url = arg['url']
+        self.xpath = arg['xpath']
+        self.field = field or self.parsefield(arg.get('field'))
+        self.transform = transform or (lambda l: l)
+        self.ns = {'re': 'http://exslt.org/regular-expressions'}
+    
+        print(self.field)
+
+        get = get or self.get
+        format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else self.format)
+
+        l = yield from self.func(get, **kw)
+        send(format(l), n=self.n, llimit=10)
+
+class HTMLRequest(Request):
+    def parse(self, byte):
+        return htmlparse(byte)
+    def get(self, e, f):
+        if f == 'text_content':
+            return addstyle(e).xpath('string()')
+        elif hasattr(e, f):
+            return getattr(e, f)
+        else:
+            return e.attrib.get(f)
+
+html = HTMLRequest()
+
+class XMLRequest(Request):
+    def parse(self, byte):
+        return xmlparse(byte)
+    def get(self, e, f):
+        if f == 'text_content':
+            return htmltostr(e.text)
+        elif hasattr(e, f):
+            return getattr(e, f)
+        else:
+            return e.attrib.get(f)
+    def addns(self, t):
+        self.ns.update(t.nsmap)
+        xmlns = self.ns.pop(None, None)
         if xmlns:
-            ns['ns'] = xmlns
-        l = t.xpath(xpath, namespaces=ns)
-        l = transform(l)[offset:]
-        getf = getfield(ns, field, get)
-        l = filter(lambda e: any(e), map(getf, l))
-        return format(l)
+            self.ns['ns'] = xmlns
 
-    return (yield from fetch(method, url, n, func, send, **kw))
+xml = XMLRequest()
 
-@asyncio.coroutine
-def jsonxml(arg, send, *, method='GET', field=None, get=None, transform=None, format=None, **kw):
-    print('jsonxml')
-
-    n = int(arg.get('n') or 5)
-    offset = int(arg.get('offset') or 0)
-    url = arg['url']
-    xpath = arg['xpath']
-    field = field or parsefield(arg.get('field'))
-
-    print(field)
-    ns = {'re': 'http://exslt.org/regular-expressions'}
-    transform = transform or (lambda l: l)
-    get = get or (lambda e, f: e.text)
-    format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
-
-    @asyncio.coroutine
-    def func(byte):
+class JSONRequest(Request):
+    def parse(self, byte):
         j = jsonparse(byte)
         #print(j)
         #print(dicttoxml(j))
-        l = xmlparse(dicttoxml(j)).xpath(xpath, namespaces=ns)
-        l = transform(l)[offset:]
-        getf = getfield(ns, field, get)
-        l = filter(lambda e: any(e), map(getf, l))
-        return format(l)
+        return xmlparse(dicttoxml(j))
+    def get(self, e, f):
+        return e.text
 
-    return (yield from fetch(method, url, n, func, send, **kw))
+jsonxml = JSONRequest()
+
+#def parsefield(field):
+#    if field:
+#        # no # in xpath
+#        f = re.finditer(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?", field)
+#        def getitem(e):
+#            d = e.groupdict()
+#            return (d['xpath'] or '.', d['field'] or 'text_content', d['format'] if d['format'] else '{}')
+#        return list(map(getitem, f))
+#    else:
+#        return [('.', 'text_content', '{}')]
+#
+#def getfield(ns, field, get):
+#    def getl(e, f):
+#        def gete(e):
+#            item = get(e, f[1])
+#            return str(item).strip() if item else ''
+#        l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=ns))))
+#        return f[2].format(', '.join(l)) if l else ''
+#
+#    def getf(e):
+#        return list(map(lambda f: getl(e, f), field))
+#
+#    return getf
+#
+#@asyncio.coroutine
+#def html(arg, send, *, method='GET', field=None, get=None, transform=None, format=None, **kw):
+#    print('html')
+#
+#    #n = int(arg['n']) if arg['n'] else 5
+#    n = int(arg.get('n') or 5)
+#    offset = int(arg.get('offset') or 0)
+#    url = arg['url']
+#    xpath = arg['xpath']
+#    #field = field or parsefield(arg['field'])
+#    field = field or parsefield(arg.get('field'))
+#
+#    print(field)
+#    ns = {'re': 'http://exslt.org/regular-expressions'}
+#    transform = transform or (lambda l: l)
+#    get = get or (lambda e, f: addstyle(e).xpath('string()') if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
+#    #formatl = (lambda l: strtoesc(arg['format']).format(*l)) if arg['format'] else (lambda l: ' '.join(l))
+#    format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
+#
+#    @asyncio.coroutine
+#    def func(byte):
+#        l = htmlparse(byte).xpath(xpath, namespaces=ns)
+#        l = transform(l)[offset:]
+#        getf = getfield(ns, field, get)
+#        l = filter(lambda e: any(e), map(getf, l))
+#        #return map(lambda e: formatl(e), l)
+#        return format(l)
+#
+#    return (yield from fetch(method, url, n, func, send, **kw))
+#
+#@asyncio.coroutine
+#def xml(arg, send, *, method='GET', field=None, get=None, transform=None, format=None, **kw):
+#    print('xml')
+#
+#    n = int(arg.get('n') or 5)
+#    offset = int(arg.get('offset') or 0)
+#    url = arg['url']
+#    xpath = arg['xpath']
+#    field = field or parsefield(arg.get('field'))
+#
+#    print(field)
+#    ns = {'re': 'http://exslt.org/regular-expressions'}
+#    transform = transform or (lambda l: l)
+#    get = get or (lambda e, f: htmltostr(e.text) if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
+#    format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
+#
+#    @asyncio.coroutine
+#    def func(byte):
+#        t = xmlparse(byte)
+#        ns.update(t.nsmap)
+#        xmlns = ns.pop(None, None)
+#        if xmlns:
+#            ns['ns'] = xmlns
+#        l = t.xpath(xpath, namespaces=ns)
+#        l = transform(l)[offset:]
+#        getf = getfield(ns, field, get)
+#        l = filter(lambda e: any(e), map(getf, l))
+#        return format(l)
+#
+#    return (yield from fetch(method, url, n, func, send, **kw))
+#
+#@asyncio.coroutine
+#def jsonxml(arg, send, *, method='GET', field=None, get=None, transform=None, format=None, **kw):
+#    print('jsonxml')
+#
+#    n = int(arg.get('n') or 5)
+#    offset = int(arg.get('offset') or 0)
+#    url = arg['url']
+#    xpath = arg['xpath']
+#    field = field or parsefield(arg.get('field'))
+#
+#    print(field)
+#    ns = {'re': 'http://exslt.org/regular-expressions'}
+#    transform = transform or (lambda l: l)
+#    get = get or (lambda e, f: e.text)
+#    format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
+#
+#    @asyncio.coroutine
+#    def func(byte):
+#        j = jsonparse(byte)
+#        #print(j)
+#        #print(dicttoxml(j))
+#        l = xmlparse(dicttoxml(j)).xpath(xpath, namespaces=ns)
+#        l = transform(l)[offset:]
+#        getf = getfield(ns, field, get)
+#        l = filter(lambda e: any(e), map(getf, l))
+#        return format(l)
+#
+#    return (yield from fetch(method, url, n, func, send, **kw))
 
 @asyncio.coroutine
 def regex(arg, send, **kw):
