@@ -122,7 +122,10 @@ def reply(nick, message, lines, send):
             arg = r.fullmatch(message)
             if arg:
                 print(arg.groupdict())
-                return (yield from f(arg.groupdict(), lines, send))
+                #return (yield from f(arg.groupdict(), lines, send))
+                t = time.time()
+                yield from f(arg.groupdict(), lines, send)
+                print(time.time() - t)
         #send('need some help?')
     except:
         send('╮(￣▽￣)╭')
