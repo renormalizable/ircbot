@@ -45,6 +45,26 @@ def moegirl(arg, send):
 def nmb(arg, send):
     print('nmb')
     n = int(arg['n']) if arg['n'] else 5
+    url = 'http://h.koukuko.com/'
+
+    arg['n'] = n
+    if arg['id']:
+        arg['url'] = url + 't/{0}'.format(arg['id'])
+        arg['xpath'] = '//div[@id="h-content"]/div[1]/div[3]/div[1] | //div[@id="h-content"]/div[1]/div[3]/div[1]/div[2]/div'
+        if arg['show']:
+            send(arg['url'])
+    else:
+        forum = arg['forum'] or '综合版1'
+        arg['url'] = url + forum
+        arg['xpath'] = '//div[@id="h-content"]/div[1]/div[3]/div'
+    field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302{}\\x0f]')]
+
+    return (yield from html(arg, send, field=field))
+
+@asyncio.coroutine
+def adnmb(arg, send):
+    print('adnmb')
+    n = int(arg['n']) if arg['n'] else 5
     url = 'http://h.adnmb.com/home/forum/'
 
     arg['n'] = n
@@ -112,12 +132,14 @@ def acfun(arg, send):
 
 help = {
     'moegirl'        : 'moegirl <title> [#max number]',
-    'nmb'            : 'nmb [fforum id] [rthread id] [#max number] -- 丧失你好',
+    'nmb'            : 'nmb [fforum] [thread id] [#max number] -- 丧失你好',
+    'adnmb'          : 'adnmb [fforum id] [rthread id] [#max number] -- 丧失你好',
     'acfun'          : 'acfun [acpage id] <#comment number>',
 }
 
 func = [
     (moegirl,         r"moegirl\s+(?P<query>.+?)(\s+#(?P<n>\d+))?"),
-    (nmb,             r"nmb(\s+f(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+#(?P<n>\d+))?(\s+(?P<show>show))?"),
+    (nmb,             r"nmb(\s+f(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+#(?P<n>\d+))?(\s+(?P<show>show))?"),
+    (adnmb,           r"adnmb(\s+f(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+#(?P<n>\d+))?(\s+(?P<show>show))?"),
     (acfun,           r"acfun\s+ac(?P<id>\d+)\s+#(?P<count>\d+)"),
 ]
