@@ -188,30 +188,6 @@ class JSONRequest(Request):
 
 jsonxml = JSONRequest()
 
-#def parsefield(field):
-#    if field:
-#        # no # in xpath
-#        f = re.finditer(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?", field)
-#        def getitem(e):
-#            d = e.groupdict()
-#            return (d['xpath'] or '.', d['field'] or 'text_content', d['format'] if d['format'] else '{}')
-#        return list(map(getitem, f))
-#    else:
-#        return [('.', 'text_content', '{}')]
-#
-#def getfield(ns, field, get):
-#    def getl(e, f):
-#        def gete(e):
-#            item = get(e, f[1])
-#            return str(item).strip() if item else ''
-#        l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=ns))))
-#        return f[2].format(', '.join(l)) if l else ''
-#
-#    def getf(e):
-#        return list(map(lambda f: getl(e, f), field))
-#
-#    return getf
-#
 #@asyncio.coroutine
 #def html(arg, send, *, method='GET', field=None, get=None, transform=None, format=None, **kw):
 #    print('html')

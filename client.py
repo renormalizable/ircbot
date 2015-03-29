@@ -100,15 +100,3 @@ class Client(bottom.Client):
         else:
             self.sendl(target, content, n, **kw)
 
-#def sendl(l, n, send, *, olimit=0, **kw):
-#    i = 0
-#    for e in l:
-#        if i < n and (olimit == 0 or i < olimit):
-#            send(e, **kw)
-#            i = i + 1
-#        else:
-#            break
-#    if i == 0:
-#        raise Exception()
-#    if i == olimit and n > olimit:
-#        send('太长了啦...')

@@ -165,6 +165,7 @@ def bweather(arg, send):
 @asyncio.coroutine
 def btran(arg, send):
     print('btran')
+    # we no longer use baidu translate at apistore.baidu.com
     key = config.key['baidu']
     f = arg['from'] or 'auto'
     t = arg['to'] or 'zh'
@@ -176,16 +177,6 @@ def btran(arg, send):
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['dst']))
 
     return (yield from jsonxml(arg, send, field=field))
-
-    #url = 'http://apistore.baidu.com/microservice/'
-    #url = url + 'translate?from=auto&to={0}&query={1}'.format(quote_plus(to), quote_plus(arg['text']))
-
-    #arg['n'] = 1
-    #arg['url'] = url
-    #arg['xpath'] = '//retData/trans_result/item'
-    #field = list(map(lambda x: ('./' + x, 'text', '{}'), ['dst']))
-
-    #return (yield from jsonxml(arg, send, field=field))
 
 class Get:
     def __init__(self):
