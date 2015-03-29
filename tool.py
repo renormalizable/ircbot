@@ -62,14 +62,7 @@ def jsonparse(t):
 
 class Request:
     def __init__(self):
-        self.n = 0
-        self.offset = 0
-        self.method = ''
-        self.url = ''
-        self.xpath = ''
-        self.field = []
-        self.transform = lambda l: l
-        self.ns = {'re': 'http://exslt.org/regular-expressions'}
+        pass
 
     def parsefield(self, field):
         if field:
@@ -89,10 +82,8 @@ class Request:
                 return str(item).strip() if item else ''
             l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=self.ns))))
             return f[2].format(', '.join(l)) if l else ''
-    
         def getf(e):
             return list(map(lambda f: getl(e, f), self.field))
-    
         return getf
 
     def parse(self, byte):
