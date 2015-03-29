@@ -71,12 +71,12 @@ def parsefield(field):
     else:
         return [('.', 'text_content', '{}')]
 
-def getfield(field, get):
+def getfield(ns, field, get):
     def getl(e, f):
         def gete(e):
             item = get(e, f[1])
             return str(item).strip() if item else ''
-        l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0]))))
+        l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=ns))))
         return f[2].format(', '.join(l)) if l else ''
 
     def getf(e):
@@ -100,7 +100,6 @@ def html(arg, send, *, method='GET', field=None, get=None, transform=None, forma
     ns = {'re': 'http://exslt.org/regular-expressions'}
     transform = transform or (lambda l: l)
     get = get or (lambda e, f: addstyle(e).xpath('string()') if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
-    getf = getfield(field, get)
     #formatl = (lambda l: strtoesc(arg['format']).format(*l)) if arg['format'] else (lambda l: ' '.join(l))
     format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
 
@@ -108,6 +107,7 @@ def html(arg, send, *, method='GET', field=None, get=None, transform=None, forma
     def func(byte):
         l = htmlparse(byte).xpath(xpath, namespaces=ns)
         l = transform(l)[offset:]
+        getf = getfield(ns, field, get)
         l = filter(lambda e: any(e), map(getf, l))
         #return map(lambda e: formatl(e), l)
         return format(l)
@@ -128,7 +128,6 @@ def xml(arg, send, *, method='GET', field=None, get=None, transform=None, format
     ns = {'re': 'http://exslt.org/regular-expressions'}
     transform = transform or (lambda l: l)
     get = get or (lambda e, f: htmltostr(e.text) if f == 'text_content' else getattr(e, f) if hasattr(e, f) else e.attrib.get(f))
-    getf = getfield(field, get)
     format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
 
     @asyncio.coroutine
@@ -140,6 +139,7 @@ def xml(arg, send, *, method='GET', field=None, get=None, transform=None, format
             ns['ns'] = xmlns
         l = t.xpath(xpath, namespaces=ns)
         l = transform(l)[offset:]
+        getf = getfield(ns, field, get)
         l = filter(lambda e: any(e), map(getf, l))
         return format(l)
 
@@ -159,7 +159,6 @@ def jsonxml(arg, send, *, method='GET', field=None, get=None, transform=None, fo
     ns = {'re': 'http://exslt.org/regular-expressions'}
     transform = transform or (lambda l: l)
     get = get or (lambda e, f: e.text)
-    getf = getfield(field, get)
     format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else (lambda l: map(lambda e: ' '.join(e), l)))
 
     @asyncio.coroutine
@@ -169,6 +168,7 @@ def jsonxml(arg, send, *, method='GET', field=None, get=None, transform=None, fo
         #print(dicttoxml(j))
         l = xmlparse(dicttoxml(j)).xpath(xpath, namespaces=ns)
         l = transform(l)[offset:]
+        getf = getfield(ns, field, get)
         l = filter(lambda e: any(e), map(getf, l))
         return format(l)
 
