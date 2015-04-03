@@ -61,25 +61,44 @@ def mua(arg, send):
 
 @asyncio.coroutine
 def color(arg, send):
+    #c = [
+    #    ('00', 'white'),
+    #    ('01', 'black'),
+    #    ('02', 'blue'),
+    #    ('03', 'green'),
+    #    ('04', 'red'),
+    #    ('05', 'brown'),
+    #    ('06', 'purple'),
+    #    ('07', 'orange'),
+    #    ('08', 'yellow'),
+    #    ('09', 'light green'),
+    #    ('10', 'teal'),
+    #    ('11', 'light cyan'),
+    #    ('12', 'light blue'),
+    #    ('13', 'pink'),
+    #    ('14', 'grey'),
+    #    ('15', 'light grey'),
+    #]
     c = [
         ('00', 'white'),
         ('01', 'black'),
         ('02', 'blue'),
         ('03', 'green'),
-        ('04', 'red'),
-        ('05', 'brown'),
-        ('06', 'purple'),
+        ('04', 'light red'),
+        ('05', 'red'),
+        ('06', 'magenta'),
         ('07', 'orange'),
         ('08', 'yellow'),
         ('09', 'light green'),
-        ('10', 'teal'),
+        ('10', 'cyan'),
         ('11', 'light cyan'),
         ('12', 'light blue'),
-        ('13', 'pink'),
+        ('13', 'light magenta'),
         ('14', 'grey'),
         ('15', 'light grey'),
     ]
-    send('\\x02bold\\x02 \\x1ditalic\\x1d \\x1funderline\\x1f')
+    send('\\x02bold\\x02 \\x1ditalic\\x1d \\x1funderline\\x1f \\x06blink\\x06 \\x16reverse\\x16')
+    #send('\\x07bell\\x07 \\x1bansi color\\x1b')
     send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[:8])))
     send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[8:])))
 
