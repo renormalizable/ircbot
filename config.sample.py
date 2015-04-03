@@ -5,6 +5,7 @@ port = 6667
 option = {}
 
 nick = 'nick'
+login = 'nick'
 password = ''
 channel = '#chan'
 

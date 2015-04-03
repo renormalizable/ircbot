@@ -19,14 +19,15 @@ loop = asyncio.get_event_loop()
 bot = client.Client(loop, config.host, config.port, **config.option)
 
 bot.nick = config.nick
+bot.login = config.login
 bot.password = config.password
 bot.channel = config.channel
 
 @bot.on('CLIENT_CONNECT')
 def connect():
-    bot.send('NICK', nick=bot.nick)
+    bot.send('NICK', nick=bot.login)
     bot.send('PASS', password=bot.password)
-    bot.send('USER', user=bot.nick, realname='Bot using bottom.py')
+    bot.send('USER', user=bot.login, realname='Bot using bottom.py')
     #bot.send('JOIN', channel=bot.channel)
 
 
@@ -82,6 +83,7 @@ def message(nick, target, message):
     message = message[1:].rstrip()
     lines = bot.getlines(nick)
     # Direct message to bot
+    print(nick, target, message)
     if target == bot.nick:
         sender = lambda m, **kw: bot.sender(nick, m, **kw)
     # Message in channel
@@ -117,19 +119,34 @@ func.extend(map(lambda f: (f[0], reg(f[1])), lang.func))
 
 @asyncio.coroutine
 def reply(nick, message, lines, send):
-    try:
-        for (f, r) in func:
-            arg = r.fullmatch(message)
-            if arg:
-                print(arg.groupdict())
-                #return (yield from f(arg.groupdict(), lines, send))
+    #try:
+    #    for (f, r) in func:
+    #        arg = r.fullmatch(message)
+    #        if arg:
+    #            print(arg.groupdict())
+    #            #return (yield from f(arg.groupdict(), lines, send))
+    #            t = time.time()
+    #            yield from f(arg.groupdict(), lines, send)
+    #            print(time.time() - t)
+    #    #send('need some help?')
+    #except:
+    #    send('╮(￣▽￣)╭')
+    #    raise
+    def command(f, r):
+        arg = r.fullmatch(message)
+        if arg:
+            print(arg.groupdict())
+            try:
                 t = time.time()
                 yield from f(arg.groupdict(), lines, send)
                 print(time.time() - t)
-        #send('need some help?')
-    except:
-        send('╮(￣▽￣)╭')
-        raise
+            except:
+                send('╮(￣▽￣)╭')
+                raise
+    tasks = []
+    for (f, r) in func:
+        tasks.append(asyncio.Task(command(f, r)))
+    yield from asyncio.gather(*tasks)
 
 
 @asyncio.coroutine
