@@ -45,10 +45,21 @@ ping2 = ping2c()
 def pia(arg, send):
     content = arg['content'] or ''
 
+    face = [
+        '°Д°',
+        '・ω・',
+        '・∀・',
+        '‵-′',
+        '￣▽￣',
+        '・_・',
+        '>∧<',
+        '´∀`',
+    ]
+    icon = '(╯{0})╯ ┻━┻ '.format(random.choice(face))
     if 'varia' not in content:
-        send('(╯°Д°)╯ ┻━┻ ' + content)
+        send(icon + content)
     else:
-        send('(╯°Д°)╯ ┻━┻ ' + '不要 pia 我!')
+        send(icon + '不要 pia 我!')
 
 @asyncio.coroutine
 def mua(arg, send):
