@@ -73,7 +73,7 @@ def rust(arg, lines, send):
     data = {
         'code': code,
         'optimize': '2',
-        'version': 'master',
+        'version': 'beta',
     }
     headers = {'Content-Type': 'application/json'}
     # ssl has some problem
@@ -81,7 +81,11 @@ def rust(arg, lines, send):
     r = yield from request('POST', url, data=json.dumps(data), headers=headers, connector=conn)
     byte = yield from r.read()
 
-    result = jsonparse(byte).get('result')
+    j = jsonparse(byte)
+    error = j.get('error')
+    result = j.get('result')
+    if error:
+        unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
     if result:
         unsafesend(result, send, raw=raw)
     else:
