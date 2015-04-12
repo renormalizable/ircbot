@@ -293,7 +293,7 @@ help = {
     'html'           : 'html <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]',
     'xml'            : 'xml <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]',
     'json'           : 'json <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]',
-    'regex'          : 'regex <url> <regex> [max number]',
+    'regex'          : 'regex <url> <regex> [#max number][+offset]',
 }
 
 func = [
@@ -301,5 +301,5 @@ func = [
     (html,            r"html\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (xml,             r"xml\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (jsonxml,         r"json\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (regex,           r"regex\s+(?P<url>\S+)\s+(?P<regex>.+?)(\s+#(?P<n>\d+))?"),
+    (regex,           r"regex\s+(?P<url>\S+)\s+(?P<regex>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]

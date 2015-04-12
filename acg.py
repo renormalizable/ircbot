@@ -135,15 +135,15 @@ def acfun(arg, send):
     return (yield from fetch('GET', url + '1', 1, func, send))
 
 help = {
-    'moegirl'        : 'moegirl <title> [#max number]',
-    'nmb'            : 'nmb [fforum] [thread id] [#max number] -- 丧失你好',
-    'adnmb'          : 'adnmb [fforum id] [rthread id] [#max number] -- 丧失你好',
+    'moegirl'        : 'moegirl <title> [#max number][+offset]',
+    'nmb'            : 'nmb [fforum] [thread id] [#max number][+offset] -- 丧失你好',
+    'adnmb'          : 'adnmb [fforum id] [rthread id] [#max number][+offset] -- 丧失你好',
     'acfun'          : 'acfun [acpage id] <#comment number>',
 }
 
 func = [
-    (moegirl,         r"moegirl\s+(?P<query>.+?)(\s+#(?P<n>\d+))?"),
-    (nmb,             r"nmb(\s+f(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+#(?P<n>\d+))?(\s+(?P<show>show))?"),
-    (adnmb,           r"adnmb(\s+f(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+#(?P<n>\d+))?(\s+(?P<show>show))?"),
+    (moegirl,         r"moegirl\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (nmb,             r"nmb(\s+f(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
+    (adnmb,           r"adnmb(\s+f(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
     (acfun,           r"acfun\s+ac(?P<id>\d+)\s+#(?P<count>\d+)"),
 ]
