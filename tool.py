@@ -58,7 +58,7 @@ def jsonparse(t):
     try:
         return json.loads(t)
     except:
-        return json.loads(t.decode('utf-8'))
+        return json.loads(t.decode('utf-8', 'replace'))
 
 class Request:
     def __init__(self):
@@ -277,13 +277,15 @@ def regex(arg, send, **kw):
     url = arg['url']
 
     reg = re.compile(arg['regex'])
+    #reg = re.compile(arg['regex'], re.MULTILINE)
 
     @asyncio.coroutine
     def func(byte):
+        print(byte)
         try:
             l = reg.finditer(byte)
         except:
-            l = reg.finditer(byte.decode('utf-8'))
+            l = reg.finditer(byte.decode('utf-8', 'replace'))
         return map(lambda e: ', '.join(e.groups()), l)
 
     return (yield from fetch('GET', url, n, func, send, **kw))
