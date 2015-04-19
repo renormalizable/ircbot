@@ -24,15 +24,12 @@ class Normalize:
             (r'\x1f', '\x1f'),
         ]
     def __call__(self, message, *, stripspace=True, stripline=True, newline=True, convert=True, escape=True):
-        line = str(message).splitlines() if stripline else [message]
+        lines = str(message).splitlines() if stripline else [message]
         if stripspace:
-            line = map(lambda l: ' '.join(l.split()), line)
+            lines = map(lambda l: ' '.join(l.split()), lines)
         if stripline:
-            line = filter(lambda l: l, line)
-        if newline:
-            line = '\\x0304\\n\\x0f '.join(line)
-        else:
-            line = ' '.join(line)
+            lines = filter(lambda l: l, lines)
+        line = '\\x0304\\n\\x0f '.join(lines) if newline else ' '.join(lines)
         if convert:
             line = line.translate(self.alias)
         if escape:
