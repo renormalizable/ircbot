@@ -37,6 +37,7 @@ def getcode(url):
         'cfp.vim-cn.com': '.',
         'p.vim-cn.com': '.',
         'www.fpaste.org': '//*[@id="paste_form"]/div[1]/div/div[3]',
+        'bpaste.net': '//*[@id="paste"]/div/table/tbody/tr/td[2]/div',
     }
     #raw = {
     #    'www.fpaste.org': lambda u: 
