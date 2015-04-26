@@ -45,7 +45,49 @@ def pm25(arg, send):
 
     return (yield from html(arg, send, field=field, format=format))
 
+class Get:
+    def __init__(self):
+        self.l = ''
+    def __call__(self, l, n=-1, **kw):
+        if n < 0:
+            self.l += l
+        else:
+            l = list(l)[0]
+            self.l += l[0]
+
+@asyncio.coroutine
+def man(arg, send):
+    print('man')
+
+    #section = arg.get('section')
+    section = arg['section']
+    name = arg['name']
+
+    #if not section:
+    #    search = 'http://www.die.net/search/?q={0}&sa=Search&ie=ISO-8859-1&cx=partner-pub-5823754184406795%3A54htp1rtx5u&cof=FORID%3A9'.format(name)
+    #    tmp = {}
+    #    tmp['n'] = 1
+    #    tmp['url'] = search
+    #    tmp['xpath'] = '//*[@id="cse"]/div/div/div/div[5]/div[2]/div/div/div[1]/div[1]/table/tbody/tr/td[2]/div[1]/a'
+    #    f = [('./', 'data-ctorig', '{}')]
+    #    get = Get()
+    #    yield from html(tmp, get, field=f)
+    #    url = get.l
+    #else:
+    #    url = 'http://linux.die.net/man/{0}/{1}'.format(section, name)
+
+    url = 'http://linux.die.net/man/{0}/{1}'.format(section, name)
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//head'
+    field = [('./title', 'text_content', '{}'), ('./base', 'href', '[\x0302{}\x0f]')]
+
+    return (yield from html(arg, send, field=field))
+
 func = [
     (zhihu,           r"zhihu\s+(?P<url>.+)"),
     (pm25,            r"pm2.5\s+(?P<city>.+)"),
+    #(man,             r"man(\s(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
+    (man,             r"man\s(?P<section>[1-8ln])\s+(?P<name>.+)"),
 ]
