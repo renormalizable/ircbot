@@ -178,7 +178,8 @@ def btran(arg, send):
 
     return (yield from jsonxml(arg, send, field=field))
 
-class Get:
+
+class imGet:
     def __init__(self):
         self.l = ''
         self.len = 0
@@ -191,45 +192,183 @@ class Get:
             self.len = int(l[1])
 
 @asyncio.coroutine
-def bim(arg, send):
-    print('bim')
-    n = int(arg['n'] or 1)
-    url = 'http://olime.baidu.com/py?inputtype=py&bg=0&ed=20&result=hanzi&resultcoding=unicode&ch_en=0&clientinfo=web&version=1&input='
+def im(pinyin, url, xpath, field, Get, send):
+    print('im')
 
-    l = re.split(r'([^a-z\']+)', arg['pinyin'])
+    l = re.split(r'([^a-z\']+)', pinyin)
     pinyin = re.compile(r'[a-z\']')
     letter = re.compile(r'[^\']')
 
     print(l)
 
-    get = Get()
+    arg = {}
     arg['n'] = 1
-    arg['xpath'] = '//result/item[1]/item'
-    field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
+    arg['xpath'] = xpath
     format = lambda x: x
-    for e in l:
-        try:
-            if not pinyin.match(e):
-                raise Exception()
-            if e[0] == "'":
-                get(e[1:])
-                continue
-            while len(e) > 0:
-                print(e)
-                arg['url'] = url + quote_plus(e)
-                yield from jsonxml(arg, get, field=field, format=format)
-                pos = len(e)
-                for (i, c) in enumerate(letter.finditer(e)):
-                    if i == get.len:
-                        pos = c.start()
-                        break
-                e = e[pos:]
-        except:
-            get(e)
 
-    line = get.l or 'Σ(っ °Д °;)っ 怎么什么都没有呀'
+    @asyncio.coroutine
+    def getitem(e):
+        if not pinyin.match(e):
+            return e
+        if e[0] == "'":
+            return e[1:]
+        get = Get()
+        while len(e) > 0:
+            #print(e)
+            arg['url'] = url.format(quote_plus(e))
+            yield from jsonxml(arg, get, field=field, format=format)
+            pos = len(e)
+            for (i, c) in enumerate(letter.finditer(e)):
+                if i == get.len:
+                    pos = c.start()
+                    break
+            e = e[pos:]
+        return get.l
+
+    tasks = []
+    for e in l:
+        tasks.append(asyncio.Task(getitem(e)))
+    lines = yield from asyncio.gather(*tasks)
+
+    line = ''.join(lines) if lines else 'Σ(っ °Д °;)っ 怎么什么都没有呀'
 
     return send(line)
+
+@asyncio.coroutine
+def bim(arg, send):
+    print('bim')
+    n = int(arg['n'] or 1)
+    pinyin = arg['pinyin']
+    url = 'http://olime.baidu.com/py?inputtype=py&bg=0&ed=20&result=hanzi&resultcoding=unicode&ch_en=0&clientinfo=web&version=1&input={0}'
+    xpath = '//result/item[1]/item'
+    field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
+
+    class bimGet:
+        def __init__(self):
+            self.l = ''
+            self.len = 0
+        def __call__(self, l, n=-1, **kw):
+            if n < 0:
+                self.l += l
+            else:
+                l = list(l)[0]
+                self.l += l[0]
+                self.len = int(l[1])
+
+    return (yield from im(pinyin, url, xpath, field, bimGet, send))
+
+# qq
+
+@asyncio.coroutine
+def qim(arg, send):
+    print('qim')
+    n = int(arg['n'] or 1)
+    pinyin = arg['pinyin']
+    url = 'http://ime.qq.com/fcgi-bin/getword?q={0}'
+    xpath = '//result/item[1]/item'
+    field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
+
+    class qimGet:
+        def __init__(self):
+            self.l = ''
+            self.len = 0
+        def __call__(self, l, n=-1, **kw):
+            if n < 0:
+                self.l += l
+            else:
+                l = list(l)[0]
+                self.l += l[0]
+                self.len = int(l[1])
+
+    return (yield from im(pinyin, url, xpath, field, qimGet, send))
+
+#class Get:
+#    def __init__(self):
+#        self.l = ''
+#        self.seg = ''
+#        self.len = 0
+#    def __call__(self, l, n=-1, **kw):
+#        if n < 0:
+#            self.l += l
+#        else:
+#            l = list(l)[0]
+#            self.l += l[0]
+#            self.seg = l[0]
+#            self.len = int(l[1])
+
+#@asyncio.coroutine
+#def bim(arg, send):
+#    print('bim')
+#    n = int(arg['n'] or 1)
+#    url = 'http://olime.baidu.com/py?inputtype=py&bg=0&ed=20&result=hanzi&resultcoding=unicode&ch_en=0&clientinfo=web&version=1&input='
+#
+#    l = re.split(r'([^a-z\']+)', arg['pinyin'])
+#    pinyin = re.compile(r'[a-z\']')
+#    letter = re.compile(r'[^\']')
+#
+#    print(l)
+#
+#    #get = Get()
+#    arg['n'] = 1
+#    arg['xpath'] = '//result/item[1]/item'
+#    field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
+#    format = lambda x: x
+#    #cache = {}
+#    #for e in l:
+#    #    try:
+#    #        if not pinyin.match(e):
+#    #            raise Exception()
+#    #        if e[0] == "'":
+#    #            get(e[1:])
+#    #            continue
+#    #        print(cache)
+#    #        r = cache.get(e)
+#    #        if r:
+#    #            get(r)
+#    #            continue
+#    #        k, v = e, ''
+#    #        while len(e) > 0:
+#    #            print(e)
+#    #            arg['url'] = url + quote_plus(e)
+#    #            yield from jsonxml(arg, get, field=field, format=format)
+#    #            pos = len(e)
+#    #            for (i, c) in enumerate(letter.finditer(e)):
+#    #                if i == get.len:
+#    #                    pos = c.start()
+#    #                    break
+#    #            e = e[pos:]
+#    #            v = v + get.seg
+#    #        cache[k] = v
+#    #    except:
+#    #        get(e)
+#
+#    @asyncio.coroutine
+#    def getitem(e):
+#        if not pinyin.match(e):
+#            return e
+#        if e[0] == "'":
+#            return e[1:]
+#        get = Get()
+#        while len(e) > 0:
+#            #print(e)
+#            arg['url'] = url + quote_plus(e)
+#            yield from jsonxml(arg, get, field=field, format=format)
+#            pos = len(e)
+#            for (i, c) in enumerate(letter.finditer(e)):
+#                if i == get.len:
+#                    pos = c.start()
+#                    break
+#            e = e[pos:]
+#        return get.l
+#
+#    tasks = []
+#    for e in l:
+#        tasks.append(asyncio.Task(getitem(e)))
+#    lines = yield from asyncio.gather(*tasks)
+#
+#    line = ''.join(lines) if lines else 'Σ(っ °Д °;)っ 怎么什么都没有呀'
+#
+#    return send(line)
 
 # microsoft
 
@@ -455,12 +594,12 @@ help = {
     'bip'            : 'bip <ip address>',
     'bweather'       : 'bweather <city>',
     'btran'          : 'btran [source lang:target lang] <text>',
-    'bim'            : 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letter or \')',
+    'bim'            : 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \')',
     'bing'           : 'bing <query> [#max number][+offset]',
     'mtran'          : 'mtran [source lang:target lang] <text>',
     'couplet'        : 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时',
     'urban'          : 'urban <text> [#max number][+offset]',
-    'wolfram'        : 'wolfram <query> [#max number]',
+    'wolfram'        : 'wolfram <query> [#max number][+offset]',
 }
 
 func = [
@@ -474,6 +613,7 @@ func = [
     (bweather,        r"bweather\s+(?P<city>.+)"),
     (btran,           r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (bim,             r"bim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(qim,             r"qim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (bing,            r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (mtran,           r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (couplet,         r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
@@ -483,6 +623,6 @@ func = [
     (breezo,          r"breezo\s+(?P<city>.+)"),
     (btdigg,          r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (urban,           r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (arxiv,           r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+#(?P<n>\d+))?"),
-    (wolfram,         r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+#(?P<n>\d+))?"),
+    (arxiv,           r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (wolfram,         r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]
