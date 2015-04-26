@@ -510,6 +510,27 @@ def mice(arg, send):
 
     return (yield from jsonxml(arg, send, method='POST', data=data, headers=headers))
 
+
+# google
+
+@asyncio.coroutine
+def google(arg, send):
+    print('google')
+    n = int(arg['n'] or 1)
+    key = config.key['google']
+    cx = config.key['googleseid']
+    #type = arg.get('type') or 'web'
+    #url = 'https://www.googleapis.com/customsearch/v1?key={0}&cx={1}&searchType={2}&q={3}'.format(quote_plus(key), quote_plus(cx), quote_plus(type), quote_plus(arg['query']))
+    url = 'https://www.googleapis.com/customsearch/v1?key={0}&cx={1}&q={2}'.format(quote_plus(key), quote_plus(cx), quote_plus(arg['query']))
+
+    arg['n'] = n
+    arg['url'] = url
+    arg['xpath'] = '//items/item'
+    field = [('./title', 'text', '{}'), ('./link', 'text', '[\\x0302{}\\x0f]'), ('./snippet', 'text', '{}')]
+
+    return (yield from jsonxml(arg, send, field=field))
+
+
 @asyncio.coroutine
 def dictg(arg, send):
     print('dictg')
@@ -618,6 +639,8 @@ func = [
     (mtran,           r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (couplet,         r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(mice,            r"mice\s+(?P<input>.+)"),
+    #(google,          r"google(\s+type:(?P<type>(web|image)))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (google,          r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (dictg,           r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (cdict,           r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (breezo,          r"breezo\s+(?P<city>.+)"),

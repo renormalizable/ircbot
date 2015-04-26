@@ -12,6 +12,8 @@ channel = '#chan'
 key = {
     'baidu'          : '',
     'microsoft'      : '',
+    'google'         : '',
+    'googleseid'     : '',
     'collins'        : '',
     'mashape'        : '',
     'breezo'         : '',
