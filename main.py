@@ -1,15 +1,9 @@
 import asyncio
 import re
-import time
 
 import config
 import client
-import simple
-import tool
-import lang
-import api
-import acg
-import handy
+import command
 
 import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -22,6 +16,7 @@ bot.nick = config.nick
 bot.login = config.login
 bot.password = config.password
 bot.channel = config.channel
+
 
 @bot.on('CLIENT_CONNECT')
 def connect():
@@ -75,78 +70,19 @@ def message(nick, target, message):
     # Don't echo ourselves
     if nick == bot.nick:
         return
-    (nick, message) = deprefix(nick, message)
-    # prefix
-    if message[0] != "'" or message[:4] == "'.. " or message[:4] == "':: ":
-        return
 
-    message = message[1:].rstrip()
+    (nick, message) = deprefix(nick, message)
     lines = bot.getlines(nick)
+    print(nick, target, message, lines)
+
     # Direct message to bot
-    print(nick, target, message)
     if target == bot.nick:
         sender = lambda m, **kw: bot.sender(nick, m, **kw)
     # Message in channel
     else:
         sender = lambda m, **kw: bot.sender(target, m, to=nick, **kw)
-    return (yield from reply(nick, message, lines, sender))
 
-help = {}
-help.update(simple.help)
-help.update(tool.help)
-help.update(api.help)
-help.update(acg.help)
-help.update(lang.help)
-
-@asyncio.coroutine
-def helper(arg, send):
-    if arg['command']:
-        send('<...> is mandatory, [...] is optional')
-        send('{0}: {1}'.format(arg['command'], help[arg['command']]))
-    else:
-        send('help: help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
-        send('(づ￣ω￣)づ  -->>  ' + ', '.join(sorted(help.keys())))
-
-wrap = lambda f: lambda arg, lines, send: f(arg, send)
-reg = lambda r: re.compile(r, re.IGNORECASE)
-func = [(wrap(helper), reg(r"help(\s+(?P<command>\S+))?"))]
-func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), simple.func))
-func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), tool.func))
-func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), api.func))
-func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), acg.func))
-func.extend(map(lambda f: (wrap(f[0]), reg(f[1])), handy.func))
-func.extend(map(lambda f: (f[0], reg(f[1])), lang.func))
-
-@asyncio.coroutine
-def reply(nick, message, lines, send):
-    #try:
-    #    for (f, r) in func:
-    #        arg = r.fullmatch(message)
-    #        if arg:
-    #            print(arg.groupdict())
-    #            #return (yield from f(arg.groupdict(), lines, send))
-    #            t = time.time()
-    #            yield from f(arg.groupdict(), lines, send)
-    #            print(time.time() - t)
-    #    #send('need some help?')
-    #except:
-    #    send('╮(￣▽￣)╭')
-    #    raise
-    def command(f, r):
-        arg = r.fullmatch(message)
-        if arg:
-            print(arg.groupdict())
-            try:
-                t = time.time()
-                yield from f(arg.groupdict(), lines, send)
-                print(time.time() - t)
-            except:
-                send('╮(￣▽￣)╭')
-                raise
-    tasks = []
-    for (f, r) in func:
-        tasks.append(asyncio.Task(command(f, r)))
-    yield from asyncio.gather(*tasks)
+    return (yield from command.reply(nick, message, lines, sender))
 
 
 @asyncio.coroutine
