@@ -1,9 +1,8 @@
 import asyncio
-import re
 
 import config
 import client
-import command
+from modules import commands
 
 import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -72,7 +71,7 @@ def message(nick, target, message):
     else:
         sender = lambda m, **kw: bot.sender(target, m, to=nick, **kw)
 
-    return (yield from command.reply(nick, message, lines, sender))
+    return (yield from commands.reply(nick, message, lines, sender))
 
 
 @asyncio.coroutine

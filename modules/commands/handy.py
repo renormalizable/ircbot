@@ -1,5 +1,6 @@
 import asyncio
-from tool import html
+
+from .tool import html
 
 # html parse
 

@@ -6,7 +6,7 @@ import re
 import time
 
 import config
-from tool import html, xml, jsonxml, htmlparse
+from .tool import html, xml, jsonxml, htmlparse
 
 @asyncio.coroutine
 def arxiv(arg, send):

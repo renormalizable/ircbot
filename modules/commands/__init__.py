@@ -2,12 +2,12 @@ import asyncio
 import re
 import time
 
-import simple
-import tool
-import lang
-import api
-import acg
-import handy
+from . import simple
+from . import tool
+from . import lang
+from . import api
+from . import acg
+from . import handy
 
 def command(f, r):
     reg = re.compile(r, re.IGNORECASE)

@@ -3,7 +3,7 @@ import json
 from aiohttp       import request, TCPConnector
 from urllib.parse  import urlsplit
 
-from tool import html, htmlparse, jsonparse
+from .tool import html, htmlparse, jsonparse
 
 def unsafesend(m, send, *, raw=False):
     if raw:

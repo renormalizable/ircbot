@@ -3,7 +3,7 @@ import re
 from urllib.parse  import quote_plus
 from aiohttp       import request
 
-from tool import fetch, htmltostr, html, addstyle, jsonparse
+from .tool import fetch, htmltostr, html, addstyle, jsonparse
 
 @asyncio.coroutine
 def moegirl(arg, send):
