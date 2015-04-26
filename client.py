@@ -1,4 +1,5 @@
 import re
+import importlib
 
 import bottom
 
@@ -72,6 +73,10 @@ class Client(bottom.Client):
         self.msglimit = 430
 
         self.deprefix = dePrefix()
+        self.modules = importlib.import_module('modules')
+
+    def reload(self):
+        self.modules = importlib.reload(self.modules)
 
     def addlines(self, nick, l):
         if nick not in self.lines:

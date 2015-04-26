@@ -10,9 +10,9 @@ import inspect
 #file = [f[:-3] for f in os.listdir(dir) if f.endswith('.py') and f != '__init__.py']
 
 path = 'modules.commands.'
+#path = '.'
 files = ['simple', 'tool', 'lang', 'api', 'acg', 'handy']
-
-modules = [importlib.import_module(path + f) for f in files]
+modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
 
 help = dict(sum((getattr(m, 'help', []) for m in modules), []))
 
@@ -24,7 +24,6 @@ def helper(arg, send):
     else:
         send('help: help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
         send('(づ￣ω￣)づ  -->>  ' + ', '.join(sorted(help.keys())))
-
 
 def command(f, r):
     func = f if len(inspect.signature(f).parameters) == 3 else (lambda arg, lines, send: f(arg, send))
