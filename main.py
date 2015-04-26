@@ -2,7 +2,6 @@ import asyncio
 
 import config
 import client
-from modules import commands
 
 import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -11,6 +10,7 @@ loop = asyncio.get_event_loop()
 
 bot = client.Client(loop, config.host, config.port, **config.option)
 
+bot.admin = config.admin
 bot.nick = config.nick
 bot.login = config.login
 bot.password = config.password
@@ -70,8 +70,16 @@ def message(nick, target, message):
         sender = lambda m, **kw: bot.sender(target, m, to=nick, **kw)
 
     #return (yield from commands.reply(nick, message, lines, sender))
-    return (yield from commands.reply(nick, message, bot, sender))
+    #return (yield from commands.reply(nick, message, bot, sender))
+    return (yield from bot.modules.reply(nick, message, bot, sender))
 
+@bot.on('PRIVMSG')
+def reload(nick, target, message):
+    if nick != bot.admin or message != "'!reload":
+        return
+
+    print('reload')
+    return bot.reload()
 
 @asyncio.coroutine
 def dump(loop):

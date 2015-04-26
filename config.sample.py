@@ -4,6 +4,7 @@ port = 6667
 
 option = {}
 
+admin = 'nick'
 nick = 'nick'
 login = 'nick'
 password = ''
