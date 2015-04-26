@@ -10,6 +10,10 @@ def echo(arg, send):
     send(arg['content'], raw=True)
 
 @asyncio.coroutine
+def say(arg, send):
+    send(arg['content'])
+
+@asyncio.coroutine
 def ping(arg, send):
     send("ping!")
     #send("\\x0305ping!\\x0f")
@@ -54,6 +58,8 @@ def pia(arg, send):
         '・_・',
         '>∧<',
         '´∀`',
+        '°_°',
+        'ˊ_>ˋ',
     ]
     icon = '(╯{0})╯ ┻━┻ '.format(random.choice(face))
     if 'varia' not in content:
@@ -292,6 +298,7 @@ def latex(arg, send):
 
 help = {
     'echo'           : 'echo <content> -- 我才不会自问自答呢!',
+    'say'            : 'say <content>',
     'ping!'          : 'ping!',
     'pong!'          : 'pong!',
     'color'          : 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!',
@@ -302,6 +309,7 @@ help = {
 
 func = [
     (echo,            r"echo (?P<content>.*)"),
+    (say,             r"say (?P<content>.*)"),
     (pong,            r"ping!"),
     (ping,            r"pong!"),
     #(ping2,           r"(?:.*): pong!"),
