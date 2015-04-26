@@ -619,6 +619,7 @@ help = {
     'bing'           : 'bing <query> [#max number][+offset]',
     'mtran'          : 'mtran [source lang:target lang] <text>',
     'couplet'        : 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时',
+    'google'         : 'google <query> [#max number][+offset]',
     'urban'          : 'urban <text> [#max number][+offset]',
     'wolfram'        : 'wolfram <query> [#max number][+offset]',
 }
