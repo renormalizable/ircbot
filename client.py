@@ -1,4 +1,16 @@
+import re
+
 import bottom
+
+
+class dePrefix:
+    def __init__(self):
+        #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
+        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
+    def __call__(self, n, m):
+        r = self.r.fullmatch(m).groupdict()
+        #return (r['nick'].strip() if r['nick'] else n, r['message'])
+        return (r['to'].strip() if r['to'] else r['nick'].strip() if r['nick'] else n, r['message'])
 
 class Normalize:
     def __init__(self):
@@ -49,7 +61,6 @@ def splitmessage(s, n):
         s = s[i:]
     yield s
 
-
 class Client(bottom.Client):
     def __init__(self, loop, host, port, **kw):
         super().__init__(host, port, **kw)
@@ -59,6 +70,8 @@ class Client(bottom.Client):
         # (512 - 2) / 3 = 170
         # 430 bytes should be safe
         self.msglimit = 430
+
+        self.deprefix = dePrefix()
 
     def addlines(self, nick, l):
         if nick not in self.lines:

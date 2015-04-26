@@ -31,19 +31,9 @@ def keepalive(message):
     bot.send('PONG', message=message)
 
 
-class dePrefix:
-    def __init__(self):
-        #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
-        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
-    def __call__(self, n, m):
-        r = self.r.fullmatch(m).groupdict()
-        #return (r['nick'].strip() if r['nick'] else n, r['message'])
-        return (r['to'].strip() if r['to'] else r['nick'].strip() if r['nick'] else n, r['message'])
-deprefix = dePrefix()
-
 @bot.on('PRIVMSG')
 def multiline(nick, target, message):
-    (nick, message) = deprefix(nick, message)
+    (nick, message) = bot.deprefix(nick, message)
     if nick != bot.nick and message[:4] == "'.. ":
         print('multiline')
         l = message[4:].rstrip() + '\n'
@@ -51,7 +41,7 @@ def multiline(nick, target, message):
 
 @bot.on('PRIVMSG')
 def importline(nick, target, message):
-    (nick, message) = deprefix(nick, message)
+    (nick, message) = bot.deprefix(nick, message)
     if nick != bot.nick and message[:4] == "':: ":
         print('importline')
         try:
@@ -71,7 +61,7 @@ def message(nick, target, message):
     if nick == bot.nick:
         return
 
-    (nick, message) = deprefix(nick, message)
+    (nick, message) = bot.deprefix(nick, message)
     lines = bot.getlines(nick)
     print(nick, target, message, lines)
 
