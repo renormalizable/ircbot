@@ -61,8 +61,6 @@ def message(nick, target, message):
         return
 
     (nick, message) = bot.deprefix(nick, message)
-    lines = bot.getlines(nick)
-    print(nick, target, message, lines)
 
     # Direct message to bot
     if target == bot.nick:
@@ -71,7 +69,8 @@ def message(nick, target, message):
     else:
         sender = lambda m, **kw: bot.sender(target, m, to=nick, **kw)
 
-    return (yield from commands.reply(nick, message, lines, sender))
+    #return (yield from commands.reply(nick, message, lines, sender))
+    return (yield from commands.reply(nick, message, bot, sender))
 
 
 @asyncio.coroutine

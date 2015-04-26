@@ -296,28 +296,28 @@ def latex(arg, send):
         m = m.replace(t, s)
     send(m)
 
-help = {
-    'echo'           : 'echo <content> -- 我才不会自问自答呢!',
-    'say'            : 'say <content>',
-    'ping!'          : 'ping!',
-    'pong!'          : 'pong!',
-    'color'          : 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!',
-    'mode'           : 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!',
-    'up'             : 'up [show] -- nice boat!',
-    'down'           : 'down [show]',
-}
+help = [
+    ('echo'         , 'echo <content> -- 我才不会自问自答呢!'),
+    ('say'          , 'say <content>'),
+    ('ping!'        , 'ping!'),
+    ('pong!'        , 'pong!'),
+    ('color'        , 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!'),
+    ('mode'         , 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!'),
+    ('up'           , 'up [show] -- nice boat!'),
+    ('down'         , 'down [show]'),
+]
 
 func = [
-    (echo,            r"echo (?P<content>.*)"),
-    (say,             r"say (?P<content>.*)"),
-    (pong,            r"ping!"),
-    (ping,            r"pong!"),
-    #(ping2,           r"(?:.*): pong!"),
-    (color,           r"color"),
-    (mode,            r"mode"),
-    (up,              r"up(?:\s+(?P<show>show))?"),
-    (down,            r"down(?:\s+(?P<show>show))?"),
-    (pia,             r"pia( (?P<content>.*))?"),
-    (mua,             r"mua( (?P<content>.*))?"),
-    (latex,           r"latex\s+(?P<content>.*)"),
+    (echo           , r"echo (?P<content>.*)"),
+    (say            , r"say (?P<content>.*)"),
+    (pong           , r"ping!"),
+    (ping           , r"pong!"),
+    #(ping2          , r"(?:.*): pong!"),
+    (color          , r"color"),
+    (mode           , r"mode"),
+    (up             , r"up(?:\s+(?P<show>show))?"),
+    (down           , r"down(?:\s+(?P<show>show))?"),
+    (pia            , r"pia( (?P<content>.*))?"),
+    (mua            , r"mua( (?P<content>.*))?"),
+    (latex          , r"latex\s+(?P<content>.*)"),
 ]

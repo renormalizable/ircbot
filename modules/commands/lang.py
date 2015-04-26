@@ -225,17 +225,19 @@ def python3(arg, lines, send):
     arg['raw'] = None
     return (yield from rextester(arg, lines, send))
 
-help = {
-    'clear'          : 'clear',
-    'rust'           : 'rust [code, also accept multiline input]',
-    'codepad'        : 'codepad:<lang> [run] [code, also accept multiline input]',
-    'rex'            : 'rex:<lang> [args --] [code, also accept multiline input]',
-}
+help = [
+    ('clear'        , 'clear'),
+    ('rust'         , 'rust [code, also accept multiline input]'),
+    ('codepad'      , 'codepad:<lang> [run] [code, also accept multiline input]'),
+    ('rex'          , 'rex:<lang> [args --] [code, also accept multiline input]'),
+]
 
 func = [
-    (clear,           r"clear"),
-    (rust,            r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
-    (codepad,         r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
-    (rextester,       r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
-    (python3,         r">> (?P<code>.+)"),
+    (clear          , r"clear"),
+    (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
+    (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
+    (rextester      , r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
+    (python3        , r">> (?P<code>.+)"),
 ]
+
+multiline = True
