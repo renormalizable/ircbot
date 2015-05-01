@@ -44,7 +44,7 @@ def importline(nick, target, message):
     if nick != bot.nick and message[:4] == "':: ":
         print('importline')
         try:
-            l = yield from lang.getcode(message[4:].rstrip())
+            l = yield from bot.modules.getcode(message[4:].rstrip())
             bot.addlines(nick, l)
             #send("PRIVMSG", target=target, message=l, to=nick, stripspace=False, convert=False)
             #send("PRIVMSG", target=target, message="imported", to=nick, stripspace=False, convert=False)

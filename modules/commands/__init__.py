@@ -13,6 +13,7 @@ path = 'modules.commands.'
 #path = '.'
 files = ['simple', 'tool', 'lang', 'api', 'acg', 'handy']
 modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
+table = dict(zip(files, modules))
 
 help = dict(sum((getattr(m, 'help', []) for m in modules), []))
 
@@ -56,3 +57,7 @@ def reply(nick, message, bot, send):
     coros = [f(msg, lines, send) for f in func]
     #yield from asyncio.gather(*coros)
     yield from asyncio.wait(coros)
+
+@asyncio.coroutine
+def getcode(url):
+    return (yield from table['lang'].getcode(url))
