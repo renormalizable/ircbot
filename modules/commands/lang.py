@@ -38,6 +38,7 @@ def getcode(url):
         'p.vim-cn.com': '.',
         'www.fpaste.org': '//*[@id="paste_form"]/div[1]/div/div[3]',
         'bpaste.net': '//*[@id="paste"]/div/table/tbody/tr/td[2]/div',
+        'pastebin.com': '//*[@id="paste_code"]',
     }
     #raw = {
     #    'www.fpaste.org': lambda u: 
@@ -101,6 +102,13 @@ def codepad(arg, lines, send):
     lang = arg['lang'].title()
     run = bool(arg['run'])
     raw = arg['raw']
+
+    d = {
+        'Text':   'Plain Text',
+        'Php':    'PHP',
+        'Ocaml':  'OCaml',
+    }
+    lang = d.get(lang) or lang
 
     if not code:
         raise Exception()
