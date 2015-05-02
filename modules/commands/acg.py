@@ -45,7 +45,10 @@ def moegirl(arg, send):
 def nmb(arg, send):
     print('nmb')
     n = int(arg['n']) if arg['n'] else 5
-    url = 'http://h.koukuko.com/'
+    #url = 'http://h.koukuko.com/'
+    #url = 'http://kukuku.cc/'
+    url = 'http://h.nimingban.com/'
+    #url = 'http://hacfun.tv/'
 
     arg['n'] = n
     if arg['id']:
