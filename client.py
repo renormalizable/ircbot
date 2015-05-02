@@ -115,9 +115,12 @@ class Client(bottom.Client):
         if not sent:
             raise Exception()
 
-    def sender(self, target, content, *, n=-1, **kw):
+    def sender(self, target, content, *, n=-1, llimit=-1, **kw):
         if n < 0:
             self.sendm(target, content, **kw)
         else:
-            self.sendl(target, content, n, **kw)
+            if llimit < 0:
+                self.sendl(target, content, n, **kw)
+            else:
+                self.sendl(target, content, n, llimit=llimit, **kw)
 
