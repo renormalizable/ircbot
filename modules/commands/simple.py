@@ -15,11 +15,14 @@ def say(arg, send):
 
 @asyncio.coroutine
 def cat(arg, lines, send):
+    if not lines:
+        raise
+
     if arg['raw']:
         send(lines, raw=True)
     else:
-        for l in lines.splitlines():
-            send(l)
+        l = lines.splitlines()
+        send(l, n=len(l), llimit=10)
 
 @asyncio.coroutine
 def ping(arg, send):
@@ -307,6 +310,7 @@ def latex(arg, send):
 help = [
     ('echo'         , 'echo <content> -- 我才不会自问自答呢!'),
     ('say'          , 'say <content>'),
+    ('cat'          , 'cat [raw] -- meow~'),
     ('ping!'        , 'ping!'),
     ('pong!'        , 'pong!'),
     ('color'        , 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!'),
