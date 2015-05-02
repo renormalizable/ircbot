@@ -16,7 +16,7 @@ def say(arg, send):
 @asyncio.coroutine
 def cat(arg, lines, send):
     if not lines:
-        raise
+        raise Exception()
 
     if arg['raw']:
         send(lines, raw=True)
