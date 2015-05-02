@@ -163,13 +163,14 @@ def bweather(arg, send):
     return (yield from jsonxml(arg, send, field=field))
 
 @asyncio.coroutine
-def btran(arg, send):
+def btran(arg, lines, send):
     print('btran')
     # we no longer use baidu translate at apistore.baidu.com
     key = config.key['baidu']
     f = arg['from'] or 'auto'
     t = arg['to'] or 'zh'
-    url = 'http://openapi.baidu.com/public/2.0/bmt/translate?client_id={0}&from={1}&to={2}&q={3}'.format(key, quote_plus(f), quote_plus(t), quote_plus(arg['text']))
+    text = lines or arg['text']
+    url = 'http://openapi.baidu.com/public/2.0/bmt/translate?client_id={0}&from={1}&to={2}&q={3}'.format(key, quote_plus(f), quote_plus(t), quote_plus(text))
 
     arg['n'] = 1
     arg['url'] = url
@@ -408,13 +409,14 @@ class Microsoft:
         self.key = get.key
 
 @asyncio.coroutine
-def bing(arg, send):
+def bing(arg, lines, send):
     print('bing')
     n = int(arg['n'] or 1)
     #market = 'zh-CN'
     market = 'en-US'
+    query = lines or arg['query']
     #url = 'https://api.datamarket.azure.com/Bing/Search/v1/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(arg['query']))
-    url = 'https://api.datamarket.azure.com/Bing/Search/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(arg['query']))
+    url = 'https://api.datamarket.azure.com/Bing/Search/Composite?$format=json&Sources=%27web%2Bimage%2Bvideo%2Bnews%2Bspell%27&Adult=%27Off%27&Market=%27{0}%27&Query=%27{1}%27'.format(quote_plus(market), quote_plus(query))
 
     key = config.key['microsoft']
     auth = BasicAuth(key, key)
@@ -448,12 +450,13 @@ def bing(arg, send):
 #mtran = Mtran()
 
 @asyncio.coroutine
-def mtran(arg, send):
+def mtran(arg, lines, send):
     print('mtran')
     f = '&From=%27{0}%27'.format(quote_plus(arg['from'])) if arg['from'] else ''
     t = arg['to'] or 'zh-CHS'
+    text = lines or arg['text']
     #url = 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/v1/Translate?$format=json{0}&To=%27{1}%27&Text=%27{2}%27'.format(quote_plus(f), quote_plus(t), quote_plus(arg['text']))
-    url = 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/Translate?$format=json{0}&To=%27{1}%27&Text=%27{2}%27'.format(f, quote_plus(t), quote_plus(arg['text']))
+    url = 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/Translate?$format=json{0}&To=%27{1}%27&Text=%27{2}%27'.format(f, quote_plus(t), quote_plus(text))
 
     key = config.key['microsoft']
     auth = BasicAuth(key, key)
@@ -514,14 +517,15 @@ def mice(arg, send):
 # google
 
 @asyncio.coroutine
-def google(arg, send):
+def google(arg, lines, send):
     print('google')
     n = int(arg['n'] or 1)
     key = config.key['google']
     cx = config.key['googleseid']
     #type = arg.get('type') or 'web'
     #url = 'https://www.googleapis.com/customsearch/v1?key={0}&cx={1}&searchType={2}&q={3}'.format(quote_plus(key), quote_plus(cx), quote_plus(type), quote_plus(arg['query']))
-    url = 'https://www.googleapis.com/customsearch/v1?key={0}&cx={1}&q={2}'.format(quote_plus(key), quote_plus(cx), quote_plus(arg['query']))
+    query = lines or arg['query']
+    url = 'https://www.googleapis.com/customsearch/v1?key={0}&cx={1}&q={2}'.format(quote_plus(key), quote_plus(cx), quote_plus(query))
 
     arg['n'] = n
     arg['url'] = url
@@ -616,10 +620,12 @@ help = [
     ('bweather'     , 'bweather <city>'),
     ('btran'        , 'btran [source lang:target lang] <text>'),
     ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \')'),
-    ('bing'         , 'bing <query> [#max number][+offset]'),
+    #('bing'         , 'bing <query> [#max number][+offset]'),
+    ('bing'         , 'bing [#max number][+offset] <query>'),
     ('mtran'        , 'mtran [source lang:target lang] <text>'),
     ('couplet'      , 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
-    ('google'       , 'google <query> [#max number][+offset]'),
+    #('google'       , 'google <query> [#max number][+offset]'),
+    ('google'       , 'google [#max number][+offset] <query>'),
     ('urban'        , 'urban <text> [#max number][+offset]'),
     ('wolfram'      , 'wolfram <query> [#max number][+offset]'),
 ]
@@ -633,15 +639,19 @@ func = [
     (bphone         , r"bphone\s+(?P<tel>.+)"),
     (baqi           , r"baqi\s+(?P<city>.+)"),
     (bweather       , r"bweather\s+(?P<city>.+)"),
-    (btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
+    #(btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
+    (btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (bim            , r"bim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(qim            , r"qim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (bing           , r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
+    #(bing           , r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (bing           , r"bing(\s+type:(?P<type>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
+    #(mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
+    (mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (couplet        , r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(mice           , r"mice\s+(?P<input>.+)"),
     #(google         , r"google(\s+type:(?P<type>(web|image)))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (google         , r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(google         , r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (google         , r"google(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
     (dictg          , r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (cdict          , r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (breezo         , r"breezo\s+(?P<city>.+)"),
