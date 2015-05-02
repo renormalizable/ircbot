@@ -22,12 +22,12 @@ class Get:
         self.l = ''
     def __call__(self, l, n=-1, **kw):
         if n < 0:
-            self.l += l
+            self.l += l + '\n'
         else:
             for (i, m) in enumerate(l):
                 if i >= n:
                     break
-                self.l += m
+                self.l += m + '\n'
 
 @asyncio.coroutine
 def getcode(url):
@@ -56,7 +56,7 @@ def getcode(url):
     else:
         raise Exception()
     #print(get.l)
-    return get.l + '\n'
+    return get.l
 
 @asyncio.coroutine
 def clear(arg, lines, send):
