@@ -226,10 +226,12 @@ def im(pinyin, url, xpath, field, Get, send):
             e = e[pos:]
         return get.l
 
-    tasks = []
-    for e in l:
-        tasks.append(asyncio.Task(getitem(e)))
-    lines = yield from asyncio.gather(*tasks)
+    #tasks = []
+    #for e in l:
+    #    tasks.append(asyncio.Task(getitem(e)))
+    #lines = yield from asyncio.gather(*tasks)
+    coros = [getitem(e) for e in l]
+    lines = yield from asyncio.gather(*coros)
 
     line = ''.join(lines) if lines else 'Σ(っ °Д °;)っ 怎么什么都没有呀'
 
