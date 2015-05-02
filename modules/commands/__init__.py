@@ -27,7 +27,7 @@ def helper(arg, send):
         send('(づ￣ω￣)づ  -->>  ' + ', '.join(sorted(help.keys())))
 
 def command(f, r):
-    func = f if len(inspect.signature(f).parameters) == 3 else (lambda arg, lines, send: f(arg, send))
+    func = f if inspect.signature(f).parameters.get('lines') else (lambda arg, lines, send: f(arg, send))
     reg = re.compile(r, re.IGNORECASE)
 
     @asyncio.coroutine
@@ -46,17 +46,47 @@ def command(f, r):
 
 func = [command(f[0], f[1]) for f in sum((getattr(m, 'func', []) for m in modules), [(helper, r"help(\s+(?P<command>\S+))?")])]
 
+class Get:
+    def __init__(self):
+        self.l = ''
+    def __call__(self, l, n=-1, **kw):
+        if n < 0:
+            self.l += l + '\n'
+        else:
+            for (i, m) in enumerate(l):
+                if i >= n:
+                    break
+                self.l += m + '\n'
+
 @asyncio.coroutine
 def reply(nick, message, bot, send):
     # prefix
-    if message[0] != "'" or message[:4] == "'.. " or message[:4] == "':: ":
+    #if message[0] != "'" or message[:4] == "'.. " or message[:4] == "':: ":
+    #    return
+    if message[0] == "'":
+        if message[:4] in ["'.. ", "':: "]:
+            return
+        output = True
+    elif message[0] == '"':
+        output = False
+    else:
         return
+
     msg = message[1:].rstrip()
-    lines = bot.getlines(nick)
+    lines = bot.getlines(nick)[:-1]
     print(nick, msg, lines)
-    coros = [f(msg, lines, send) for f in func]
+
+    if output:
+        coros = [f(msg, lines, send) for f in func]
+        yield from asyncio.wait(coros)
+    else:
+        get = Get()
+        coros = [f(msg, lines, get) for f in func]
+        yield from asyncio.wait(coros)
+        bot.addlines(nick, get.l[:-1])
+
     #yield from asyncio.gather(*coros)
-    yield from asyncio.wait(coros)
+    #yield from asyncio.wait(coros)
 
 @asyncio.coroutine
 def getcode(url):
