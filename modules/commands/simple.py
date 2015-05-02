@@ -14,6 +14,14 @@ def say(arg, send):
     send(arg['content'])
 
 @asyncio.coroutine
+def cat(arg, lines, send):
+    if arg['raw']:
+        send(lines, raw=True)
+    else:
+        for l in lines.splitlines():
+            send(l)
+
+@asyncio.coroutine
 def ping(arg, send):
     send("ping!")
     #send("\\x0305ping!\\x0f")
@@ -310,6 +318,7 @@ help = [
 func = [
     (echo           , r"echo (?P<content>.*)"),
     (say            , r"say (?P<content>.*)"),
+    (cat            , r"cat(\s+(?P<raw>raw))?"),
     (pong           , r"ping!"),
     (ping           , r"pong!"),
     #(ping2          , r"(?:.*): pong!"),
