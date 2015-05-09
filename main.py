@@ -79,7 +79,11 @@ def reload(nick, target, message):
         return
 
     print('reload')
-    return bot.reload()
+    try:
+        bot.reload()
+        bot.sender(target, 'reloaded', to=nick)
+    except:
+        bot.sender(target, 'error', to=nick)
 
 @asyncio.coroutine
 def dump(loop):
