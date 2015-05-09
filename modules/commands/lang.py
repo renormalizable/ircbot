@@ -1,7 +1,9 @@
 import asyncio
 import json
-from aiohttp       import request, TCPConnector
-from urllib.parse  import urlsplit
+import re
+from aiohttp          import request, TCPConnector
+from aiohttp.helpers  import FormData
+from urllib.parse     import urlsplit
 
 from .tool import html, htmlparse, jsonparse
 
@@ -40,6 +42,7 @@ def getcode(url):
         'bpaste.net': '//*[@id="paste"]/div/table/tbody/tr/td[2]/div',
         'pastebin.com': '//*[@id="paste_code"]',
         'code.bulix.org': '//*[@id="contents"]/pre',
+        'ix.io': '.',
     }
     #raw = {
     #    'www.fpaste.org': lambda u: 
@@ -61,6 +64,26 @@ def getcode(url):
 @asyncio.coroutine
 def clear(arg, lines, send):
     pass
+
+@asyncio.coroutine
+def vimcn(arg, lines, send):
+    print('vimcn')
+
+    url = 'https://cfp.vim-cn.com/'
+    code = lines or arg['code']
+
+    if not code:
+        raise Exception()
+
+    data = FormData()
+    data.add_field('vimcn', code, content_type='multipart/form-data')
+    r = yield from request('POST', url, data=data)
+
+    text = yield from r.text()
+    esc = re.compile(r'\x1b[^m]*m')
+    text = esc.sub('', text)
+    line = text.splitlines()
+    send('[\\x0302{0}\\x0f]'.format(line[0]))
 
 @asyncio.coroutine
 def rust(arg, lines, send):
@@ -236,6 +259,7 @@ def python3(arg, lines, send):
 
 help = [
     ('clear'        , 'clear'),
+    ('vimcn'        , 'vimcn [code, also accept multiline input]'),
     ('rust'         , 'rust [code, also accept multiline input]'),
     ('codepad'      , 'codepad:<lang> [run] [code, also accept multiline input]'),
     ('rex'          , 'rex:<lang> [args --] [code, also accept multiline input]'),
@@ -243,6 +267,7 @@ help = [
 
 func = [
     (clear          , r"clear"),
+    (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
     (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
     (rextester      , r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
