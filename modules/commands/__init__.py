@@ -11,7 +11,7 @@ import inspect
 
 path = 'modules.commands.'
 #path = '.'
-files = ['simple', 'tool', 'lang', 'api', 'acg', 'handy']
+files = ['simple', 'util', 'tool', 'lang', 'api', 'acg', 'handy']
 modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
 table = dict(zip(files, modules))
 
