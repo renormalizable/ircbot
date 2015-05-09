@@ -73,7 +73,8 @@ def reply(nick, message, bot, send):
         return
 
     msg = message[1:].rstrip()
-    lines = bot.getlines(nick)[:-1]
+    lines = bot.getlines(nick)
+    #send(repr(lines))
     print(nick, msg, lines)
 
     if output:
@@ -83,7 +84,7 @@ def reply(nick, message, bot, send):
         get = Get()
         coros = [f(msg, lines, get) for f in func]
         yield from asyncio.wait(coros)
-        bot.addlines(nick, get.l[:-1])
+        bot.addlines(nick, get.l)
 
     #yield from asyncio.gather(*coros)
     #yield from asyncio.wait(coros)
