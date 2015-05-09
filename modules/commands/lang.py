@@ -52,9 +52,7 @@ def getcode(url):
     u = urlsplit(url)
     xpath = site.get(u[1])
     if xpath:
-        arg = {}
-        arg['url'] = url
-        arg['xpath'] = xpath
+        arg = {'url': url, 'xpath': xpath}
         yield from html(arg, get)
     else:
         raise Exception()
@@ -273,5 +271,3 @@ func = [
     (rextester      , r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
     (python3        , r">> (?P<code>.+)"),
 ]
-
-multiline = True
