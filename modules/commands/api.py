@@ -426,7 +426,7 @@ def bing(arg, lines, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//d/results/item/Web/item'
-    field = [('./Title', 'text', '{}'), ('./Url', 'text', '[\\x0302{}\\x0f]'), ('./Description', 'text', '{}')]
+    field = [('./Title', 'text', '{}'), ('./Url', 'text', '[ \\x0302{}\\x0f ]'), ('./Description', 'text', '{}')]
 
     return (yield from jsonxml(arg, send, auth=auth, field=field))
 
@@ -532,7 +532,7 @@ def google(arg, lines, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//items/item'
-    field = [('./title', 'text', '{}'), ('./link', 'text', '[\\x0302{}\\x0f]'), ('./snippet', 'text', '{}')]
+    field = [('./title', 'text', '{}'), ('./link', 'text', '[ \\x0302{}\\x0f ]'), ('./snippet', 'text', '{}')]
 
     return (yield from jsonxml(arg, send, field=field))
 
@@ -579,7 +579,7 @@ def urban(arg, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//list/item'
-    field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[\\x0302{}\\x0f]')]
+    field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[ \\x0302{}\\x0f ]')]
 
     return (yield from jsonxml(arg, send, field=field, headers=headers))
 
@@ -605,7 +605,7 @@ def btdigg(arg, send):
     arg['n'] = n
     arg['url'] = url
     arg['xpath'] = '//*[@id="search_res"]/table/tbody/tr'
-    field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '[\\x0302{}\\x0f]')]
+    field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '[ \\x0302{}\\x0f ]')]
 
     return (yield from html(arg, send, field=field))
 

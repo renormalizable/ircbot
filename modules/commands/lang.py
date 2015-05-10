@@ -81,7 +81,7 @@ def vimcn(arg, lines, send):
     esc = re.compile(r'\x1b[^m]*m')
     text = esc.sub('', text)
     line = text.splitlines()
-    send('[\\x0302{0}\\x0f]'.format(line[0]))
+    send('[ \\x0302{0}\\x0f ]'.format(line[0]))
 
 @asyncio.coroutine
 def rust(arg, lines, send):
@@ -153,7 +153,7 @@ def codepad(arg, lines, send):
             unsafesend(result, send, raw=raw)
         except IndexError:
             unsafesend('no output', send, raw=raw)
-    send('[\\x0302{0}\\x0f]'.format(r.url))
+    send('[ \\x0302{0}\\x0f ]'.format(r.url))
 
 @asyncio.coroutine
 def rextester(arg, lines, send):
