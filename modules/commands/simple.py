@@ -160,7 +160,7 @@ def mode(arg, send):
     send('\\x0304user\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), u)))
     send('\\x0304channel\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), c[:12])))
     send('\\x0304cont.\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), c[12:])))
-    send('see [ \\x0302https://freenode.net/using_the_network.shtml\\x0f ] for more infomation')
+    send('see [\\x0302 https://freenode.net/using_the_network.shtml \\x0f] for more infomation')
 
 def getrandom(show):
     # http://en.wikipedia.org/wiki/Mathematical_constant

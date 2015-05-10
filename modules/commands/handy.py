@@ -82,7 +82,7 @@ def man(arg, send):
     arg['n'] = 1
     arg['url'] = url
     arg['xpath'] = '//head'
-    field = [('./title', 'text_content', '{}'), ('./base', 'href', '[ \\x0302{}\\x0f ]')]
+    field = [('./title', 'text_content', '{}'), ('./base', 'href', '[\\x0302 {} \\x0f]')]
 
     return (yield from html(arg, send, field=field))
 

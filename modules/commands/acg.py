@@ -55,15 +55,15 @@ def nmb(arg, send):
         arg['url'] = url + 't/{0}'.format(arg['id'])
         arg['xpath'] = '//div[@id="h-content"]/div[1]/div[3]/div[1] | //div[@id="h-content"]/div[1]/div[3]/div[1]/div[2]/div'
         if arg['show']:
-            send('[ \\x0302{}\\x0f ]'.format(arg['url']))
+            send('[\\x0302 {} \\x0f]'.format(arg['url']))
     else:
         forum = arg['forum'] or '综合版1'
         arg['url'] = url + forum
         arg['xpath'] = '//div[@id="h-content"]/div[1]/div[3]/div'
-    field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[ \\x0302{}\\x0f ]')]
+    field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]')]
     #field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '\\x0302{} \\x0f')]
     #field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '{}')]
-    #format = lambda l: map(lambda e: ' '.join([e[0], e[1], '[ \\x0302{}\\x0f ]'.format(e[2][7:]) if e[2] else '']), l)
+    #format = lambda l: map(lambda e: ' '.join([e[0], e[1], '[\\x0302 {} \\x0f]'.format(e[2][7:]) if e[2] else '']), l)
 
     #return (yield from html(arg, send, field=field, format=format))
     return (yield from html(arg, send, field=field))
@@ -84,7 +84,7 @@ def adnmb(arg, send):
         forum = arg['forum'] or '1'
         arg['url'] = url + 'showt/id/{0}.html'.format(forum)
         arg['xpath'] = '//div[@id="threads"]/div[@class="threadpost"]'
-    field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[ \\x0302http://h.adnmb.com{}\\x0f ]')]
+    field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]')]
 
     return (yield from html(arg, send, field=field))
 
@@ -101,8 +101,8 @@ def acfun(arg, send):
             (r"\[size=\S+?\](.*?)\[\/size\]"                           , r"\1"),
             #(r"\[s\](.*?)\[\/s\]"                                     , r"\1"),
             (r"\[at\](.*?)\[\/at\]"                                    , r"\x0300@\1\x0f"),
-            (r"\[img=\S+?\](.*?)\[\/img\]"                             , r"[ \x0302\1\x0f ]"),
-            (r"\[ac=\S+?\](.*?)\[\/ac\]"                               , r"[ \x0302http://www.acfun.tv/v/\1\x0f ]"),
+            (r"\[img=\S+?\](.*?)\[\/img\]"                             , r"[\x0302 \1 \x0f]"),
+            (r"\[ac=\S+?\](.*?)\[\/ac\]"                               , r"[\x0302 http://www.acfun.tv/v/\1 \x0f]"),
             (r"\[b\](.*?)\[\/b\]"                                      , r"\x02\1\x02"),
             (r"\[i\](.*?)\[\/i\]"                                      , r"\x1d\1\x1d"),
             (r"\[u\](.*?)\[\/u\]"                                      , r"\x1f\1\x1f"),
