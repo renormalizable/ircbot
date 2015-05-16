@@ -77,6 +77,15 @@ def mua(arg, send):
         send('o(*￣3￣)o ' + '谢谢啦~')
 
 @asyncio.coroutine
+def hug(arg, send):
+    content = arg['content'] or ''
+
+    if 'varia' not in content:
+        send('(つ°ω°)つ ' + content)
+    else:
+        send('(つ°ω°)つ ' + '谢谢啦~')
+
+@asyncio.coroutine
 def color(arg, send):
     #c = [
     #    ('00', 'white'),
@@ -300,6 +309,8 @@ help = [
     ('say'          , 'say <content>'),
     ('ping!'        , 'ping!'),
     ('pong!'        , 'pong!'),
+    ('pia'          , 'pia <content> -- Каждая несчастливая семья несчастлива по-своему'),
+    ('mua'          , 'mua <content> -- Все счастливые семьи похожи друг на друга'),
     ('color'        , 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!'),
     ('mode'         , 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!'),
     ('up'           , 'up [show] -- nice boat!'),
@@ -317,5 +328,6 @@ func = [
     (down           , r"down(?:\s+(?P<show>show))?"),
     (pia            , r"pia( (?P<content>.*))?"),
     (mua            , r"mua( (?P<content>.*))?"),
+    (hug            , r"hug( (?P<content>.*))?"),
     (latex          , r"latex\s+(?P<content>.*)"),
 ]
