@@ -19,11 +19,14 @@ help = dict(sum((getattr(m, 'help', []) for m in modules), []))
 
 @asyncio.coroutine
 def helper(arg, send):
-    if arg['command']:
-        send('<...> is mandatory, [...] is optional')
-        send('{0}: {1}'.format(arg['command'], help[arg['command']]))
+    c = arg['command']
+    if c:
+        h = help[c]
+        if h:
+            send('<...> is mandatory, [...] is optional, (...) also accepts multiline input')
+            send('\\x0300{0}:\\x0f {1}'.format(c, h))
     else:
-        send('help: help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
+        send('\\x0300help:\\x0f help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
         send('(づ￣ω￣)づ  -->>  ' + ', '.join(sorted(help.keys())))
 
 def command(f, r):
@@ -42,6 +45,8 @@ def command(f, r):
             except:
                 send('╮(￣▽￣)╭')
                 raise
+            return True
+        return False
     return wrap
 
 func = [command(f[0], f[1]) for f in sum((getattr(m, 'func', []) for m in modules), [(helper, r"help(\s+(?P<command>\S+))?")])]
@@ -52,11 +57,13 @@ class Get:
     def __call__(self, l, n=-1, **kw):
         if n < 0:
             self.l += l + '\n'
+            #self.l += l if l[-1:] == '\n' else l + '\n'
         else:
             for (i, m) in enumerate(l):
                 if i >= n:
                     break
                 self.l += m + '\n'
+                #self.l += m if m[-1:] == '\n' else m + '\n'
 
 @asyncio.coroutine
 def reply(nick, message, bot, send):
@@ -75,7 +82,8 @@ def reply(nick, message, bot, send):
     msg = message[1:].rstrip()
     lines = bot.getlines(nick)
     #send(repr(lines))
-    print(nick, msg, lines)
+    #print(nick, msg, lines)
+    print(nick, msg)
 
     if output:
         coros = [f(msg, lines, send) for f in func]
