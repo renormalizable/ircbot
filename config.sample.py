@@ -21,4 +21,5 @@ key = {
     'jsonwhois'      : '',
     'wolfram'        : '',
     'pm25'           : '',
+    'howtospeak'     : '',
 }

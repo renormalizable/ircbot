@@ -609,6 +609,18 @@ def btdigg(arg, send):
 
     return (yield from html(arg, send, field=field))
 
+@asyncio.coroutine
+def speak(arg, send):
+    print('speak')
+    key = config.key['howtospeak']
+    url = 'http://howtospeak.org:443/api/e2c?user_key={0}&notrans=0&text={1}'.format(key, quote_plus(arg['text']))
+
+    arg['n'] = 1
+    arg['url'] = url
+    arg['xpath'] = '//chinglish'
+    field = [('.', 'text_content', '{}')]
+
+    return (yield from jsonxml(arg, send, field=field))
 
 @asyncio.coroutine
 def watson(arg, send):
@@ -620,14 +632,14 @@ help = [
     ('aqi'          , 'aqi <city> [all]'),
     ('bip'          , 'bip <ip address>'),
     ('bweather'     , 'bweather <city>'),
-    ('btran'        , 'btran [source lang:target lang] <text>'),
+    ('btran'        , 'btran [source lang:target lang] (text)'),
     ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \')'),
     #('bing'         , 'bing <query> [#max number][+offset]'),
-    ('bing'         , 'bing [#max number][+offset] <query>'),
-    ('mtran'        , 'mtran [source lang:target lang] <text>'),
+    ('bing'         , 'bing [#max number][+offset] (query)'),
+    ('mtran'        , 'mtran [source lang:target lang] (text)'),
     ('couplet'      , 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
     #('google'       , 'google <query> [#max number][+offset]'),
-    ('google'       , 'google [#max number][+offset] <query>'),
+    ('google'       , 'google [#max number][+offset] (query)'),
     ('urban'        , 'urban <text> [#max number][+offset]'),
     ('wolfram'      , 'wolfram <query> [#max number][+offset]'),
 ]
@@ -658,6 +670,7 @@ func = [
     (cdict          , r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (breezo         , r"breezo\s+(?P<city>.+)"),
     (btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (speak          , r"speak\s+(?P<text>.+)"),
     (urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (wolfram        , r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
