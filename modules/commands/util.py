@@ -1,5 +1,6 @@
 import asyncio
 import re
+import base64
 
 def lsend(l, send):
     send(l, n=len(l), llimit=10)
@@ -72,11 +73,15 @@ def uniq(arg, lines, send):
 
 class Sed:
     def __init__(self):
-        self.ra = r'(?:{0}|(?P<na>\d+))'.format(r'(?:\\(?P<da>[^\\/])|/)(?P<ra>.+?)(?(da)(?P=da)|/)')
-        self.rb = r'(?:{0}|(?P<nb>\d+))'.format(r'(?:\\(?P<db>[^\\/])|/)(?P<rb>.+?)(?(db)(?P=db)|/)')
+        #self.ra = r'(?:{0}|(?P<na>\d+))'.format(r'(?:\\(?P<da>[^\\/])|/)(?P<ra>.+?)(?(da)(?P=da)|/)')
+        #self.rb = r'(?:{0}|(?P<nb>\d+))'.format(r'(?:\\(?P<db>[^\\/])|/)(?P<rb>.+?)(?(db)(?P=db)|/)')
+        self.ra = r'(?:(?P<na>\d+)|{0})'.format(r'(?P<a>\\)?(?P<da>(?(a)[^\\]|/))(?P<ra>.+?)(?<!\\)(?P=da)')
+        self.rb = r'(?:(?P<nb>\d+)|{0})'.format(r'(?P<b>\\)?(?P<db>(?(b)[^\\]|/))(?P<rb>.+?)(?<!\\)(?P=db)')
         self.rs = r's(?P<d>[^\\])(?P<from>.*?)(?<!\\)(?P=d)(?P<to>.*?)(?<!\\)(?P=d)'
         self.rf = r'(?P<flag>.*)'
         self.reg = re.compile(r'(?:{0}(?:\s*,\s*{1})?\s*)?'.format(self.ra, self.rb) + self.rs + self.rf)
+        self.addr = re.compile(r'^(?:{0}(?:\s*,\s*{1})?\s*)?'.format(self.ra, self.rb))
+        self.s = re.compile(self.rs + self.rf)
 
     def getf(self, d):
         delimiter = d['d']
@@ -92,12 +97,12 @@ class Sed:
             raise Exception()
 
     def getl(self, d, lines):
-        da = d['da'] or '/'
-        ra = re.compile(d['ra'].replace('\\' + da, da)) if d['ra'] else None
         na = int(d['na']) if d['na'] else -1
-        db = d['db'] or '/'
-        rb = re.compile(d['rb'].replace('\\' + db, db)) if d['rb'] else None
+        da = d['da']
+        ra = re.compile(d['ra'].replace('\\' + da, da)) if d['ra'] else None
         nb = int(d['nb']) if d['nb'] else -1
+        db = d['db']
+        rb = re.compile(d['rb'].replace('\\' + db, db)) if d['rb'] else None
 
         # only a
 
@@ -163,39 +168,58 @@ class Sed:
         if not lines:
             raise Exception()
 
-        command = self.reg.fullmatch(arg['script'])
+        script = arg['script']
 
-        if not command:
+        addr = self.addr.match(script)
+        c = script[addr.end():] if addr else script
+        comm = self.s.fullmatch(c)
+
+        if not comm:
             raise Exception()
 
-        d = command.groupdict()
-        #send(d)
+        da = addr.groupdict()
+        dc = comm.groupdict()
+        #send(da)
+        #send(dc)
 
-        f = self.getf(d)
         line = lines.splitlines()
-        result = []
-        print(self.getl(d, result))
-        for i in self.getl(d, line):
-            l = f(line[i])
-            if l:
-                result.append(l)
+        f = self.getf(dc)
+        for i in self.getl(da, line):
+            line[i] = f(line[i])
+        line = [l for l in line if l]
 
-        lsend(result, send)
+        lsend(line, send)
 
 sed = Sed()
+
+@asyncio.coroutine
+def b64(arg, lines, send):
+    decode = arg['decode']
+    content = lines or arg['content']
+
+    if not content:
+        raise Exception()
+
+    if decode:
+        lsend(base64.b64decode(content).decode('utf-8', 'replace').splitlines(), send)
+    else:
+        send(base64.b64encode(content.encode('utf-8')).decode('utf-8', 'replace'))
+
 
 help = [
     ('echo'         , 'echo <content> -- 我才不会自问自答呢!'),
     ('cat'          , 'cat [raw] -- meow~'),
+    ('b64'          , 'b64[:decode] (content)'),
 ]
 
 func = [
-    (echo           , r"echo (?P<content>.*)"),
-    (cat            , r"cat(\s+(?P<raw>raw))?"),
+    (echo           , r"echo (?P<content>.+)"),
+    (cat            , r"cat(?:\s+(?P<raw>raw))?"),
     (tac            , r"tac"),
     (head           , r"head"),
     (tail           , r"tail"),
     (sort           , r"sort"),
     (uniq           , r"uniq"),
-    (sed            , r"sed\s(?P<quote>['\"])(?P<script>.*)(?P=quote)"),
+    (sed            , r"sed\s(?P<quote>['\"])(?P<script>.+)(?P=quote)"),
+    (b64            , r"b64(?::(?P<decode>decode))?(?:\s+(?P<content>.+))?"),
 ]
