@@ -63,6 +63,8 @@ def getcode(url):
 def clear(arg, lines, send):
     pass
 
+# paste
+
 @asyncio.coroutine
 def vimcn(arg, lines, send):
     print('vimcn')
@@ -82,6 +84,36 @@ def vimcn(arg, lines, send):
     text = esc.sub('', text)
     line = text.splitlines()
     send('[\\x0302 {0} \\x0f]'.format(line[0]))
+
+@asyncio.coroutine
+def bpaste(arg, lines, send):
+    print('bpaste')
+
+    url = 'https://bpaste.net/'
+    code = lines or arg['code']
+    lang = (arg['lang'] or 'text').lower()
+    #time = arg['time'] or 'never'
+    time = 'never'
+
+    if not code:
+        raise Exception()
+
+    d = {
+        'clipper':         'Clipper',
+        'cucumber':        'Cucumber',
+        'robotframework':  'RobotFramework',
+    }
+    lang = d.get(lang) or lang
+
+    data = {
+        'code': code,
+        'lexer': lang,
+        'expiry': time,
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    r = yield from request('POST', url, data=data, headers=headers)
+
+    send('[\\x0302 {0} \\x0f]'.format(r.url))
 
 @asyncio.coroutine
 def rust(arg, lines, send):
@@ -125,15 +157,15 @@ def codepad(arg, lines, send):
     run = bool(arg['run'])
     raw = arg['raw']
 
+    if not code:
+        raise Exception()
+
     d = {
         'Text':   'Plain Text',
         'Php':    'PHP',
         'Ocaml':  'OCaml',
     }
     lang = d.get(lang) or lang
-
-    if not code:
-        raise Exception()
 
     data = {
         'lang': lang,
@@ -257,15 +289,17 @@ def python3(arg, lines, send):
 
 help = [
     ('clear'        , 'clear'),
-    ('vimcn'        , 'vimcn [code, also accept multiline input]'),
-    ('rust'         , 'rust [code, also accept multiline input]'),
-    ('codepad'      , 'codepad:<lang> [run] [code, also accept multiline input]'),
-    ('rex'          , 'rex:<lang> [args --] [code, also accept multiline input]'),
+    ('vimcn'        , 'vimcn (code)'),
+    ('bpaste'       , 'bpaste[:lang] (code)'),
+    ('rust'         , 'rust (code)'),
+    ('codepad'      , 'codepad:<lang> [run] (code)'),
+    ('rex'          , 'rex:<lang> [args --] (code)'),
 ]
 
 func = [
     (clear          , r"clear"),
     (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
+    (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
     (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
     (rextester      , r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
