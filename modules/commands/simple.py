@@ -49,7 +49,7 @@ ping2 = ping2c()
 def pia(arg, send):
     content = arg['content'] or ''
 
-    face = [
+    fullface = [
         '°Д°',
         '・ω・',
         '・∀・',
@@ -60,8 +60,50 @@ def pia(arg, send):
         '´∀`',
         '°_°',
         'ˊ_>ˋ',
+        '￣皿￣',
+        '￣ω￣',
+        '° △ °',
+        '°ー°',
+        '＠_＠',
+        'T﹏T',
+        '＞﹏＜',
+        '┬＿┬',
+        '￣︿￣',
+        '╥﹏╥',
     ]
-    icon = '(╯{0})╯ ┻━┻ '.format(random.choice(face))
+    face = [
+        '°{}°',
+        '・{}・',
+        '‵{}′',
+        '￣{}￣',
+        '>{}<',
+        '´{}`',
+        '＠{}＠',
+        'T{}T',
+        '•̀{}•́',
+        '艹{}艹',
+        '^{}^',
+        'X{}X',
+        #'┬{}┬',
+        #'╥{}╥',
+    ]
+    mouth = [
+        'Д',
+        'ω',
+        '∀',
+        '-',
+        '▽',
+        '_',
+        '∧',
+        '_>',
+        '皿',
+        '△',
+        'ー',
+        '﹏',
+        '＿',
+        '︿',
+    ]
+    icon = '(╯{0})╯ ┻━┻ '.format(random.choice(face).format(random.choice(mouth)))
     if 'varia' not in content:
         send(icon + content)
     else:
