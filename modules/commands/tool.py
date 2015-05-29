@@ -7,6 +7,10 @@ from lxml          import etree
 import lxml.html
 import html5lib
 from dicttoxml import dicttoxml
+import itertools
+
+def drop(l, offset):
+    return itertools.islice(l, offset, None)
 
 @asyncio.coroutine
 def fetch(method, url, n, func, send, **kw):
@@ -114,7 +118,8 @@ class Request:
         t = self.parse(byte)
         self.addns(t)
         l = t.xpath(self.xpath, namespaces=self.ns)
-        l = self.transform(l)[self.offset:]
+        #l = self.transform(l)[self.offset:]
+        l = drop(self.transform(l), self.offset)
         getf = self.getfield(get)
         return filter(lambda e: any(e), map(getf, l))
 
