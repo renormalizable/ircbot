@@ -3,13 +3,13 @@ import re
 from urllib.parse  import quote_plus
 from aiohttp       import request
 
-from .tool import fetch, htmltostr, html, addstyle, jsonparse
+from .common import Get
+from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse
+
 
 @asyncio.coroutine
 def moegirl(arg, send):
     print('moegirl')
-    n = int(arg['n']) if arg['n'] else 5
-    url = 'http://zh.moegirl.org/' + quote_plus(arg['query'])
 
     # apply function before addstyle()
     # \x0f should be the last character before tail
@@ -22,44 +22,41 @@ def moegirl(arg, send):
             span.tail = '\\x0f' + span.tail if span.tail else '\\x0f'
         return e
 
-    arg['n'] = n
-    arg['url'] = url
-    arg['xpath'] = '//*[@id="mw-content-text"]/p'
+    #tmp = {'n': '1', 'url': 'http://zh.moegirl.org/api.php?format=xml&action=query&list=search&srlimit=1&srprop=&srsearch=' + quote_plus(arg['query']), 'xpath': '//search/p'}
+    a = {'n': '1', 'url': 'http://zh.moegirl.org/api.php', 'xpath': '//search/p'}
+    p = {'format': 'xml', 'action': 'query', 'list': 'search', 'srlimit': '1', 'srprop': '', 'srsearch': arg['query']}
+    f = [('.', 'title', '{}')]
+    query = Get()
+    yield from xml(a, query, params=p, field=f)
+
+    arg.update({
+        'url': 'http://zh.moegirl.org/' + query.line[0],
+        'xpath': '//*[@id="mw-content-text"]/p',
+    })
     get = lambda e, f: addstyle(hidden(e)).xpath('string()')
 
     return (yield from html(arg, send, get=get))
 
-    #url = 'http://zh.moegirl.org/api.php?format=json&action=query&prop=revisions&rvprop=content&rvgeneratexml&titles=' + quote_plus(arg['query'])
-
-    #@asyncio.coroutine
-    #def func(byte):
-    #    j = json.loads(byte.decode('utf-8'))
-    #    d = j.get('query').get('pages').popitem()[1]
-    #    t = d.get('revisions')[0].get('parsetree')
-    #    print(t)
-    #    return [', '.join(map(lambda x: str(x), [j.get('breezometer_description'), j.get('breezometer_aqi'), j.get('dominant_pollutant_text').get('main'), j.get('random_recommendations').get('health')]))]
-
-    #return (yield from fetch(url, 1, func, send))
-
 @asyncio.coroutine
 def nmb(arg, send):
     print('nmb')
-    n = int(arg['n']) if arg['n'] else 5
     #url = 'http://h.koukuko.com/'
     #url = 'http://kukuku.cc/'
     url = 'http://h.nimingban.com/'
     #url = 'http://hacfun.tv/'
 
-    arg['n'] = n
     if arg['id']:
-        arg['url'] = url + 't/{0}'.format(arg['id'])
-        arg['xpath'] = '//div[@id="h-content"]/div[1]/div[3]/div[1] | //div[@id="h-content"]/div[1]/div[3]/div[1]/div[2]/div'
+        arg.update({
+            'url': url + 't/{0}'.format(arg['id']),
+            'xpath': '//div[@id="h-content"]/div[1]/div[3]/div[1] | //div[@id="h-content"]/div[1]/div[3]/div[1]/div[2]/div',
+        })
         if arg['show']:
             send('[\\x0302 {} \\x0f]'.format(arg['url']))
     else:
-        forum = arg['forum'] or '综合版1'
-        arg['url'] = url + forum
-        arg['xpath'] = '//div[@id="h-content"]/div[1]/div[3]/div'
+        arg.update({
+            'url': url + (arg['forum'] or '综合版1'),
+            'xpath': '//div[@id="h-content"]/div[1]/div[3]/div',
+        })
     field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]')]
     #field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '\\x0302{} \\x0f')]
     #field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '{}')]
@@ -71,19 +68,20 @@ def nmb(arg, send):
 @asyncio.coroutine
 def adnmb(arg, send):
     print('adnmb')
-    n = int(arg['n']) if arg['n'] else 5
     url = 'http://h.adnmb.com/home/forum/'
 
-    arg['n'] = n
     if arg['id']:
-        arg['url'] = url + 'thread/id/{0}/page/1.html'.format(arg['id'])
-        arg['xpath'] = '//div[@id="threads"]/div'
+        arg.update({
+            'url': url + 'thread/id/{0}/page/1.html'.format(arg['id']),
+            'xpath': '//div[@id="threads"]/div',
+        })
         if arg['show']:
             send(arg['url'])
     else:
-        forum = arg['forum'] or '1'
-        arg['url'] = url + 'showt/id/{0}.html'.format(forum)
-        arg['xpath'] = '//div[@id="threads"]/div[@class="threadpost"]'
+        arg.update({
+            'url': url + 'showt/id/{0}.html'.format(arg['forum'] or '1'),
+            'xpath': '//div[@id="threads"]/div[@class="threadpost"]',
+        })
     field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', 'text_content', '{}'), ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]')]
 
     return (yield from html(arg, send, field=field))
