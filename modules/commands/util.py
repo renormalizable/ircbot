@@ -2,8 +2,9 @@ import asyncio
 import re
 import base64
 
-def lsend(l, send):
-    send(l, n=len(l), llimit=10)
+def lsend(l, send, **kw):
+    #send(l, n=len(l), llimit=10)
+    send(l, n=0, llimit=10, **kw)
 
 # coreutils
 
@@ -16,55 +17,50 @@ def cat(arg, lines, send):
     if not lines:
         raise Exception()
 
-    if arg['raw']:
-        send(lines, raw=True)
-    else:
-        lsend(lines.splitlines(), send)
+    lsend(lines, send, raw=bool(arg['raw']))
 
 @asyncio.coroutine
 def tac(arg, lines, send):
     if not lines:
         raise Exception()
 
-    lsend(list(reversed(lines.splitlines())), send)
+    lsend(list(reversed(lines)), send)
 
 @asyncio.coroutine
 def tee(arg, lines, send):
     if not lines:
         raise Exception()
 
-    line = lines.splitlines()
-    lsend(line)
+    lsend(lines)
 
 @asyncio.coroutine
 def head(arg, lines, send):
     if not lines:
         raise Exception()
 
-    lsend(lines.splitlines()[:10], send)
+    lsend(lines[:10], send)
 
 @asyncio.coroutine
 def tail(arg, lines, send):
     if not lines:
         raise Exception()
 
-    lsend(lines.splitlines()[-10:], send)
+    lsend(lines[-10:], send)
 
 @asyncio.coroutine
 def sort(arg, lines, send):
     if not lines:
         raise Exception()
 
-    lsend(sorted(lines.splitlines()), send)
+    lsend(sorted(lines), send)
 
 @asyncio.coroutine
 def uniq(arg, lines, send):
     if not lines:
         raise Exception()
 
-    line = lines.splitlines()
-    l = [line[0]]
-    for e in line:
+    l = [lines[0]]
+    for e in lines:
         if e != l[-1]:
             l.append(e)
     lsend(l, send)
@@ -182,11 +178,10 @@ class Sed:
         #send(da)
         #send(dc)
 
-        line = lines.splitlines()
         f = self.getf(dc)
-        for i in self.getl(da, line):
-            line[i] = f(line[i])
-        line = [l for l in line if l]
+        for i in self.getl(da, lines):
+            lines[i] = f(lines[i])
+        line = [l for l in lines if l]
 
         lsend(line, send)
 
@@ -195,7 +190,7 @@ sed = Sed()
 @asyncio.coroutine
 def b64(arg, lines, send):
     decode = arg['decode']
-    content = lines or arg['content']
+    content = '\n'.join(lines) or arg['content']
 
     if not content:
         raise Exception()

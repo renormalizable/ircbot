@@ -5,7 +5,8 @@ from aiohttp          import request, TCPConnector
 from aiohttp.helpers  import FormData
 from urllib.parse     import urlsplit
 
-from .tool import html, htmlparse, jsonparse
+from .common import Get
+from .tool import html, htmlparse, jsonparse, regex
 
 def unsafesend(m, send, *, raw=False):
     if raw:
@@ -14,35 +15,18 @@ def unsafesend(m, send, *, raw=False):
     else:
         send(m, mlimit=5)
 
-#class Get:
-#    def __init__(self):
-#        self.l = ''
-#    def __call__(self, m, **kw):
-#        self.l += m
-class Get:
-    def __init__(self):
-        self.l = ''
-    def __call__(self, l, n=-1, **kw):
-        if n < 0:
-            self.l += l + '\n'
-        else:
-            for (i, m) in enumerate(l):
-                if i >= n:
-                    break
-                self.l += m + '\n'
-
 @asyncio.coroutine
 def getcode(url):
     site = {
-        'codepad.org': '/html/body/div/table/tbody/tr/td/div[1]/table/tbody/tr/td[2]/div/pre',
-        'paste.ubuntu.com': '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
-        'cfp.vim-cn.com': '.',
-        'p.vim-cn.com': '.',
-        'www.fpaste.org': '//*[@id="paste_form"]/div[1]/div/div[3]',
-        'bpaste.net': '//*[@id="paste"]/div/table/tbody/tr/td[2]/div',
-        'pastebin.com': '//*[@id="paste_code"]',
-        'code.bulix.org': '//*[@id="contents"]/pre',
-        'ix.io': '.',
+        'codepad.org':         '/html/body/div/table/tbody/tr/td/div[1]/table/tbody/tr/td[2]/div/pre',
+        'paste.ubuntu.com':    '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
+        'cfp.vim-cn.com':      '.',
+        'p.vim-cn.com':        '.',
+        'www.fpaste.org':      '//*[@id="paste_form"]/div[1]/div/div[3]',
+        'bpaste.net':          '//*[@id="paste"]/div/table/tbody/tr/td[2]/div',
+        'pastebin.com':        '//*[@id="paste_code"]',
+        'code.bulix.org':      '//*[@id="contents"]/pre',
+        'ix.io':               '.',
     }
     #raw = {
     #    'www.fpaste.org': lambda u: 
@@ -50,14 +34,15 @@ def getcode(url):
 
     get = Get()
     u = urlsplit(url)
-    xpath = site.get(u[1])
-    if xpath:
+    xpath = site[u[1]]
+    if xpath == '.':
+        arg = {'url': url, 'regex': r'(.*)\n'}
+        yield from regex(arg, get)
+    else:
         arg = {'url': url, 'xpath': xpath}
         yield from html(arg, get)
-    else:
-        raise Exception()
-    #print(get.l)
-    return get.l
+
+    return get.line
 
 @asyncio.coroutine
 def clear(arg, lines, send):
@@ -70,7 +55,7 @@ def vimcn(arg, lines, send):
     print('vimcn')
 
     url = 'https://cfp.vim-cn.com/'
-    code = lines or arg['code']
+    code = '\n'.join(lines) or arg['code']
 
     if not code:
         raise Exception()
@@ -90,7 +75,7 @@ def bpaste(arg, lines, send):
     print('bpaste')
 
     url = 'https://bpaste.net/'
-    code = lines or arg['code']
+    code = '\n'.join(lines) or arg['code']
     lang = (arg['lang'] or 'text').lower()
     #time = arg['time'] or 'never'
     time = 'never'
@@ -120,7 +105,7 @@ def rust(arg, lines, send):
     print('rust')
 
     url = 'https://play.rust-lang.org/evaluate.json'
-    code = lines or arg['code']
+    code = '\n'.join(lines) or arg['code']
     raw = arg['raw']
 
     if not code:
@@ -152,7 +137,7 @@ def codepad(arg, lines, send):
     print('codepad')
 
     url = 'http://codepad.org/'
-    code = lines or arg['code']
+    code = '\n'.join(lines) or arg['code']
     lang = arg['lang'].title()
     run = bool(arg['run'])
     raw = arg['raw']
@@ -194,59 +179,66 @@ def rextester(arg, lines, send):
     url = 'http://rextester.com/rundotnet/api'
 
     default = {
-        'c#':               (  1, '' ),
-        'vb.net':           (  2, '' ),
-        'f#':               (  3, '' ),
-        'java':             (  4, '' ),
-        'python':           (  5, '' ),
-        'c(gcc)':           (  6, '-Wall -std=gnu99 -O2 -o a.out source_file.c' ),
-        'c++(gcc)':         (  7, '-Wall -std=c++11 -O2 -o a.out source_file.cpp' ),
-        'php':              (  8, '' ),
-        'pascal':           (  9, '' ),
-        'objective-c':      ( 10, '-o a.out source_file.m' ),
-        'haskell':          ( 11, '-o a.out source_file.hs' ),
-        'ruby':             ( 12, '' ),
-        'perl':             ( 13, '' ),
-        'lua':              ( 14, '' ),
-        'nasm':             ( 15, '' ),
-        'sql':              ( 16, '' ),
-        'javascript':       ( 17, '' ),
-        'lisp':             ( 18, '' ),
-        'prolog':           ( 19, '' ),
-        'go':               ( 20, '-o a.out source_file.go' ),
-        'scala':            ( 21, '' ),
-        'scheme':           ( 22, '' ),
-        'node.js':          ( 23, '' ),
-        'python3':          ( 24, '' ),
-        'octave':           ( 25, '' ),
-        'c(clang)':         ( 26, '-Wall -std=gnu99 -O2 -o a.out source_file.c' ),
-        'c++(clang)':       ( 27, '-Wall -std=c++11 -O2 -o a.out source_file.cpp' ),
-        'c++(vc++)':        ( 28, '-o a.exe source_file.cpp' ),
-        'c(vc)':            ( 29, '-o a.exe source_file.c' ),
-        'd':                ( 30, '-ofa.out source_file.d' ),
-        'r':                ( 31, '' ),
-        'tcl':              ( 32, '' ),
+        'c#':               (  1, '', '' ),
+        'vb.net':           (  2, '', '' ),
+        'f#':               (  3, '', '' ),
+        'java':             (  4, '', '' ),
+        'python':           (  5, '', '' ),
+        'c(gcc)':           (  6, '-o a.out source_file.c', '-Wall -std=gnu99 -O2' ),
+        'c++(gcc)':         (  7, '-o a.out source_file.cpp', '-Wall -std=c++11 -O2' ),
+        'php':              (  8, '', '' ),
+        'pascal':           (  9, '', '' ),
+        'objective-c':      ( 10, '-o a.out source_file.m', '' ),
+        'haskell':          ( 11, '-o a.out source_file.hs', '' ),
+        'ruby':             ( 12, '', '' ),
+        'perl':             ( 13, '', '' ),
+        'lua':              ( 14, '', '' ),
+        'nasm':             ( 15, '', '' ),
+        'sql':              ( 16, '', '' ),
+        'javascript':       ( 17, '', '' ),
+        'lisp':             ( 18, '', '' ),
+        'prolog':           ( 19, '', '' ),
+        'go':               ( 20, '-o a.out source_file.go', '' ),
+        'scala':            ( 21, '', '' ),
+        'scheme':           ( 22, '', '' ),
+        'node.js':          ( 23, '', '' ),
+        'python3':          ( 24, '', '' ),
+        'octave':           ( 25, '', '' ),
+        'c(clang)':         ( 26, '-o a.out source_file.c', '-Wall -std=gnu99 -O2' ),
+        'c++(clang)':       ( 27, '-o a.out source_file.cpp', '-Wall -std=c++11 -O2' ),
+        'c++(vc++)':        ( 28, '-o a.exe source_file.cpp', '' ),
+        'c(vc)':            ( 29, '-o a.exe source_file.c', '' ),
+        'd':                ( 30, '-ofa.out source_file.d', '' ),
+        'r':                ( 31, '', '' ),
+        'tcl':              ( 32, '', '' ),
     }
     alias = {
         # default
         'c':                'c(gcc)',
         'c++':              'c++(gcc)',
+        # rename
+        'python2':          'python',
         # abbreviation
         'objc':             'objective-c',
         'asm':              'nasm',
         'vb':               'vb.net',
         'node':             'node.js',
+        # extension
         'js':               'javascript',
         'py':               'python',
+        'py2':              'python',
         'py3':              'python3',
         'rb':               'ruby',
-        'python2':          'python',
+        'hs':               'haskell',
+        'pl':               'perl',
+        'cpp':              'c++(gcc)',
+        'cxx':              'c++(gcc)',
     }
 
-    code = lines or arg['code']
+    code = '\n'.join(lines) or arg['code']
     conf = default.get(alias.get(arg['lang'].lower(), arg['lang'].lower()))
     lang = conf[0]
-    args = '{0} {1}'.format(conf[1], arg['args'] or '')
+    args = '{0} {1}'.format(conf[1], arg['args'] or conf[2])
     #input = arg['input'] or ''
     input = ''
     raw = arg['raw']
@@ -279,9 +271,10 @@ def rextester(arg, lines, send):
 
 @asyncio.coroutine
 def python3(arg, lines, send):
-    lines = lines + arg['code']
     #lines = 'import code\ncode.InteractiveInterpreter().runsource(repr({}))'.format(lines)
     #lines = 'import code\ni = code.InteractiveInterpreter()\ntry:\n    i.runsource("{}")\nexcept:\n    i.showsyntaxerror()'.format(lines.replace('"', '\\"'))
+    #lines = ['import code;i = code.InteractiveInterpreter();' + ''.join('i.runsource({});'.format(repr(l)) for l in lines + [arg['code']])]
+    lines = ['import code', 'i = code.InteractiveInterpreter()'] + ['i.runsource({})'.format(repr(l)) for l in (lines + [arg['code']])]
     arg['lang'] = 'python3'
     arg['args'] = None
     arg['raw'] = None
