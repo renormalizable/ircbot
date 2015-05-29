@@ -82,7 +82,7 @@ class Client(bottom.Client):
         if nick not in self.lines:
             self.lines[nick] = [l, self.loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
         else:
-            self.lines[nick][0] += l
+            self.lines[nick][0].extend(l)
 
     def getlines(self, nick):
         item = self.lines.pop(nick, None)
@@ -90,25 +90,67 @@ class Client(bottom.Client):
             item[1].cancel()
             return item[0]
         else:
-            return ''
+            return []
 
     def sendm(self, target, message, *, command='PRIVMSG', to='', raw=False, mlimit=0, color=None, **kw):
         prefix = (to + ': ') if to else ''
         message = ('' if raw else prefix) + normalize(message, **kw)
         print(message)
         for (i, m) in enumerate(splitmessage(message.encode('utf-8'), self.msglimit)):
-            if mlimit and i >= mlimit:
+            if mlimit > 0 and i >= mlimit:
                 self.send(command, target=target, message=prefix + '太多了啦...')
                 break
             self.send(command, target=target, message=m.decode('utf-8'))
 
+    #def sendl(self, target, line, n, *, llimit=0, loffset=0, **kw):
+    #    sent = False
+
+    #    if loffset > 0:
+    #        pass
+
+    #    for (i, m) in enumerate(line):
+    #        if n > 0 and i >= n:
+    #            break
+    #        if llimit > 0 and i >= llimit:
+    #            #d = {k: kw[k] for k in ['command', 'to'] if k in kw}
+    #            #self.sendm(target, '太长了啦...', **d)
+    #            command = kw.get('command', 'PRIVMSG')
+    #            to = kw.get('to', '')
+    #            prefix = (to + ': ') if to else ''
+    #            self.send(command, target=target, message=prefix + '太长了啦...')
+    #            break
+    #        self.sendm(target, m, **kw)
+    #        sent = True
+    #    if not sent:
+    #        raise Exception()
+
+    #def sender(self, target, content, *, n=-1, llimit=-1, loffest=-1, **kw):
+    #    if n < 0:
+    #        self.sendm(target, content, **kw)
+    #    else:
+    #        d = {}
+    #        if llimit >= 0:
+    #            d['llimit'] = llimit
+    #        if loffset >=0:
+    #            d['loffset'] = loffset
+    #        self.sendl(target, content, n, **d, **kw)
+    #        #if llimit < 0:
+    #        #    self.sendl(target, content, n, **kw)
+    #        #else:
+    #        #    self.sendl(target, content, n, llimit=llimit, **kw)
+
     def sendl(self, target, line, n, *, llimit=0, **kw):
         sent = False
         for (i, m) in enumerate(line):
-            if i >= n:
+            if n > 0 and i >= n:
                 break
-            if llimit and i >= llimit:
-                self.sendm(target, '太长了啦...', **kw)
+            if llimit > 0 and i >= llimit:
+                #d = {k: kw[k] for k in ['command', 'to'] if k in kw}
+                #self.sendm(target, '太长了啦...', **d)
+                command = kw.get('command', 'PRIVMSG')
+                to = kw.get('to', '')
+                prefix = (to + ': ') if to else ''
+                self.send(command, target=target, message=prefix + '太长了啦...')
                 break
             self.sendm(target, m, **kw)
             sent = True
@@ -123,4 +165,3 @@ class Client(bottom.Client):
                 self.sendl(target, content, n, **kw)
             else:
                 self.sendl(target, content, n, llimit=llimit, **kw)
-

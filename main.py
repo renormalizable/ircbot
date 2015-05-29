@@ -35,7 +35,7 @@ def multiline(nick, target, message):
     (nick, message) = bot.deprefix(nick, message)
     if nick != bot.nick and message[:4] == "'.. ":
         print('multiline')
-        l = message[4:].rstrip() + '\n'
+        l = [message[4:].rstrip()]
         bot.addlines(nick, l)
 
 @bot.on('PRIVMSG')

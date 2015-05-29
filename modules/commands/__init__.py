@@ -5,6 +5,9 @@ import os
 import importlib
 import inspect
 
+common = importlib.reload(importlib.import_module('modules.commands.common'))
+Get = common.Get
+
 #dir = './modules/commands'
 # no dir allowed
 #file = [f[:-3] for f in os.listdir(dir) if f.endswith('.py') and f != '__init__.py']
@@ -51,20 +54,6 @@ def command(f, r):
 
 func = [command(f[0], f[1]) for f in sum((getattr(m, 'func', []) for m in modules), [(helper, r"help(\s+(?P<command>\S+))?")])]
 
-class Get:
-    def __init__(self):
-        self.l = ''
-    def __call__(self, l, n=-1, **kw):
-        if n < 0:
-            self.l += l + '\n'
-            #self.l += l if l[-1:] == '\n' else l + '\n'
-        else:
-            for (i, m) in enumerate(l):
-                if i >= n:
-                    break
-                self.l += m + '\n'
-                #self.l += m if m[-1:] == '\n' else m + '\n'
-
 @asyncio.coroutine
 def reply(nick, message, bot, send):
     # prefix
@@ -92,7 +81,7 @@ def reply(nick, message, bot, send):
         get = Get()
         coros = [f(msg, lines, get) for f in func]
         yield from asyncio.wait(coros)
-        bot.addlines(nick, get.l)
+        bot.addlines(nick, get.line)
 
     #yield from asyncio.gather(*coros)
     #yield from asyncio.wait(coros)
