@@ -1,7 +1,8 @@
 import asyncio
 import json
 import re
-from aiohttp          import request, TCPConnector
+#from aiohttp          import request, TCPConnector
+from aiohttp          import request
 from aiohttp.helpers  import FormData
 from urllib.parse     import urlsplit
 
@@ -28,9 +29,6 @@ def getcode(url):
         'code.bulix.org':      '//*[@id="contents"]/pre',
         'ix.io':               '.',
     }
-    #raw = {
-    #    'www.fpaste.org': lambda u: 
-    #}
 
     get = Get()
     u = urlsplit(url)
@@ -111,20 +109,24 @@ def rust(arg, lines, send):
     if not code:
         raise Exception()
 
-    data = {
+    data = json.dumps({
         'code': code,
-        'optimize': '2',
-        'version': 'beta',
-    }
+        'color': False,
+        'optimize': '3',
+        'separate_output': True,
+        'test': False,
+        'version': 'stable',
+    })
     headers = {'Content-Type': 'application/json'}
     # ssl has some problem
-    conn = TCPConnector(verify_ssl=False)
-    r = yield from request('POST', url, data=json.dumps(data), headers=headers, connector=conn)
+    #conn = TCPConnector(verify_ssl=False)
+    #r = yield from request('POST', url, data=json.dumps(data), headers=headers, connector=conn)
+    r = yield from request('POST', url, data=data, headers=headers)
     byte = yield from r.read()
 
     j = jsonparse(byte)
-    error = j.get('error')
-    result = j.get('result')
+    error = j.get('rustc')
+    result = j.get('program')
     if error:
         unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
     if result:
@@ -176,7 +178,7 @@ def codepad(arg, lines, send):
 def rextester(arg, lines, send):
     print('rextester')
 
-    url = 'http://rextester.com/rundotnet/api'
+    url = 'http://rextester.com/rundotnet/Run'
 
     default = {
         'c#':               (  1, '', '' ),
@@ -260,6 +262,8 @@ def rextester(arg, lines, send):
     warnings = j.get('Warnings')
     errors = j.get('Errors')
     result = j.get('Result')
+    stats = j.get('Stats')
+    files = j.get('Files')
     if warnings:
         unsafesend('\\x0304warnings:\\x0f {0}'.format(warnings), send)
     if errors:
@@ -271,13 +275,14 @@ def rextester(arg, lines, send):
 
 @asyncio.coroutine
 def python3(arg, lines, send):
-    #lines = 'import code\ncode.InteractiveInterpreter().runsource(repr({}))'.format(lines)
-    #lines = 'import code\ni = code.InteractiveInterpreter()\ntry:\n    i.runsource("{}")\nexcept:\n    i.showsyntaxerror()'.format(lines.replace('"', '\\"'))
-    #lines = ['import code;i = code.InteractiveInterpreter();' + ''.join('i.runsource({});'.format(repr(l)) for l in lines + [arg['code']])]
+
+    arg.update({
+        'lang': 'python3',
+        'args': None,
+        'raw': None,
+    })
     lines = ['import code', 'i = code.InteractiveInterpreter()'] + ['i.runsource({})'.format(repr(l)) for l in (lines + [arg['code']])]
-    arg['lang'] = 'python3'
-    arg['args'] = None
-    arg['raw'] = None
+
     return (yield from rextester(arg, lines, send))
 
 help = [
