@@ -22,6 +22,7 @@ class Normalize:
             '！': '! ',
             '？': '? ',
             '：': ': ',
+            '；': '; ',
         })
         self.esc = [
             # irssi
