@@ -4,7 +4,7 @@ from urllib.parse  import quote_plus
 from aiohttp       import request
 
 from .common import Get
-from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse
+from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse
 
 
 @asyncio.coroutine
@@ -22,20 +22,24 @@ def moegirl(arg, send):
             span.tail = '\\x0f' + span.tail if span.tail else '\\x0f'
         return e
 
-    #tmp = {'n': '1', 'url': 'http://zh.moegirl.org/api.php?format=xml&action=query&list=search&srlimit=1&srprop=&srsearch=' + quote_plus(arg['query']), 'xpath': '//search/p'}
-    a = {'n': '1', 'url': 'http://zh.moegirl.org/api.php', 'xpath': '//search/p'}
-    p = {'format': 'xml', 'action': 'query', 'list': 'search', 'srlimit': '1', 'srprop': '', 'srsearch': arg['query']}
-    f = [('.', 'title', '{}')]
-    query = Get()
-    yield from xml(a, query, params=p, field=f)
-
     arg.update({
-        'url': 'http://zh.moegirl.org/' + query.line[0],
-        'xpath': '//*[@id="mw-content-text"]/p',
+        'url': 'http://zh.moegirl.org/api.php',
+        'xpath': '//rev',
     })
+    params = {
+        'format': 'xml',
+        'action': 'query',
+        'generator': 'search',
+        'gsrlimit': '1',
+        'gsrsearch': arg['query'],
+        'prop': 'revisions',
+        'rvprop': 'content',
+        'rvparse': '',
+    }
+    transform = lambda l: htmlparse(l[0].text).xpath('//body/*[not(self::div or self::table or self::h2)]')
     get = lambda e, f: addstyle(hidden(e)).xpath('string()')
 
-    return (yield from html(arg, send, get=get))
+    return (yield from xml(arg, send, params=params, transform=transform, get=get))
 
 @asyncio.coroutine
 def nmb(arg, send):
@@ -138,7 +142,7 @@ def acfun(arg, send):
 help = [
     ('moegirl'      , 'moegirl <title> [#max number][+offset]'),
     ('nmb'          , 'nmb [fforum] [thread id] [#max number][+offset] -- 丧失你好'),
-    ('adnmb'        , 'adnmb [fforum id] [rthread id] [#max number][+offset] -- 丧失你好'),
+    #('adnmb'        , 'adnmb [fforum id] [rthread id] [#max number][+offset] -- 丧失你好'),
     ('acfun'        , 'acfun [acpage id] <#comment number>'),
 ]
 
