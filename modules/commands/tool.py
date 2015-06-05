@@ -74,21 +74,23 @@ class Request:
             f = re.finditer(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?", field)
             def getitem(e):
                 d = e.groupdict()
-                return (d['xpath'] or '.', d['field'] or 'text_content', d['format'] if d['format'] else '{}')
+                return (d['xpath'] or '.', d['field'] or '', d['format'] if d['format'] else '{}')
             return list(map(getitem, f))
         else:
-            return [('.', 'text_content', '{}')]
+            return [('.', '', '{}')]
 
     def getfield(self, get):
         def getl(e, f):
             def gete(e):
                 item = get(e, f[1])
                 return str(item).strip() if item else ''
-            l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=self.ns))))
+            # check if e is node
+            l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=self.ns)))) if hasattr(e, 'xpath') else [e]
             return f[2].format(', '.join(l)) if l else ''
         def getf(e):
             return list(map(lambda f: getl(e, f), self.field))
-        return getf
+        #return getf
+        return (lambda e: list(map(lambda f: getl(e, f), self.field)))
 
     def parse(self, byte):
         pass
@@ -146,7 +148,7 @@ class HTMLRequest(Request):
     def parse(self, byte):
         return htmlparse(byte)
     def get(self, e, f):
-        if f == 'text_content':
+        if not f:
             return addstyle(e).xpath('string()')
         elif hasattr(e, f):
             return getattr(e, f)
@@ -159,7 +161,7 @@ class XMLRequest(Request):
     def parse(self, byte):
         return xmlparse(byte)
     def get(self, e, f):
-        if f == 'text_content':
+        if not f:
             return htmltostr(e.text)
         elif hasattr(e, f):
             return getattr(e, f)

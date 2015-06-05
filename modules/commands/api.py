@@ -689,9 +689,8 @@ def speak(arg, send):
         'xpath': '//chinglish',
     })
     params = {'user_key': config.key['howtospeak'], 'notrans': '0', 'text': arg['text']}
-    field = [('.', 'text_content', '{}')]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, send, params=params))
 
 @asyncio.coroutine
 def watson(arg, send):
@@ -712,6 +711,7 @@ help = [
     #('google'       , 'google <query> [#max number][+offset]'),
     ('google'       , 'google [#max number][+offset] (query)'),
     ('urban'        , 'urban <text> [#max number][+offset]'),
+    ('speak'        , 'speak <text>'),
     ('wolfram'      , 'wolfram <query> [#max number][+offset]'),
 ]
 

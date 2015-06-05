@@ -58,7 +58,7 @@ def btdigg(arg, send):
     params = {'info_hash': '', 'q': arg['query']}
     #field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '[\\x0302 {} \\x0f]')]
     # magnet link
-    field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f')]
+    field = [('./td/table[1]//a', 'text', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', '', '{}'), ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f')]
 
     def format(l):
         line = []
@@ -96,7 +96,7 @@ def man(arg, send):
         'url': url + path,
         'xpath': '//head',
     })
-    field = [('./title', 'text_content', '{}'), ('./base', 'href', '[\\x0302 {} \\x0f]'), ('./meta[@name = "description"]', 'content', '{}')]
+    field = [('./title', 'text', '{}'), ('./base', 'href', '[\\x0302 {} \\x0f]'), ('./meta[@name = "description"]', 'content', '{}')]
 
     return (yield from html(arg, send, field=field))
 
