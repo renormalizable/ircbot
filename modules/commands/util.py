@@ -31,7 +31,8 @@ def tee(arg, lines, send):
     if not lines:
         raise Exception()
 
-    lsend(lines)
+    lsend(lines, send)
+    yield from arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
 
 @asyncio.coroutine
 def head(arg, lines, send):
@@ -64,6 +65,19 @@ def uniq(arg, lines, send):
         if e != l[-1]:
             l.append(e)
     lsend(l, send)
+
+@asyncio.coroutine
+def b64(arg, lines, send):
+    decode = arg['decode']
+    content = '\n'.join(lines) or arg['content']
+
+    if not content:
+        raise Exception()
+
+    if decode:
+        lsend(base64.b64decode(content).decode('utf-8', 'replace').splitlines(), send)
+    else:
+        send(base64.b64encode(content.encode('utf-8')).decode('utf-8', 'replace'))
 
 # other
 
@@ -179,42 +193,31 @@ class Sed:
         #send(dc)
 
         f = self.getf(dc)
-        for i in self.getl(da, lines):
-            lines[i] = f(lines[i])
-        line = [l for l in lines if l]
+        tmp = lines
+        for i in self.getl(da, tmp):
+            tmp[i] = f(tmp[i])
+        line = [l for l in tmp if l]
 
         lsend(line, send)
 
 sed = Sed()
 
-@asyncio.coroutine
-def b64(arg, lines, send):
-    decode = arg['decode']
-    content = '\n'.join(lines) or arg['content']
-
-    if not content:
-        raise Exception()
-
-    if decode:
-        lsend(base64.b64decode(content).decode('utf-8', 'replace').splitlines(), send)
-    else:
-        send(base64.b64encode(content.encode('utf-8')).decode('utf-8', 'replace'))
-
 
 help = [
     ('echo'         , 'echo <content> -- 我才不会自问自答呢!'),
     ('cat'          , 'cat [raw] -- meow~'),
-    ('b64'          , 'b64[:decode] (content)'),
+    ('base64'       , 'base64[:decode] (content)'),
 ]
 
 func = [
     (echo           , r"echo (?P<content>.+)"),
     (cat            , r"cat(?:\s+(?P<raw>raw))?"),
     (tac            , r"tac"),
+    (tee            , r"tee(?:\s+(?P<command>.+))?"),
     (head           , r"head"),
     (tail           , r"tail"),
     (sort           , r"sort"),
     (uniq           , r"uniq"),
     (sed            , r"sed\s(?P<quote>['\"])(?P<script>.+)(?P=quote)"),
-    (b64            , r"b64(?::(?P<decode>decode))?(?:\s+(?P<content>.+))?"),
+    (b64            , r"base64(?::(?P<decode>decode))?(?:\s+(?P<content>.+))?"),
 ]

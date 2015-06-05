@@ -44,7 +44,19 @@ def getcode(url):
 
 @asyncio.coroutine
 def clear(arg, lines, send):
-    pass
+    print('clear')
+
+@asyncio.coroutine
+def undo(arg, lines, send):
+    print('undo')
+
+    n = int(arg['n'] or 1)
+
+    if n < len(lines):
+        for i in range(n):
+            lines.pop()
+
+        arg['meta']['bot'].addlines(arg['meta']['nick'], lines)
 
 # paste
 
@@ -281,12 +293,13 @@ def python3(arg, lines, send):
         'args': None,
         'raw': None,
     })
-    lines = ['import code', 'i = code.InteractiveInterpreter()'] + ['i.runsource({})'.format(repr(l)) for l in (lines + [arg['code']])]
+    line = ['import code', 'i = code.InteractiveInterpreter()'] + ['i.runsource({})'.format(repr(l)) for l in (lines + [arg['code']])]
 
-    return (yield from rextester(arg, lines, send))
+    return (yield from rextester(arg, line, send))
 
 help = [
     ('clear'        , 'clear'),
+    ('undo'         , 'undo [number]'),
     ('vimcn'        , 'vimcn (code)'),
     ('bpaste'       , 'bpaste[:lang] (code)'),
     ('rust'         , 'rust (code)'),
@@ -296,6 +309,7 @@ help = [
 
 func = [
     (clear          , r"clear"),
+    (undo           , r"undo(?:\s+(?P<n>\d+))?"),
     (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
     (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
     (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),

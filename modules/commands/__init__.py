@@ -30,24 +30,29 @@ def helper(arg, send):
             send('\\x0300{0}:\\x0f {1}'.format(c, h))
     else:
         send('\\x0300help:\\x0f help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
-        send('(づ￣ω￣)づ  -->>  ' + ', '.join(sorted(help.keys())))
+        send('(づ￣ω￣)づ  -->>  ' + ' '.join(sorted(help.keys())))
+        send('try \\x0300help \\x1fcommand\\x1f\\x0f to find out more~')
 
 def command(f, r):
     func = f if inspect.signature(f).parameters.get('lines') else (lambda arg, lines, send: f(arg, send))
     reg = re.compile(r, re.IGNORECASE)
 
     @asyncio.coroutine
-    def wrap(message, lines, send):
+    def wrap(message, lines, send, meta):
         arg = reg.fullmatch(message)
         if arg:
             print(arg.groupdict())
             try:
                 t = time.time()
-                yield from func(arg.groupdict(), lines, send)
+                d = arg.groupdict()
+                d.update(meta)
+                yield from func(d, lines, send)
                 print(time.time() - t)
-            except:
-                send('╮(￣▽￣)╭')
-                raise
+            except Exception as e:
+                err = ' sad story... ' + str(e) if str(e) else ''
+                send('╮(￣▽￣)╭' + err)
+                #raise
+                return False
             return True
         return False
     return wrap
@@ -55,16 +60,22 @@ def command(f, r):
 func = [command(f[0], f[1]) for f in sum((getattr(m, 'func', []) for m in modules), [(helper, r"help(\s+(?P<command>\S+))?")])]
 
 @asyncio.coroutine
+def execute(msg, lines, send, meta):
+    coros = [f(msg, lines, send, meta) for f in func]
+
+    #yield from asyncio.wait(coros)
+    status = yield from asyncio.gather(*coros)
+    return any(status)
+
+@asyncio.coroutine
 def reply(nick, message, bot, send):
     # prefix
-    #if message[0] != "'" or message[:4] == "'.. " or message[:4] == "':: ":
-    #    return
     if message[0] == "'":
         if message[:4] in ["'.. ", "':: "]:
             return
-        output = True
+        sender = send
     elif message[0] == '"':
-        output = False
+        sender = Get(lambda line: bot.addlines(nick, line))
     else:
         return
 
@@ -73,18 +84,18 @@ def reply(nick, message, bot, send):
     #send(repr(lines))
     #print(nick, msg, lines)
     print(nick, msg)
+    meta = {'meta': {
+        'bot': bot,
+        'nick': nick,
+        'send': send,
+        'command': lambda msg, lines, send: execute(msg, lines, send, meta),
+    }}
 
-    if output:
-        coros = [f(msg, lines, send) for f in func]
-        yield from asyncio.wait(coros)
-    else:
-        get = Get()
-        coros = [f(msg, lines, get) for f in func]
-        yield from asyncio.wait(coros)
-        bot.addlines(nick, get.line)
+    success = yield from execute(msg, lines, sender, meta)
+    print('success?', success)
 
-    #yield from asyncio.gather(*coros)
-    #yield from asyncio.wait(coros)
+    if not success and lines:
+        bot.addlines(nick, lines)
 
 @asyncio.coroutine
 def getcode(url):
