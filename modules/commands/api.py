@@ -199,8 +199,9 @@ class IM:
                 self.l += l
             else:
                 l = list(l)[0]
+                print(l)
                 self.l += l[0]
-                self.len = int(l[1])
+                self.len = int(l[1] or 0)
 
     def __init__(self, Getter=None):
         self.sep = re.compile(r"([^a-z']+)")
@@ -209,6 +210,8 @@ class IM:
         self.Get = Getter or IM.Getter
     @asyncio.coroutine
     def request(self, e, get):
+        pass
+    def getpos(self, e, l):
         pass
     @asyncio.coroutine
     def getitem(self, e):
@@ -220,11 +223,7 @@ class IM:
         while len(e) > 0:
             #print(e)
             yield from self.request(e, get)
-            pos = len(e)
-            for (i, c) in enumerate(self.letter.finditer(e)):
-                if i == get.len:
-                    pos = c.start()
-                    break
+            pos = self.getpos(e, get.len)
             e = e[pos:]
         return get.l
     @asyncio.coroutine
@@ -247,7 +246,7 @@ class BIM(IM):
         self.params = {
             'inputtype': 'py',
             'bg': '0',
-            'ed': '20',
+            'ed': '1',
             'result': 'hanzi',
             'resultcoding': 'unicode',
             'ch_en': '0',
@@ -261,6 +260,13 @@ class BIM(IM):
     def request(self, e, get):
         self.params['input'] = e
         yield from jsonxml(self.arg, get, params=self.params, field=self.field, format=self.format)
+    def getpos(self, e, l):
+        if not (0 < l and l < len(e)):
+            return len(e)
+        for (i, c) in enumerate(self.letter.finditer(e)):
+            if i == l:
+                return c.start()
+        return len(e)
     @asyncio.coroutine
     def __call__(self, arg, send):
         yield from IM.__call__(self, arg['pinyin'], send)
@@ -273,7 +279,7 @@ class GIM(IM):
         self.arg = {'n': '1', 'url': 'https://inputtools.google.com/request', 'xpath': '/root/item[2]/item[1]'}
         self.params = {
             'itc': 'zh-t-i0-pinyin',
-            'num': '11',
+            'num': '1',
             'cp': '0',
             'cs': '0',
             'ie': 'utf-8',
@@ -287,6 +293,10 @@ class GIM(IM):
     def request(self, e, get):
         self.params['text'] = e
         yield from jsonxml(self.arg, get, params=self.params, field=self.field, format=self.format)
+    def getpos(self, e, l):
+        if not (0 < l and l < len(e)):
+            return len(e)
+        return l
     @asyncio.coroutine
     def __call__(self, arg, send):
         yield from IM.__call__(self, arg['pinyin'], send)
