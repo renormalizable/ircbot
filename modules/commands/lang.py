@@ -1,7 +1,6 @@
 import asyncio
 import json
 import re
-#from aiohttp          import request, TCPConnector
 from aiohttp          import request
 from aiohttp.helpers  import FormData
 from urllib.parse     import urlsplit
@@ -130,9 +129,6 @@ def rust(arg, lines, send):
         'version': 'stable',
     })
     headers = {'Content-Type': 'application/json'}
-    # ssl has some problem
-    #conn = TCPConnector(verify_ssl=False)
-    #r = yield from request('POST', url, data=json.dumps(data), headers=headers, connector=conn)
     r = yield from request('POST', url, data=data, headers=headers)
     byte = yield from r.read()
 

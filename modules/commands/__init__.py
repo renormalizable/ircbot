@@ -25,9 +25,8 @@ def helper(arg, send):
     c = arg['command']
     if c:
         h = help[c]
-        if h:
-            send('<...> is mandatory, [...] is optional, (...) also accepts multiline input')
-            send('\\x0300{0}:\\x0f {1}'.format(c, h))
+        send('<...> is mandatory, [...] is optional, (...) also accepts multiline input')
+        send('\\x0300{0}:\\x0f {1}'.format(c, h))
     else:
         send('\\x0300help:\\x0f help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
         send('(づ￣ω￣)づ  -->>  ' + ' '.join(sorted(help.keys())))
