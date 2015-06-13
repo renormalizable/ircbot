@@ -26,13 +26,23 @@ def wolfram(arg, send):
     print('wolfram')
 
     arg.update({
+        'n': arg['n'] or '2',
         'url': 'http://api.wolframalpha.com/v2/query',
         'xpath': arg['xpath'] or '//pod',
     })
-    params = {'appid': config.key['wolfram'], 'units': 'metric', 'input': arg['query']}
-    field = [('.', 'title', '\\x0304{}:\\x0f'), ('.//plaintext', 'text', '{}')]
+    params = {'appid': config.key['wolfram'], 'units': 'metric', 'format': 'plaintext', 'input': arg['query']}
+    field = [('.', 'title', '\\x0300{}:\\x0f'), ('.//plaintext', 'text', '{}')]
+    def format(l):
+        #r = re.compile(r"(?<!\\)\\:([0-9a-f]{4})")
+        r = re.compile(r"\\:([0-9a-f]{4})")
+        def f(e):
+            if e[1]:
+                return ' '.join(r.sub(lambda m: ('\\u' + m.group(1)).encode('utf-8').decode('unicode_escape'), x) for x in e)
+            else:
+                return ''
+        return filter(lambda x: x, map(f, l))
 
-    return (yield from xml(arg, send, params=params, field=field))
+    return (yield from xml(arg, send, params=params, field=field, format=format))
 
 @asyncio.coroutine
 def ip(arg, send):
@@ -207,6 +217,7 @@ class IM:
         self.sep = re.compile(r"([^a-z']+)")
         self.pinyin = re.compile(r"[a-z']")
         self.letter = re.compile(r"[^']")
+        self.comment = re.compile(r"(?:(?<=[^a-z'])|^)''(.*?)''(?:(?=[^a-z'])|$)")
         self.Get = Getter or IM.Getter
     @asyncio.coroutine
     def request(self, e, get):
@@ -230,7 +241,15 @@ class IM:
     def __call__(self, pinyin, send):
         print('im')
 
-        l = self.sep.split(pinyin)
+        l = []
+        pos = 0
+        for m in self.comment.finditer(pinyin):
+            l.extend(self.sep.split(pinyin[pos:m.start()]))
+            #l.append("'" + m.group()[2:-2])
+            l.append(m.group()[1:-2])
+            pos = m.end()
+        l.extend(self.sep.split(pinyin[pos:]))
+        #l = self.sep.split(pinyin)
         print(l)
 
         coros = [self.getitem(e) for e in l]
@@ -574,8 +593,8 @@ help = [
     ('bip'          , 'bip <ip address>'),
     ('bweather'     , 'bweather <city>'),
     ('btran'        , 'btran [source lang:target lang] (text)'),
-    ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \')'),
-    ('gim'          , 'gim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \')'),
+    ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
+    ('gim'          , 'gim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
     #('bing'         , 'bing <query> [#max number][+offset]'),
     ('bing'         , 'bing [#max number][+offset] (query)'),
     ('mtran'        , 'mtran [source lang:target lang] (text)'),
