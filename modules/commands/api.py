@@ -15,11 +15,16 @@ def arxiv(arg, send):
     arg.update({
         'n': arg['n'] or '5',
         'url': 'http://export.arxiv.org/api/query',
-        'xpath': arg['xpath'] or '//ns:entry/ns:title',
+        'xpath': arg['xpath'] or '//ns:entry',
     })
-    params = {'search_query': arg['query'], 'max_results': arg['n']}
+    params = {'search_query': arg['query'], 'max_results': arg['n'], 'sortBy': 'lastUpdatedDate', 'sortOrder': 'descending'}
+    field = [('./ns:id', 'text', '{}'), ('./ns:title', 'text', '{}')]
+    def format(l):
+        def f(e):
+            return '[\\x0302{0}\\x0f] {1}'.format(e[0][21:], e[1].replace('\n', ' '))
+        return map(f, l)
 
-    return (yield from xml(arg, send, params=params))
+    return (yield from xml(arg, send, params=params, field=field, format=format))
 
 @asyncio.coroutine
 def wolfram(arg, send):
@@ -510,7 +515,7 @@ def google(arg, lines, send):
     params = {'key': config.key['google'], 'cx': config.key['googleseid'], 'q': ' '.join(lines) or arg['query']}
     field = [('./title', 'text', '{}'), ('./link', 'text', '[\\x0302 {} \\x0f]'), ('./snippet', 'text', '{}')]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, lambda m, **kw: send(m, newline=False, **kw), params=params, field=field))
 
 
 @asyncio.coroutine
@@ -635,6 +640,6 @@ func = [
     (breezo         , r"breezo\s+(?P<city>.+)"),
     (speak          , r"speak\s+(?P<text>.+)"),
     (urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(arxiv          , r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (wolfram        , r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]

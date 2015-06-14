@@ -6,6 +6,22 @@ from .tool import html
 # html parse
 
 @asyncio.coroutine
+def arxiv(arg, send):
+    print('arxiv')
+
+    arg.update({
+        'n': arg['n'] or '5',
+        'url': 'http://arxiv.org/search',
+        'xpath': '//*[@id="dlpage"]/dl/dt',
+    })
+    params = {'query': arg['query'], 'searchtype': 'all'}
+    field = [('./span/a[1]', 'text', '{}'), ('./following-sibling::dd[1]/div/div[1]/span', 'tail', '{}')]
+    def format(l):
+        return map(lambda e: '[\\x0302{0}\\x0f] {1}'.format(e[0][6:], e[1]), l)
+
+    return (yield from html(arg, send, params=params, field=field, format=format))
+
+@asyncio.coroutine
 def zhihu(arg, send):
     print('zhihu')
 
@@ -39,7 +55,7 @@ def pm25(arg, send):
         'url': 'http://www.stateair.net/web/post/1/{0}.html'.format(location),
         'xpath': '//*[@id="content"]/div[2]/div[1]/div/div[3]/table/tbody',
     })
-    field = [('./' + x, 'text', '{}') for x in ['tr[3]/td', 'tr[2]/td', 'tr[5]//span', 'tr[1]//span']]
+    field = [('./' + x, '', '{}') for x in ['tr[3]/td', 'tr[2]/td', 'tr[5]//span', 'tr[1]//span']]
     def format(l):
         e = list(l)[0]
         return [', '.join(e).replace('\n', '')]
@@ -58,7 +74,7 @@ def btdigg(arg, send):
     params = {'info_hash': '', 'q': arg['query']}
     #field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '[\\x0302 {} \\x0f]')]
     # magnet link
-    field = [('./td/table[1]//a', 'text', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', '', '{}'), ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f')]
+    field = [('./td/table[1]//a', '', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', '', '{}'), ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f')]
 
     def format(l):
         line = []
@@ -96,7 +112,7 @@ def man(arg, send):
         'url': url + path,
         'xpath': '//head',
     })
-    field = [('./title', 'text', '{}'), ('./base', 'href', '[\\x0302 {} \\x0f]'), ('./meta[@name = "description"]', 'content', '{}')]
+    field = [('./title', '', '{}'), ('./base', 'href', '[\\x0302 {} \\x0f]'), ('./meta[@name = "description"]', 'content', '{}')]
 
     return (yield from html(arg, send, field=field))
 
@@ -118,4 +134,5 @@ func = [
     (btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (man            , r"man(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
     (gauss          , r"gauss(\s+#(?P<n>\d+))?"),
+    (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]
