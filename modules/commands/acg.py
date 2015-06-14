@@ -15,11 +15,11 @@ def moegirl(arg, send):
     # \x0f should be the last character before tail
     def hidden(e):
         for b in e.xpath('.//b'):
-            b.text = '\\x0300' + b.text if b.text else '\\x0300'
-            b.tail = '\\x0f' + b.tail if b.tail else '\\x0f'
+            b.text = '\\x0300' + (b.text or '')
+            b.tail = '\\x0f' + (b.tail or '')
         for span in e.xpath('.//span[@class="heimu"]'):
-            span.text = '\\x0301' + span.text if span.text else '\\x0301'
-            span.tail = '\\x0f' + span.tail if span.tail else '\\x0f'
+            span.text = '\\x0301' + (span.text or '')
+            span.tail = '\\x0f' + (span.tail or '')
         return e
 
     arg.update({
@@ -61,12 +61,8 @@ def nmb(arg, send):
             'url': url + (arg['forum'] or '综合版1'),
             'xpath': '//div[@id="h-content"]/div[1]/div[3]/div',
         })
-    field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]')]
-    #field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '\\x0302{} \\x0f')]
-    #field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', 'text_content', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '{}')]
-    #format = lambda l: map(lambda e: ' '.join([e[0], e[1], '[\\x0302 {} \\x0f]'.format(e[2][7:]) if e[2] else '']), l)
+    field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', '', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]')]
 
-    #return (yield from html(arg, send, field=field, format=format))
     return (yield from html(arg, send, field=field))
 
 @asyncio.coroutine
@@ -86,7 +82,7 @@ def adnmb(arg, send):
             'url': url + 'showt/id/{0}.html'.format(arg['forum'] or '1'),
             'xpath': '//div[@id="threads"]/div[@class="threadpost"]',
         })
-    field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', 'text', '{}'), ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]')]
+    field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', '', '{}'), ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]')]
 
     return (yield from html(arg, send, field=field))
 

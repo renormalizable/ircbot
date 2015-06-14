@@ -31,16 +31,16 @@ def addstyle(e):
     # br to newline
     #print(etree.tostring(e))
     for br in e.xpath('.//br'):
-        br.tail = '\n' + br.tail if br.tail else '\n'
+        br.tail = '\n' + (br.tail or '')
     for b in e.xpath('.//b'):
-        b.text = '\\x02' + b.text if b.text else '\\x02'
-        b.tail = '\\x02' + b.tail if b.tail else '\\x02'
+        b.text = '\\x02' + (b.text or '')
+        b.tail = '\\x02' + (b.tail or '')
     for i in e.xpath('.//i'):
-        i.text = '\\x1d' + i.text if i.text else '\\x1d'
-        i.tail = '\\x1d' + i.tail if i.tail else '\\x1d'
+        i.text = '\\x1d' + (i.text or '')
+        i.tail = '\\x1d' + (i.tail or '')
     for u in e.xpath('.//u'):
-        u.text = '\\x1f' + u.text if u.text else '\\x1f'
-        u.tail = '\\x1f' + u.tail if u.tail else '\\x1f'
+        u.text = '\\x1f' + (u.text or '')
+        u.tail = '\\x1f' + (u.tail or '')
     return e
 
 # use html5lib for standard compliance

@@ -14,45 +14,27 @@ def echo(arg, send):
 
 @asyncio.coroutine
 def cat(arg, lines, send):
-    if not lines:
-        raise Exception()
-
     lsend(lines, send, raw=bool(arg['raw']))
 
 @asyncio.coroutine
 def tac(arg, lines, send):
-    if not lines:
-        raise Exception()
-
     lsend(list(reversed(lines)), send)
 
 @asyncio.coroutine
 def tee(arg, lines, send):
-    if not lines:
-        raise Exception()
-
     lsend(lines, send)
     yield from arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
 
 @asyncio.coroutine
 def head(arg, lines, send):
-    if not lines:
-        raise Exception()
-
     lsend(lines[:10], send)
 
 @asyncio.coroutine
 def tail(arg, lines, send):
-    if not lines:
-        raise Exception()
-
     lsend(lines[-10:], send)
 
 @asyncio.coroutine
 def sort(arg, lines, send):
-    if not lines:
-        raise Exception()
-
     lsend(sorted(lines), send)
 
 @asyncio.coroutine
