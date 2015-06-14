@@ -28,7 +28,7 @@ def helper(arg, send):
         send('<...> is mandatory, [...] is optional, (...) also accepts multiline input')
         send('\\x0300{0}:\\x0f {1}'.format(c, h))
     else:
-        send('\\x0300help:\\x0f help [command] -- "varia 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous')
+        send('\\x0300help:\\x0f help [command] -- "{0} 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous'.format(arg['meta']['bot'].nick))
         send('(づ￣ω￣)づ  -->>  ' + ' '.join(sorted(help.keys())))
         send('try \\x0300help \\x1fcommand\\x1f\\x0f to find out more~')
 

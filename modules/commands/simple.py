@@ -11,7 +11,8 @@ def echo(arg, send):
 
 @asyncio.coroutine
 def say(arg, send):
-    send(arg['content'])
+    #send(arg['content'])
+    send('[{0}] '.format(arg['meta']['nick']) + arg['content'], raw=True)
 
 @asyncio.coroutine
 def ping(arg, send):
@@ -104,7 +105,7 @@ def pia(arg, send):
         '︿',
     ]
     icon = '(╯{0})╯ ┻━┻ '.format(random.choice(face).format(random.choice(mouth)))
-    if 'varia' not in content:
+    if arg['meta']['bot'].nick not in content:
         send(icon + content)
     else:
         send(icon + '不要 pia 我!')
@@ -113,7 +114,7 @@ def pia(arg, send):
 def mua(arg, send):
     content = arg['content'] or ''
 
-    if 'varia' not in content:
+    if arg['meta']['bot'].nick not in content:
         send('o(*￣3￣)o ' + content)
     else:
         send('o(*￣3￣)o ' + '谢谢啦~')
@@ -122,7 +123,7 @@ def mua(arg, send):
 def hug(arg, send):
     content = arg['content'] or ''
 
-    if 'varia' not in content:
+    if arg['meta']['bot'].nick not in content:
         send('(つ°ω°)つ ' + content)
     else:
         send('(つ°ω°)つ ' + '谢谢啦~')
