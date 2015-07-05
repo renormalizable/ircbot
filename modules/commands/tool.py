@@ -12,20 +12,37 @@ import itertools
 def drop(l, offset):
     return itertools.islice(l, offset, None)
 
+#@asyncio.coroutine
+#def fetch(method, url, n, func, send, **kw):
+#    print('fetch')
+#    #r = yield from asyncio.wait_for(request('GET', urldefrag(url)[0], **kw), 1)
+#    r = yield from request(method, urldefrag(url)[0], **kw)
+#    #byte = yield from r.read()
+#    try:
+#        byte = yield from r.text()
+#    except:
+#        print('bad encoding')
+#        byte = yield from r.read()
+#    print('get byte')
+#    l = yield from func(byte)
+#    send(l, n=n, llimit=10)
+
 @asyncio.coroutine
-def fetch(method, url, n, func, send, **kw):
+def fetch(method, url, content='text', **kw):
     print('fetch')
-    #r = yield from asyncio.wait_for(request('GET', urldefrag(url)[0], **kw), 1)
     r = yield from request(method, urldefrag(url)[0], **kw)
-    #byte = yield from r.read()
-    try:
-        byte = yield from r.text()
-    except:
-        print('bad encoding')
-        byte = yield from r.read()
     print('get byte')
-    l = yield from func(byte)
-    send(l, n=n, llimit=10)
+    if content == 'text':
+        try:
+            text = yield from r.text()
+        except:
+            print('bad encoding')
+            text = (yield from r.read()).decode('utf-8', 'replace')
+        return text
+    elif content == 'raw':
+        return r
+
+    return None
 
 def addstyle(e):
     # br to newline
@@ -66,33 +83,34 @@ def jsonparse(t):
 
 class Request:
     def __init__(self):
-        pass
+        # no # in xpath
+        self.rfield = re.compile(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?")
+        self.rvalid = re.compile(r"[^\u0020-\uD7FF\u0009\u000A\u000D\uE000-\uFFFD\u10000-\u10FFFF]+")
 
     def parsefield(self, field):
         if field:
-            # no # in xpath
-            f = re.finditer(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?", field)
             def getitem(e):
                 d = e.groupdict()
                 return (d['xpath'] or '.', d['field'] or '', d['format'] if d['format'] else '{}')
-            return list(map(getitem, f))
+            return [getitem(e) for e in self.rfield.finditer(field)]
         else:
             return [('.', '', '{}')]
 
     def getfield(self, get):
-        def getl(e, f):
-            def gete(e):
-                item = get(e, f[1])
-                return str(item).strip() if item else ''
+        def getf(e, f):
+            #def gete(e):
+            #    #item = get(e, f[1])
+            #    #return str(item).strip() if item else ''
+            #    return str(get(e, f[1]) or '')
             # check if e is node
-            l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=self.ns)))) if hasattr(e, 'xpath') else [e]
+            #l = list(filter(lambda x: any(x), map(gete, e.xpath(f[0], namespaces=self.ns)))) if hasattr(e, 'xpath') else [e]
+            #l = [y for y in [gete(x) for x in e.xpath(f[0], namespaces=self.ns)] if y.strip()] if hasattr(e, 'xpath') else [e]
+            l = [y for y in [str(get(x, f[1]) or '') for x in e.xpath(f[0], namespaces=self.ns)] if y.strip()] if hasattr(e, 'xpath') else [e]
+            print(l)
             return f[2].format(', '.join(l)) if l else ''
-        def getf(e):
-            return list(map(lambda f: getl(e, f), self.field))
-        #return getf
-        return (lambda e: list(map(lambda f: getl(e, f), self.field)))
+        return (lambda e: [getf(e, f) for f in self.field])
 
-    def parse(self, byte):
+    def parse(self, text):
         pass
 
     def get(self, e, f):
@@ -106,24 +124,18 @@ class Request:
 
     @asyncio.coroutine
     def fetch(self, method, url, **kw):
-        r = yield from request(method, urldefrag(url)[0], **kw)
-        print('get byte')
-        try:
-            return (yield from r.text())
-        except:
-            print('bad encoding')
-            return (yield from r.read())
+        text = yield from fetch(method, url, **kw)
+        return self.rvalid.sub('', text)
 
-    @asyncio.coroutine
-    def func(self, get, **kw):
-        byte = yield from self.fetch(self.method, self.url, **kw)
-        t = self.parse(byte)
-        self.addns(t)
-        l = t.xpath(self.xpath, namespaces=self.ns)
-        #l = self.transform(l)[self.offset:]
-        l = drop(self.transform(l), self.offset)
-        getf = self.getfield(get)
-        return filter(lambda e: any(e), map(getf, l))
+    #@asyncio.coroutine
+    #def func(self, get, **kw):
+    #    text = yield from self.fetch(self.method, self.url, **kw)
+    #    t = self.parse(text)
+    #    self.addns(t)
+    #    l = t.xpath(self.xpath, namespaces=self.ns)
+    #    #l = self.transform(l)[self.offset:]
+    #    l = drop(self.transform(l), self.offset)
+    #    return filter(lambda e: any(e), map(self.getfield(get), l))
 
     @asyncio.coroutine
     def __call__(self, arg, send, *, method='GET', field=None, transform=None, get=None, format=None, **kw):
@@ -141,12 +153,22 @@ class Request:
         get = get or self.get
         format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else self.format)
 
-        l = yield from self.func(get, **kw)
-        send(format(l), n=self.n, llimit=10)
+        # fetch
+        text = yield from self.fetch(self.method, self.url, **kw)
+        # parse
+        tree = self.parse(text)
+        self.addns(tree)
+        # find
+        l = tree.xpath(self.xpath, namespaces=self.ns)
+        l = drop(self.transform(l), self.offset)
+        # get
+        line = filter(lambda e: any(e), map(self.getfield(get), l))
+        # send
+        send(format(line), n=self.n, llimit=10)
 
 class HTMLRequest(Request):
-    def parse(self, byte):
-        return htmlparse(byte)
+    def parse(self, text):
+        return htmlparse(text)
     def get(self, e, f):
         if not f:
             return addstyle(e).xpath('string()')
@@ -158,8 +180,8 @@ class HTMLRequest(Request):
 html = HTMLRequest()
 
 class XMLRequest(Request):
-    def parse(self, byte):
-        return xmlparse(byte)
+    def parse(self, text):
+        return xmlparse(text)
     def get(self, e, f):
         if not f:
             return htmltostr(e.text)
@@ -176,8 +198,8 @@ class XMLRequest(Request):
 xml = XMLRequest()
 
 class JSONRequest(Request):
-    def parse(self, byte):
-        j = jsonparse(byte)
+    def parse(self, text):
+        j = jsonparse(text)
         #print(j)
         #print(dicttoxml(j))
         return xmlparse(dicttoxml(j))
@@ -286,17 +308,33 @@ def regex(arg, send, **kw):
     reg = re.compile(arg['regex'])
     #reg = re.compile(arg['regex'], re.MULTILINE)
 
-    @asyncio.coroutine
-    def func(byte):
-        print(byte)
-        try:
-            l = reg.finditer(byte)
-        except:
-            l = reg.finditer(byte.decode('utf-8', 'replace'))
-        return map(lambda e: ', '.join(e.groups()), l)
+    text = yield from fetch('GET', url, **kw)
+    print(text)
+    line = map(lambda e: ', '.join(e.groups()), reg.finditer(text))
+    send(line, n=n, llimit=10)
 
-    return (yield from fetch('GET', url, n, func, send, **kw))
+@asyncio.coroutine
+def fetcher(arg, send, **kw):
+    print('fetcher')
 
+    url = arg['url']
+
+    text = yield from fetch('GET', url, **kw)
+    send([text], n=1)
+
+#@asyncio.coroutine
+#def geturl(msg):
+#    reg = re.compile(r"GET\s+(?P<url>\S+)")
+#    #reg = re.compile(r, re.IGNORECASE)
+#    arg = reg.fullmatch(msg)
+#    if arg:
+#        d = arg.groupdict()
+#        print(d)
+#        text = yield from fetch('GET', d['url'])
+#    else:
+#        raise Exception()
+#
+#    return [text]
 
 help = [
     ('html'         , 'html <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
@@ -311,4 +349,5 @@ func = [
     (xml            , r"xml\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (jsonxml        , r"json\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (regex          , r"regex\s+(?P<url>\S+)\s+(?P<regex>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (fetcher        , r"fetch\s+(?P<url>\S+)"),
 ]
