@@ -23,6 +23,8 @@ class Normalize:
             '？': '? ',
             '：': ': ',
             '；': '; ',
+            '（': ' (',
+            '）': ') ',
         })
         self.esc = [
             # irssi
@@ -38,14 +40,16 @@ class Normalize:
             (r'\x1f', '\x1f'),
         ]
     def __call__(self, message, *, stripspace=True, stripline=True, newline=True, convert=True, escape=True):
-        lines = str(message).splitlines() if stripline else [message]
+        #lines = str(message).splitlines() if stripline else [str(message)]
+        l = str(message).translate(self.alias) if convert else str(message)
+        lines = l.splitlines() if stripline else [l]
         if stripspace:
             lines = map(lambda l: ' '.join(l.split()), lines)
         if stripline:
             lines = filter(lambda l: l, lines)
         line = '\\x0304\\n\\x0f '.join(lines) if newline else ' '.join(lines)
-        if convert:
-            line = line.translate(self.alias)
+        #if convert:
+        #    line = line.translate(self.alias)
         if escape:
             for (s, e) in self.esc:
                 line = line.replace(s, e)
@@ -84,6 +88,11 @@ class Client(bottom.Client):
             self.lines[nick] = [l, self.loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
         else:
             self.lines[nick][0].extend(l)
+        #item = self.lines.get(nick, None)
+        #if item:
+        #    item[0].extend(l)
+        #else:
+        #    self.lines[nick] = [l, self.loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
 
     def getlines(self, nick):
         item = self.lines.pop(nick, None)
@@ -143,8 +152,6 @@ class Client(bottom.Client):
     def sendl(self, target, line, n, *, llimit=0, **kw):
         sent = False
         for (i, m) in enumerate(line):
-            if n > 0 and i >= n:
-                break
             if llimit > 0 and i >= llimit:
                 #d = {k: kw[k] for k in ['command', 'to'] if k in kw}
                 #self.sendm(target, '太长了啦...', **d)
@@ -155,6 +162,8 @@ class Client(bottom.Client):
                 break
             self.sendm(target, m, **kw)
             sent = True
+            if n > 0 and i >= (n - 1):
+                break
         if not sent:
             raise Exception()
 
