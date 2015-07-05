@@ -22,4 +22,5 @@ key = {
     'wolfram'        : '',
     'pm25'           : '',
     'howtospeak'     : '',
+    'hackerearth'    : '',
 }

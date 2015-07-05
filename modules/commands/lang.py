@@ -5,6 +5,7 @@ from aiohttp          import request
 from aiohttp.helpers  import FormData
 from urllib.parse     import urlsplit
 
+import config
 from .common import Get
 from .tool import html, htmlparse, jsonparse, regex
 
@@ -27,16 +28,19 @@ def getcode(url):
         'pastebin.com':        '//*[@id="paste_code"]',
         'code.bulix.org':      '//*[@id="contents"]/pre',
         'ix.io':               '.',
+        'dpaste.com':          '//*[@id="content"]/table/tbody/tr/td[2]/div/pre',
+        'ideone.com':          '//*[@id="source"]/pre/ol/li/div',
+        'pastebin.com':        '//*[@id="selectable"]/div/ol',
     }
 
     get = Get()
     u = urlsplit(url)
     xpath = site[u[1]]
     if xpath == '.':
-        arg = {'url': url, 'regex': r'(.*)\n'}
+        arg = {'url': url, 'regex': r'(.*)(?:\n|$)', 'n': '0'}
         yield from regex(arg, get)
     else:
-        arg = {'url': url, 'xpath': xpath}
+        arg = {'url': url, 'xpath': xpath, 'n': '0'}
         yield from html(arg, get)
 
     return get.line
@@ -147,20 +151,21 @@ def codepad(arg, lines, send):
     print('codepad')
 
     url = 'http://codepad.org/'
+
+    alias = {
+        'Text':   'Plain Text',
+        'Php':    'PHP',
+        'Ocaml':  'OCaml',
+    }
+
     code = '\n'.join(lines) or arg['code']
     lang = arg['lang'].title()
+    lang = alias.get(lang, lang)
     run = bool(arg['run'])
     raw = arg['raw']
 
     if not code:
         raise Exception()
-
-    d = {
-        'Text':   'Plain Text',
-        'Php':    'PHP',
-        'Ocaml':  'OCaml',
-    }
-    lang = d.get(lang) or lang
 
     data = {
         'lang': lang,
@@ -181,6 +186,54 @@ def codepad(arg, lines, send):
         except IndexError:
             unsafesend('no output', send, raw=raw)
     send('[\\x0302 {0} \\x0f]'.format(r.url))
+
+@asyncio.coroutine
+def hackerearth(arg, lines, send):
+    print('hackerearth')
+
+    url = 'https://api.hackerearth.com/v3/code/run/'
+
+    alias = {
+        'js':               'javascript',
+        'py':               'python',
+        'rb':               'ruby',
+        'hs':               'haskell',
+        'pl':               'perl',
+        'c++':              'cpp',
+        'cxx':              'cpp',
+        'c++11':            'cpp11',
+        'cxx11':            'cpp11',
+        'c#':               'csharp',
+    }
+
+    code = '\n'.join(lines) or arg['code']
+    lang = arg['lang'].lower()
+    lang = alias.get(lang, lang).upper()
+    raw = arg['raw']
+
+    if not code:
+        raise Exception()
+
+    data = {
+        'client_secret': config.key['hackerearth'],
+        'lang': lang,
+        'source': code,
+        'input': '',
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    r = yield from request('POST', url, data=data, headers=headers)
+    byte = yield from r.read()
+    print(byte)
+
+    j = jsonparse(byte)
+    compile = j.get('compile_status')
+    result = j.get('run_status').get('output')
+    if compile != 'OK':
+        unsafesend('\\x0304errors:\\x0f {0}'.format(compile), send)
+    if result:
+        unsafesend(result, send, raw=raw)
+    else:
+        unsafesend('no output', send, raw=raw)
 
 @asyncio.coroutine
 def rextester(arg, lines, send):
@@ -246,7 +299,8 @@ def rextester(arg, lines, send):
     }
 
     code = '\n'.join(lines) or arg['code']
-    conf = default.get(alias.get(arg['lang'].lower(), arg['lang'].lower()))
+    lang = arg['lang'].lower()
+    conf = default.get(alias.get(lang, lang))
     lang = conf[0]
     args = '{0} {1}'.format(conf[1], arg['args'] or conf[2])
     #input = arg['input'] or ''
@@ -289,9 +343,67 @@ def python3(arg, lines, send):
         'args': None,
         'raw': None,
     })
-    line = ['import code', 'i = code.InteractiveInterpreter()'] + ['i.runsource({})'.format(repr(l)) for l in (lines + [arg['code']])]
+    line = [
+        'import code',
+        'i = code.InteractiveInterpreter()',
+        'c = ' + repr(lines + [arg['code']]),
+        'b = ""',
+        'for l in c:',
+        '    b += l + "\\n"',
+        '    if not i.runsource(b):',
+        '        b = ""',
+    ]
 
     return (yield from rextester(arg, line, send))
+
+@asyncio.coroutine
+def haskell(arg, lines, send):
+
+    arg.update({
+        'lang': 'haskell',
+        'args': '-package ghc',
+        'raw': None,
+    })
+    line = [
+        'import GHC',
+        'import DynFlags',
+        'stmt = [{0}]'.format(', '.join('"{0}"'.format(e) for e in (lines + [arg['code']]))),
+        'main = runGhc (Just "/usr/lib/ghc") $ do',
+        '    dflags <- getSessionDynFlags',
+        '    setSessionDynFlags dflags',
+        '    mapM (\s -> runStmt s RunToCompletion) stmt',
+    ]
+    print(repr(line))
+
+    return (yield from rextester(arg, line, send))
+
+#@asyncio.coroutine
+#def ghci(arg, lines, send):
+#    print('ghci')
+#
+#    url = 'http://ghc.io/ghci'
+#    code = '\n'.join(lines) or arg['code']
+#
+#    if not code:
+#        raise Exception()
+#
+#    data = {
+#        'data': code,
+#    }
+#    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+#    r = yield from request('POST', url, data=data, headers=headers)
+#    byte = yield from r.read()
+#
+#    print(byte)
+#    j = jsonparse(byte)
+#    type = j.get('type')
+#    result = j.get('msg')
+#    if type == 'error':
+#        unsafesend('\\x0304error:\\x0f {0}'.format(result[2]), send)
+#    if result:
+#        unsafesend(result, send, raw=raw)
+#    else:
+#        unsafesend('no output', send, raw=raw)
 
 help = [
     ('clear'        , 'clear'),
@@ -310,6 +422,8 @@ func = [
     (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
     (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
+    (hackerearth    , r"hack:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (rextester      , r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
     (python3        , r">> (?P<code>.+)"),
+    (haskell        , r"\\\\ (?P<code>.+)"),
 ]
