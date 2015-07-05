@@ -1,7 +1,7 @@
 import asyncio
 
 from .common import Get
-from .tool import html
+from .tool import html, addstyle
 
 # html parse
 
@@ -25,12 +25,22 @@ def arxiv(arg, send):
 def zhihu(arg, send):
     print('zhihu')
 
+    def image(e):
+        for ns in e.xpath('.//noscript'):
+            ns.getparent().remove(ns)
+        for img in e.xpath('.//img'):
+            src = img.attrib.get('data-actualsrc')
+            if src:
+                img.tail = ' [\\x0302 {0} \\x0f] '.format(src) + (img.tail or '')
+        return e
+
     arg.update({
         'n': '1',
         'xpath': '//*[@id="zh-question-answer-wrap"]/div/div[3]/div',
     })
+    get = lambda e, f: addstyle(image(e)).xpath('string()')
 
-    return (yield from html(arg, send))
+    return (yield from html(arg, send, get=get))
 
 @asyncio.coroutine
 def pm25(arg, send):
@@ -74,7 +84,7 @@ def btdigg(arg, send):
     params = {'info_hash': '', 'q': arg['query']}
     #field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '[\\x0302 {} \\x0f]')]
     # magnet link
-    field = [('./td/table[1]//a', '', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', '', '{}'), ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f')]
+    field = [('./td/table[1]//a', '', '\\x0300{}\\x0f'), ('./td/table[2]//td[not(@class)]', '', '{}'), ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f')]
 
     def format(l):
         line = []
