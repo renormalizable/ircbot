@@ -113,15 +113,15 @@ def acfun(arg, send):
         return s
 
     @asyncio.coroutine
-    def func(byte):
-        j = jsonparse(byte)
-        # or is for older comment format
+    def func(num):
+        text = yield from fetch('GET', url + str(num))
+        j = jsonparse(text)
+        # or branch is for older comment format
         d = j.get('commentContentArr') or j.get('data').get('commentContentArr')
         try:
             while True:
                 e = d.popitem()[1]
                 if e.get('count') == count:
-                    #return [', '.join([e.get('userName'), ubb(htmltostr(e.get('content')))])]
                     return ['\\x0300{0}:\\x0f {1}'.format(e.get('userName'), ubb(htmltostr(e.get('content'))))]
         except KeyError:
             n = j.get('totalPage')
@@ -129,11 +129,11 @@ def acfun(arg, send):
             if i >= n:
                 raise Exception()
             else:
-                r = yield from request('GET', url + str(i + 1))
-                b = yield from r.read()
-                return (yield from func(b))
+                return (yield from func(i + 1))
 
-    return (yield from fetch('GET', url + '1', 1, func, send))
+    line = yield from func(1)
+    return send(line, n=1)
+
 
 help = [
     ('moegirl'      , 'moegirl <title> [#max number][+offset]'),
