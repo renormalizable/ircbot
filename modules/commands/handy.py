@@ -139,7 +139,7 @@ def gauss(arg, send):
     return (yield from html(arg, [], send))
 
 func = [
-    (zhihu          , r"zhihu\s+(?P<url>.+)"),
+    (zhihu          , r"zhihu\s+(?P<url>http\S+)"),
     (pm25           , r"pm2.5\s+(?P<city>.+)"),
     (btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (man            , r"man(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
