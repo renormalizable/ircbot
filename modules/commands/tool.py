@@ -138,7 +138,7 @@ class Request:
     #    return filter(lambda e: any(e), map(self.getfield(get), l))
 
     @asyncio.coroutine
-    def __call__(self, arg, send, *, method='GET', field=None, transform=None, get=None, format=None, **kw):
+    def __call__(self, arg, lines, send, *, method='GET', field=None, transform=None, get=None, format=None, **kw):
         self.n = int(arg.get('n') or 5)
         self.offset = int(arg.get('offset') or 0)
         self.method = method
@@ -154,7 +154,7 @@ class Request:
         format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else self.format)
 
         # fetch
-        text = yield from self.fetch(self.method, self.url, **kw)
+        text = '\n'.join(lines) if lines else (yield from self.fetch(self.method, self.url, **kw))
         # parse
         tree = self.parse(text)
         self.addns(tree)
@@ -299,7 +299,7 @@ jsonxml = JSONRequest()
 #    return (yield from fetch(method, url, n, func, send, **kw))
 
 @asyncio.coroutine
-def regex(arg, send, **kw):
+def regex(arg, lines, send, **kw):
     print('regex')
 
     n = int(arg.get('n') or 5)
@@ -308,7 +308,7 @@ def regex(arg, send, **kw):
     reg = re.compile(arg['regex'])
     #reg = re.compile(arg['regex'], re.MULTILINE)
 
-    text = yield from fetch('GET', url, **kw)
+    text = '\n'.join(lines) if lines else (yield from fetch('GET', url, **kw))
     print(text)
     line = map(lambda e: ', '.join(e.groups()), reg.finditer(text))
     send(line, n=n, llimit=10)
@@ -322,32 +322,38 @@ def fetcher(arg, send, **kw):
     text = yield from fetch('GET', url, **kw)
     send([text], n=1)
 
-#@asyncio.coroutine
-#def geturl(msg):
-#    reg = re.compile(r"GET\s+(?P<url>\S+)")
-#    #reg = re.compile(r, re.IGNORECASE)
-#    arg = reg.fullmatch(msg)
-#    if arg:
-#        d = arg.groupdict()
-#        print(d)
-#        text = yield from fetch('GET', d['url'])
-#    else:
-#        raise Exception()
-#
-#    return [text]
+@asyncio.coroutine
+def geturl(msg):
+    reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>\S+)(?:\s+(?P<params>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
+    arg = reg.fullmatch(msg)
+    if arg:
+        d = arg.groupdict()
+        print(d)
+        params = json.loads(d.get('params') or '{}')
+        content = d.get('content')
+        if content:
+            r = yield from fetch(d['method'], d['url'], params=params, content='raw')
+            #text = str(getattr(r, content.lower()) or '')
+            text = str(getattr(r, content) or '')
+        else:
+            text = yield from fetch(d['method'], d['url'], params=params, content='text')
+    else:
+        raise Exception()
+
+    return [text]
 
 help = [
-    ('html'         , 'html <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
-    ('xml'          , 'xml <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
-    ('json'         , 'json <url> <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
-    ('regex'        , 'regex <url> <regex> [#max number][+offset]'),
+    ('html'         , 'html (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
+    ('xml'          , 'xml (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
+    ('json'         , 'json (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
+    ('regex'        , 'regex (url) <regex> [#max number][+offset]'),
 ]
 
 func = [
     # no { in xpath
-    (html           , r"html\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (xml            , r"xml\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (jsonxml        , r"json\s+(?P<url>\S+)\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (regex          , r"regex\s+(?P<url>\S+)\s+(?P<regex>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (html           , r"html(?:\s+(?P<url>\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (xml            , r"xml(?:\s+(?P<url>\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (jsonxml        , r"json(?:\s+(?P<url>\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (regex          , r"regex(?:\s+(?P<url>\S+))?\s+(?P<regex>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (fetcher        , r"fetch\s+(?P<url>\S+)"),
 ]

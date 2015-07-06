@@ -19,7 +19,7 @@ def arxiv(arg, send):
     def format(l):
         return map(lambda e: '[\\x0302{0}\\x0f] {1}'.format(e[0][6:], e[1]), l)
 
-    return (yield from html(arg, send, params=params, field=field, format=format))
+    return (yield from html(arg, [], send, params=params, field=field, format=format))
 
 @asyncio.coroutine
 def zhihu(arg, send):
@@ -40,7 +40,7 @@ def zhihu(arg, send):
     })
     get = lambda e, f: addstyle(image(e)).xpath('string()')
 
-    return (yield from html(arg, send, get=get))
+    return (yield from html(arg, [], send, get=get))
 
 @asyncio.coroutine
 def pm25(arg, send):
@@ -70,7 +70,7 @@ def pm25(arg, send):
         e = list(l)[0]
         return [', '.join(e).replace('\n', '')]
 
-    return (yield from html(arg, send, field=field, format=format))
+    return (yield from html(arg, [], send, field=field, format=format))
 
 @asyncio.coroutine
 def btdigg(arg, send):
@@ -93,7 +93,7 @@ def btdigg(arg, send):
             line.append(e[2])
         return line
 
-    return (yield from html(arg, send, params=params, field=field, format=format))
+    return (yield from html(arg, [], send, params=params, field=field, format=format))
 
 @asyncio.coroutine
 def man(arg, send):
@@ -112,7 +112,7 @@ def man(arg, send):
         print(a)
         f = [('.', 'href', '{}')]
         get = Get()
-        yield from html(a, get, field=f)
+        yield from html(a, [], get, field=f)
         path = get.line[0]
     else:
         path = '{0}/{1}'.format(section, name)
@@ -124,7 +124,7 @@ def man(arg, send):
     })
     field = [('./title', '', '{}'), ('./base', 'href', '[\\x0302 {} \\x0f]'), ('./meta[@name = "description"]', 'content', '{}')]
 
-    return (yield from html(arg, send, field=field))
+    return (yield from html(arg, [], send, field=field))
 
 @asyncio.coroutine
 def gauss(arg, send):
@@ -136,7 +136,7 @@ def gauss(arg, send):
         'xpath': '//*[@id="wrapper"]/div/p/a[@class="oldlink"]',
     })
 
-    return (yield from html(arg, send))
+    return (yield from html(arg, [], send))
 
 func = [
     (zhihu          , r"zhihu\s+(?P<url>.+)"),

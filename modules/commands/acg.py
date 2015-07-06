@@ -39,7 +39,7 @@ def moegirl(arg, send):
     transform = lambda l: htmlparse(l[0].text).xpath('//body/*[not(self::div or self::table or self::h2)]')
     get = lambda e, f: addstyle(hidden(e)).xpath('string()')
 
-    return (yield from xml(arg, send, params=params, transform=transform, get=get))
+    return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
 
 @asyncio.coroutine
 def nmb(arg, send):
@@ -63,7 +63,7 @@ def nmb(arg, send):
         })
     field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', '', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]')]
 
-    return (yield from html(arg, send, field=field))
+    return (yield from html(arg, [], send, field=field))
 
 @asyncio.coroutine
 def adnmb(arg, send):
@@ -84,7 +84,7 @@ def adnmb(arg, send):
         })
     field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', '', '{}'), ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]')]
 
-    return (yield from html(arg, send, field=field))
+    return (yield from html(arg, [], send, field=field))
 
 @asyncio.coroutine
 def acfun(arg, send):

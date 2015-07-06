@@ -24,7 +24,7 @@ def arxiv(arg, send):
             return '[\\x0302{0}\\x0f] {1}'.format(e[0][21:], e[1].replace('\n', ' '))
         return map(f, l)
 
-    return (yield from xml(arg, send, params=params, field=field, format=format))
+    return (yield from xml(arg, [], send, params=params, field=field, format=format))
 
 @asyncio.coroutine
 def wolfram(arg, send):
@@ -47,7 +47,7 @@ def wolfram(arg, send):
                 return ''
         return filter(lambda x: x, map(f, l))
 
-    return (yield from xml(arg, send, params=params, field=field, format=format))
+    return (yield from xml(arg, [], send, params=params, field=field, format=format))
 
 @asyncio.coroutine
 def ip(arg, send):
@@ -60,7 +60,7 @@ def ip(arg, send):
     })
     field = [('./' + x, 'text', '{}') for x in ['country', 'regionName', 'city', 'isp']]
 
-    return (yield from jsonxml(arg, send, field=field))
+    return (yield from jsonxml(arg, [], send, field=field))
 
 @asyncio.coroutine
 def whois(arg, send):
@@ -75,7 +75,7 @@ def whois(arg, send):
     headers = {'Accept': 'application/json', 'Authorization': 'Token token=' + config.key['jsonwhois']}
     field = list(map(lambda x: ('./' + x, 'text', '{}'), ['status | ./status/item', 'created_on', 'updated_on']))
 
-    return (yield from jsonxml(arg, send, params=params, field=field, headers=headers))
+    return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
 
 @asyncio.coroutine
 def aqi(arg, send):
@@ -97,7 +97,7 @@ def aqi(arg, send):
     else:
         format = None
 
-    return (yield from jsonxml(arg, send, params=params, field=field, format=format))
+    return (yield from jsonxml(arg, [], send, params=params, field=field, format=format))
 
     #@asyncio.coroutine
     #def func(byte):
@@ -127,7 +127,7 @@ def bip(arg, send):
     params = {'ip': arg['addr']}
     field = [('./' + x, 'text', '{}') for x in ['country', 'province', 'city', 'district', 'carrier']]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 @asyncio.coroutine
 def bid(arg, send):
@@ -142,7 +142,7 @@ def bid(arg, send):
     params = {'id': arg['id']}
     field = [('./' + x, 'text', '{}') for x in ['sex', 'birthday', 'address']]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 @asyncio.coroutine
 def bphone(arg, send):
@@ -157,7 +157,7 @@ def bphone(arg, send):
     params = {'tel': arg['tel']}
     field = [('./' + x, 'text', '{}') for x in ['telString', 'province', 'carrier']]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 @asyncio.coroutine
 def baqi(arg, send):
@@ -172,7 +172,7 @@ def baqi(arg, send):
     params = {'city': arg['city']}
     field = [('./' + x, 'text', '{}') for x in ['city', 'level', 'aqi', 'core', 'time']]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 @asyncio.coroutine
 def bweather(arg, send):
@@ -187,7 +187,7 @@ def bweather(arg, send):
     params = {'cityname': arg['city']}
     field = [('./' + x, 'text', '{}') for x in ['city', 'weather', 'temp', 'WS', 'time', 'date']]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 @asyncio.coroutine
 def btran(arg, lines, send):
@@ -202,7 +202,7 @@ def btran(arg, lines, send):
     params = {'client_id': config.key['baidu'], 'from': arg['from'] or 'auto', 'to': arg['to'] or 'zh', 'q': ' '.join(lines) or arg['text']}
     field = [('./dst', 'text', '{}')]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 class IM:
     class Getter:
@@ -283,7 +283,7 @@ class BIM(IM):
     @asyncio.coroutine
     def request(self, e, get):
         self.params['input'] = e
-        yield from jsonxml(self.arg, get, params=self.params, field=self.field, format=self.format)
+        yield from jsonxml(self.arg, [], get, params=self.params, field=self.field, format=self.format)
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
             return len(e)
@@ -316,7 +316,7 @@ class GIM(IM):
     @asyncio.coroutine
     def request(self, e, get):
         self.params['text'] = e
-        yield from jsonxml(self.arg, get, params=self.params, field=self.field, format=self.format)
+        yield from jsonxml(self.arg, [], get, params=self.params, field=self.field, format=self.format)
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
             return len(e)
@@ -384,7 +384,7 @@ class Microsoft:
     @asyncio.coroutine
     def renew(self):
         get = Microsoft.Get()
-        yield from jsonxml(self.arg, get, method='POST', data=self.data, headers=self.headers, field=self.field, format=self.format)
+        yield from jsonxml(self.arg, [], get, method='POST', data=self.data, headers=self.headers, field=self.field, format=self.format)
         self.time = time.time()
         self.expire = get.expire - 60
         self.key = get.key
@@ -410,7 +410,7 @@ def bing(arg, lines, send):
     auth = BasicAuth(key, key)
     field = [('./Title', 'text', '{}'), ('./Url', 'text', '[\\x0302 {} \\x0f]'), ('./Description', 'text', '{}')]
 
-    return (yield from jsonxml(arg, send, params=params, auth=auth, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, auth=auth, field=field))
 
 #class Mtran(Microsoft):
 #    def __init__(self):
@@ -429,7 +429,7 @@ def bing(arg, lines, send):
 #        arg['url'] = url
 #        arg['xpath'] = '/ns:string'
 #
-#        return (yield from xml(arg, send, headers=headers))
+#        return (yield from xml(arg, [], send, headers=headers))
 #
 #mtran = Mtran()
 
@@ -453,7 +453,7 @@ def mtran(arg, lines, send):
     auth = BasicAuth(key, key)
     field = [('./Text', 'text', '{}')]
 
-    return (yield from jsonxml(arg, send, params=params, auth=auth, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, auth=auth, field=field))
 
 @asyncio.coroutine
 def couplet(arg, send):
@@ -476,7 +476,7 @@ def couplet(arg, send):
     })
     headers = {'Content-Type': 'application/json'}
 
-    return (yield from jsonxml(arg, send, method='POST', data=data, headers=headers))
+    return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers))
 
 @asyncio.coroutine
 def mice(arg, send):
@@ -496,7 +496,7 @@ def mice(arg, send):
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
-    return (yield from jsonxml(arg, send, method='POST', data=data, headers=headers))
+    return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers))
 
 
 # google
@@ -515,7 +515,7 @@ def google(arg, lines, send):
     params = {'key': config.key['google'], 'cx': config.key['googleseid'], 'q': ' '.join(lines) or arg['query']}
     field = [('./title', 'text', '{}'), ('./link', 'text', '[\\x0302 {} \\x0f]'), ('./snippet', 'text', '{}')]
 
-    return (yield from jsonxml(arg, lambda m, **kw: send(m, newline=False, **kw), params=params, field=field))
+    return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=False, **kw), params=params, field=field))
 
 
 @asyncio.coroutine
@@ -528,7 +528,7 @@ def dictg(arg, send):
     })
     params = {'format': 'json', 'from': arg['from'], 'dest': arg['to'], 'phrase': arg['text']}
 
-    return (yield from jsonxml(arg, send, params=params))
+    return (yield from jsonxml(arg, [], send, params=params))
 
 @asyncio.coroutine
 def cdict(arg, send):
@@ -542,7 +542,7 @@ def cdict(arg, send):
     headers = {'accessKey': config.key['collins']}
     transform = lambda l: htmlparse(l[0].text).xpath('//span[@class = "pos"] | //span[@class = "def"]')
 
-    return (yield from jsonxml(arg, send, params=params, transform=transform, headers=headers))
+    return (yield from jsonxml(arg, [], send, params=params, transform=transform, headers=headers))
 
 @asyncio.coroutine
 def urban(arg, send):
@@ -558,7 +558,7 @@ def urban(arg, send):
     headers = {'X-Mashape-Key': config.key['mashape']}
     field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[\\x0302 {} \\x0f]')]
 
-    return (yield from jsonxml(arg, send, params=params, field=field, headers=headers))
+    return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
 
 @asyncio.coroutine
 def breezo(arg, send):
@@ -572,7 +572,7 @@ def breezo(arg, send):
     params = {'key': config.key['breezo'], 'location': arg['city']}
     field = [('./' + x, 'text', '{}') for x in ['breezometer_description', 'breezometer_aqi', 'dominant_pollutant_text/main', 'random_recommendations/health']]
 
-    return (yield from jsonxml(arg, send, params=params, field=field))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 @asyncio.coroutine
 def speak(arg, send):
@@ -585,7 +585,7 @@ def speak(arg, send):
     })
     params = {'user_key': config.key['howtospeak'], 'notrans': '0', 'text': arg['text']}
 
-    return (yield from jsonxml(arg, send, params=params))
+    return (yield from jsonxml(arg, [], send, params=params))
 
 @asyncio.coroutine
 def watson(arg, send):

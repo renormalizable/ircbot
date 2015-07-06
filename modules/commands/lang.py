@@ -38,10 +38,10 @@ def getcode(url):
     xpath = site[u[1]]
     if xpath == '.':
         arg = {'url': url, 'regex': r'(.*)(?:\n|$)', 'n': '0'}
-        yield from regex(arg, get)
+        yield from regex(arg, [], get)
     else:
         arg = {'url': url, 'xpath': xpath, 'n': '0'}
-        yield from html(arg, get)
+        yield from html(arg, [], get)
 
     return get.line
 
