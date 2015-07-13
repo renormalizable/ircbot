@@ -30,7 +30,7 @@ def helper(arg, send):
     else:
         send('\\x0300help:\\x0f help [command] -- "{0} 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous'.format(arg['meta']['bot'].nick))
         send('(づ￣ω￣)づ  -->>  ' + ' '.join(sorted(help.keys())))
-        send('try \\x0300help \\x1fcommand\\x1f\\x0f to find out more~')
+        #send('try "\\x0300help \\x1fcommand\\x1f\\x0f" to find out more~')
 
 def command(f, r):
     func = f if inspect.signature(f).parameters.get('lines') else (lambda arg, lines, send: f(arg, send))
@@ -67,10 +67,10 @@ def execute(msg, lines, send, meta):
     return any(status)
 
 @asyncio.coroutine
-def reply(nick, message, bot, send):
+def reply(bot, nick, message, send):
     # prefix
     if message[0] == "'":
-        if message[:4] in ["'.. ", "':: "]:
+        if message[:3] in ["'..", "'::"]:
             return
         sender = send
     elif message[0] == '"':
@@ -97,5 +97,9 @@ def reply(nick, message, bot, send):
         bot.addlines(nick, lines)
 
 @asyncio.coroutine
-def getcode(url):
-    return (yield from table['lang'].getcode(url))
+def fetch(msg):
+    try:
+        return (yield from table['lang'].getcode(msg))
+    except:
+        print('not paste bin')
+        return (yield from table['tool'].geturl(msg))

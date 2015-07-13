@@ -30,61 +30,41 @@ def keepalive(message):
     bot.send('PONG', message=message)
 
 
-@bot.on('PRIVMSG')
-def multiline(nick, target, message):
-    (nick, message) = bot.deprefix(nick, message)
-    if nick != bot.nick and message[:4] == "'.. ":
-        print('multiline')
-        l = [message[4:].rstrip()]
-        bot.addlines(nick, l)
+#@bot.on('PRIVMSG')
+#def message(nick, target, message):
+#    ''' Echo all messages '''
+#
+#    # Don't echo ourselves
+#    if nick == bot.nick:
+#        return
+#
+#    (nick, message) = bot.deprefix(nick, message)
+#
+#    # Direct message to bot
+#    if target == bot.nick:
+#        sender = lambda m, **kw: bot.sender(nick, m, **kw)
+#    # Message in channel
+#    else:
+#        sender = lambda m, **kw: bot.sender(target, m, to=nick, **kw)
+#
+#    return (yield from bot.modules.reply(nick, message, bot, sender))
+
 
 @bot.on('PRIVMSG')
-def importline(nick, target, message):
-    (nick, message) = bot.deprefix(nick, message)
-    if nick != bot.nick and message[:4] == "':: ":
-        print('importline')
-        try:
-            l = yield from bot.modules.getcode(message[4:].rstrip())
-            bot.addlines(nick, l)
-            #send("PRIVMSG", target=target, message=l, to=nick, stripspace=False, convert=False)
-            #send("PRIVMSG", target=target, message="imported", to=nick, stripspace=False, convert=False)
-        except:
-            bot.sendm(target, "出错了啦...", to=nick)
-            raise
-
-@bot.on('PRIVMSG')
-def message(nick, target, message):
-    ''' Echo all messages '''
-
-    # Don't echo ourselves
+def privmsg(nick, target, message):
     if nick == bot.nick:
         return
 
     (nick, message) = bot.deprefix(nick, message)
-
-    # Direct message to bot
     if target == bot.nick:
         sender = lambda m, **kw: bot.sender(nick, m, **kw)
-    # Message in channel
     else:
         sender = lambda m, **kw: bot.sender(target, m, to=nick, **kw)
 
-    #return (yield from commands.reply(nick, message, lines, sender))
-    #return (yield from commands.reply(nick, message, bot, sender))
-    return (yield from bot.modules.reply(nick, message, bot, sender))
+    coros = [f(bot, nick, message, sender) for f in bot.modules.privmsg]
 
-@bot.on('PRIVMSG')
-def reload(nick, target, message):
-    if nick != bot.admin or message != "'!reload":
-        return
+    return (yield from asyncio.wait(coros))
 
-    print('reload')
-    try:
-        bot.reload()
-        bot.sender(target, 'reloaded', to=nick)
-    except:
-        bot.sender(target, 'error', to=nick)
-        raise
 
 @asyncio.coroutine
 def dump(loop):

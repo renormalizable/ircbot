@@ -56,8 +56,6 @@ class Normalize:
                 line = line.replace(s, e)
         return line
 
-normalize = Normalize()
-
 def splitmessage(s, n):
     while len(s) > n:
         i = n
@@ -79,6 +77,7 @@ class Client(bottom.Client):
         self.msglimit = 430
 
         self.deprefix = dePrefix()
+        self.normalize = Normalize()
         self.modules = importlib.import_module('modules')
 
     def reload(self):
@@ -105,7 +104,7 @@ class Client(bottom.Client):
 
     def sendm(self, target, message, *, command='PRIVMSG', to='', raw=False, mlimit=0, color=None, **kw):
         prefix = (to + ': ') if to else ''
-        message = ('' if raw else prefix) + normalize(message, **kw)
+        message = ('' if raw else prefix) + self.normalize(message, **kw)
         print(message)
         for (i, m) in enumerate(splitmessage(message.encode('utf-8'), self.msglimit)):
             if mlimit > 0 and i >= mlimit:
