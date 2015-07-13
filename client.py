@@ -8,12 +8,11 @@ class dePrefix:
     def __init__(self):
         #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
-        self.r = re.compile(r'(\[(?P<nick>\S+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
+        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?): )?(?P<message>.*)')
     def __call__(self, n, m):
         r = self.r.fullmatch(m).groupdict()
-        #return (r['nick'].strip() if r['nick'] else n, r['message'])
         #return (r['to'].strip() if r['to'] else r['nick'].strip() if r['nick'] else n, r['message'])
-        return (r['to'] if r['to'] else r['nick'] if r['nick'] else n, r['message'])
+        return (r['to'] or r['nick'] or n, r['message'])
 
 class Normalize:
     def __init__(self):
