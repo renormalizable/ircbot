@@ -364,16 +364,30 @@ def haskell(arg, lines, send):
         'args': '-package ghc',
         'raw': None,
     })
+    # https://github.com/ghc/ghc/blob/master/ghc/InteractiveUI.hs
     line = [
         'import GHC',
         'import DynFlags',
-        'stmt = [{0}]'.format(', '.join('"{0}"'.format(e) for e in (lines + [arg['code']]))),
+        'import Data.List (isPrefixOf)',
+        'import Data.Char (isSpace)',
+        'stmts = [{0}]'.format(', '.join('"{0}"'.format(e) for e in (lines + [arg['code']]))),
+        'run stmt',
+        '    | stmt `looks_like` "import "',
+        '    = do ctx <- getContext',
+        '         mod <- parseImportDecl stmt',
+        '         setContext $ (IIDecl mod) : ctx',
+        '    | any (stmt `looks_like`) prefixes = do runDecls stmt; return ()',
+        '    | otherwise = do runStmt stmt RunToCompletion; return ()',
+        '    where s `looks_like` p = p `isPrefixOf` dropWhile isSpace s',
+        '          prefixes = [ "class ", "instance ", "data ", "newtype ", "type ", "default ", "default("]',
         'main = runGhc (Just "/usr/lib/ghc") $ do',
         '    dflags <- getSessionDynFlags',
         '    setSessionDynFlags dflags',
-        '    mapM (\s -> runStmt s RunToCompletion) stmt',
+        '    ctx <- getContext',
+        '    setContext $ (IIDecl . simpleImportDecl $ mkModuleName "Prelude") : ctx',
+        '    mapM run stmts',
     ]
-    print(repr(line))
+    #print(repr(line))
 
     return (yield from rextester(arg, line, send))
 
