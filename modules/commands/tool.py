@@ -97,18 +97,18 @@ class Request:
         else:
             return [('.', '', '{}')]
 
-    def getfield(self, get):
+    def getfield(self, get, ns, field):
         def getf(e, f):
             #def gete(e):
             #    #item = get(e, f[1])
             #    #return str(item).strip() if item else ''
             #    return str(get(e, f[1]) or '')
             # check if e is node
-            #l = [y for y in [gete(x) for x in e.xpath(f[0], namespaces=self.ns)] if y.strip()] if hasattr(e, 'xpath') else [e]
-            l = [y for y in [str(get(x, f[1]) or '') for x in e.xpath(f[0], namespaces=self.ns)] if y.strip()] if hasattr(e, 'xpath') else [e]
+            #l = [y for y in [gete(x) for x in e.xpath(f[0], namespaces=ns)] if y.strip()] if hasattr(e, 'xpath') else [e]
+            l = [y for y in [str(get(x, f[1]) or '') for x in e.xpath(f[0], namespaces=ns)] if y.strip()] if hasattr(e, 'xpath') else [e]
             print(l)
             return f[2].format(', '.join(l)) if l else ''
-        return (lambda e: [getf(e, f) for f in self.field])
+        return (lambda e: [getf(e, f) for f in field])
 
     def parse(self, text):
         pass
@@ -119,7 +119,7 @@ class Request:
     def format(self, l):
         return map(lambda e: ' '.join(e), l)
 
-    def addns(self, t):
+    def addns(self, t, ns):
         pass
 
     @asyncio.coroutine
@@ -129,32 +129,32 @@ class Request:
 
     @asyncio.coroutine
     def __call__(self, arg, lines, send, *, method='GET', field=None, transform=None, get=None, format=None, **kw):
-        self.n = int(arg.get('n') or 5)
-        self.offset = int(arg.get('offset') or 0)
-        self.method = method
-        self.url = arg['url']
-        self.xpath = arg['xpath']
-        self.field = field or self.parsefield(arg.get('field'))
-        self.transform = transform or (lambda l: l)
-        self.ns = {'re': 'http://exslt.org/regular-expressions'}
+        n = int(arg.get('n') or 5)
+        offset = int(arg.get('offset') or 0)
+        method = method
+        url = arg['url']
+        xpath = arg['xpath']
+        field = field or self.parsefield(arg.get('field'))
+        transform = transform or (lambda l: l)
+        ns = {'re': 'http://exslt.org/regular-expressions'}
     
-        print(self.field)
+        print(field)
 
         get = get or self.get
         format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else self.format)
 
         # fetch
-        text = '\n'.join(lines) if lines else (yield from self.fetch(self.method, self.url, **kw))
+        text = '\n'.join(lines) if lines else (yield from self.fetch(method, url, **kw))
         # parse
         tree = self.parse(text)
-        self.addns(tree)
+        self.addns(tree, ns)
         # find
-        l = tree.xpath(self.xpath, namespaces=self.ns)
-        l = drop(self.transform(l), self.offset)
+        l = tree.xpath(xpath, namespaces=ns)
+        l = drop(transform(l), offset)
         # get
-        line = filter(lambda e: any(e), map(self.getfield(get), l))
+        line = filter(lambda e: any(e), map(self.getfield(get, ns, field), l))
         # send
-        send(format(line), n=self.n, llimit=10)
+        send(format(line), n=n, llimit=10)
 
 class HTMLRequest(Request):
     def parse(self, text):
@@ -179,11 +179,11 @@ class XMLRequest(Request):
             return getattr(e, f)
         else:
             return e.attrib.get(f)
-    def addns(self, t):
-        self.ns.update(t.nsmap)
-        xmlns = self.ns.pop(None, None)
+    def addns(self, t, ns):
+        ns.update(t.nsmap)
+        xmlns = ns.pop(None, None)
         if xmlns:
-            self.ns['ns'] = xmlns
+            ns['ns'] = xmlns
 
 xml = XMLRequest()
 
