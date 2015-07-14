@@ -3,11 +3,9 @@ import json
 import re
 from aiohttp          import request
 from aiohttp.helpers  import FormData
-from urllib.parse     import urlsplit
 
 import config
-from .common import Get
-from .tool import html, htmlparse, jsonparse, regex
+from .tool import htmlparse, jsonparse
 
 def unsafesend(m, send, *, raw=False):
     if raw:
@@ -16,34 +14,7 @@ def unsafesend(m, send, *, raw=False):
     else:
         send(m, mlimit=5)
 
-@asyncio.coroutine
-def getcode(url):
-    site = {
-        'codepad.org':         '/html/body/div/table/tbody/tr/td/div[1]/table/tbody/tr/td[2]/div/pre',
-        'paste.ubuntu.com':    '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
-        'cfp.vim-cn.com':      '.',
-        'p.vim-cn.com':        '.',
-        'www.fpaste.org':      '//*[@id="paste_form"]/div[1]/div/div[3]',
-        'bpaste.net':          '//*[@id="paste"]/div/table/tbody/tr/td[2]/div',
-        'pastebin.com':        '//*[@id="paste_code"]',
-        'code.bulix.org':      '//*[@id="contents"]/pre',
-        'ix.io':               '.',
-        'dpaste.com':          '//*[@id="content"]/table/tbody/tr/td[2]/div/pre',
-        'ideone.com':          '//*[@id="source"]/pre/ol/li/div',
-        'pastebin.com':        '//*[@id="selectable"]/div/ol',
-    }
-
-    get = Get()
-    u = urlsplit(url)
-    xpath = site[u[1]]
-    if xpath == '.':
-        arg = {'url': url, 'regex': r'(.*)(?:\n|$)', 'n': '0'}
-        yield from regex(arg, [], get)
-    else:
-        arg = {'url': url, 'xpath': xpath, 'n': '0'}
-        yield from html(arg, [], get)
-
-    return get.line
+# util
 
 @asyncio.coroutine
 def clear(arg, lines, send):
@@ -112,6 +83,8 @@ def bpaste(arg, lines, send):
     r = yield from request('POST', url, data=data, headers=headers)
 
     send('[\\x0302 {0} \\x0f]'.format(r.url))
+
+# compiler
 
 @asyncio.coroutine
 def rust(arg, lines, send):
@@ -334,6 +307,8 @@ def rextester(arg, lines, send):
         unsafesend(result, send, raw=raw)
     else:
         unsafesend('no output', send, raw=raw)
+
+# repl
 
 @asyncio.coroutine
 def python3(arg, lines, send):

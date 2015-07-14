@@ -214,34 +214,6 @@ def regex(arg, lines, send, **kw):
     line = map(lambda e: ', '.join(e.groups()), reg.finditer(text))
     send(line, n=n, llimit=10)
 
-@asyncio.coroutine
-def fetcher(arg, send, **kw):
-    print('fetcher')
-
-    url = arg['url']
-
-    text = yield from fetch('GET', url, **kw)
-    send([text], n=1)
-
-@asyncio.coroutine
-def geturl(msg):
-    reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>http\S+)(?:\s+(?P<params>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
-    arg = reg.fullmatch(msg)
-    if arg:
-        d = arg.groupdict()
-        print(d)
-        params = json.loads(d.get('params') or '{}')
-        content = d.get('content')
-        if content:
-            r = yield from fetch(d['method'], d['url'], params=params, content='raw')
-            #text = str(getattr(r, content.lower()) or '')
-            text = str(getattr(r, content) or '')
-        else:
-            text = yield from fetch(d['method'], d['url'], params=params, content='text')
-    else:
-        raise Exception()
-
-    return [text]
 
 help = [
     ('html'         , 'html (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
@@ -256,5 +228,4 @@ func = [
     (xml            , r"xml(?:\s+(?P<url>http\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (jsonxml        , r"json(?:\s+(?P<url>http\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (regex          , r"regex(?:\s+(?P<url>http\S+))?\s+(?P<regex>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (fetcher        , r"fetch\s+(?P<url>http\S+)"),
 ]

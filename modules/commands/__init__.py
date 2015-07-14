@@ -5,18 +5,15 @@ import os
 import importlib
 import inspect
 
-common = importlib.reload(importlib.import_module('modules.commands.common'))
-Get = common.Get
-
-#dir = './modules/commands'
-# no dir allowed
-#file = [f[:-3] for f in os.listdir(dir) if f.endswith('.py') and f != '__init__.py']
-
 path = 'modules.commands.'
-#path = '.'
 files = ['simple', 'util', 'tool', 'lang', 'api', 'acg', 'handy']
 modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
 table = dict(zip(files, modules))
+
+common = importlib.reload(importlib.import_module(path + 'common'))
+Get = common.Get
+multiline = importlib.reload(importlib.import_module(path + 'multiline'))
+fetcher = multiline.fetcher
 
 help = dict(sum((getattr(m, 'help', []) for m in modules), []))
 
@@ -97,9 +94,25 @@ def reply(bot, nick, message, send):
         bot.addlines(nick, lines)
 
 @asyncio.coroutine
-def fetch(msg):
-    try:
-        return (yield from table['lang'].getcode(msg))
-    except:
-        print('not paste bin')
-        return (yield from table['tool'].geturl(msg))
+def multiline(bot, nick, message, send):
+    if message[:4] == "'.. " or message == "'..":
+        print('multiline')
+        l = [message[4:].rstrip()]
+        bot.addlines(nick, l)
+
+@asyncio.coroutine
+def fetchline(bot, nick, message, send):
+    if message[:4] == "':: ":
+        print('fetchline')
+        try:
+            l = yield from fetcher(message[4:].rstrip())
+            bot.addlines(nick, l)
+        except:
+            send('出错了啦...')
+            raise
+
+privmsg = [
+    reply,
+    multiline,
+    fetchline,
+]
