@@ -199,7 +199,7 @@ def btran(arg, lines, send):
         'url': 'http://openapi.baidu.com/public/2.0/bmt/translate',
         'xpath': '//trans_result/item',
     })
-    params = {'client_id': config.key['baidu'], 'from': arg['from'] or 'auto', 'to': arg['to'] or 'zh', 'q': ' '.join(lines) or arg['text']}
+    params = {'client_id': config.key['baidu'], 'from': arg['from'] or 'auto', 'to': arg['to'] or 'zh', 'q': ' '.join(lines) or arg['text'] or ''}
     field = [('./dst', 'text', '{}')]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
@@ -282,8 +282,9 @@ class BIM(IM):
         self.format = lambda x: x
     @asyncio.coroutine
     def request(self, e, get):
-        self.params['input'] = e
-        yield from jsonxml(self.arg, [], get, params=self.params, field=self.field, format=self.format)
+        params = self.params.copy()
+        params['input'] = e
+        yield from jsonxml(self.arg, [], get, params=params, field=self.field, format=self.format)
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
             return len(e)
@@ -315,8 +316,9 @@ class GIM(IM):
         self.format = lambda x: x
     @asyncio.coroutine
     def request(self, e, get):
-        self.params['text'] = e
-        yield from jsonxml(self.arg, [], get, params=self.params, field=self.field, format=self.format)
+        params = self.params.copy()
+        params['text'] = e
+        yield from jsonxml(self.arg, [], get, params=params, field=self.field, format=self.format)
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
             return len(e)
@@ -354,40 +356,40 @@ gim = GIM()
 
 # microsoft
 
-class Microsoft:
-    class Get:
-        def __init__(self):
-            self.key = ''
-            self.expire = 0
-        def __call__(self, l, n=-1, **kw):
-            e = list(l)[0]
-            self.key = e[0]
-            self.expire = int(e[1])
-    def __init__(self, client, scope, type):
-        self.arg = {
-            'url': 'https://datamarket.accesscontrol.windows.net/v2/OAuth2-13',
-            'xpath': '/root',
-        }
-        self.field = [('./access_token', 'text', '{}'), ('./expires_in', 'text', '{}')]
-        self.format = lambda x: x
-        self.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        self.data = 'client_id={0}&client_secret={1}&scope={2}&grant_type={3}'.format(quote_plus(client[0]), quote_plus(client[1]), quote_plus(scope), quote_plus(type))
-        self.key = ''
-        self.time = 0
-        self.expire = 0
-    @asyncio.coroutine
-    def getkey(self):
-        t = time.time()
-        if (t - self.time) > self.expire:
-            yield from self.renew()
-        return self.key
-    @asyncio.coroutine
-    def renew(self):
-        get = Microsoft.Get()
-        yield from jsonxml(self.arg, [], get, method='POST', data=self.data, headers=self.headers, field=self.field, format=self.format)
-        self.time = time.time()
-        self.expire = get.expire - 60
-        self.key = get.key
+#class Microsoft:
+#    class Get:
+#        def __init__(self):
+#            self.key = ''
+#            self.expire = 0
+#        def __call__(self, l, n=-1, **kw):
+#            e = list(l)[0]
+#            self.key = e[0]
+#            self.expire = int(e[1])
+#    def __init__(self, client, scope, type):
+#        self.arg = {
+#            'url': 'https://datamarket.accesscontrol.windows.net/v2/OAuth2-13',
+#            'xpath': '/root',
+#        }
+#        self.field = [('./access_token', 'text', '{}'), ('./expires_in', 'text', '{}')]
+#        self.format = lambda x: x
+#        self.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+#        self.data = 'client_id={0}&client_secret={1}&scope={2}&grant_type={3}'.format(quote_plus(client[0]), quote_plus(client[1]), quote_plus(scope), quote_plus(type))
+#        self.key = ''
+#        self.time = 0
+#        self.expire = 0
+#    @asyncio.coroutine
+#    def getkey(self):
+#        t = time.time()
+#        if (t - self.time) > self.expire:
+#            yield from self.renew()
+#        return self.key
+#    @asyncio.coroutine
+#    def renew(self):
+#        get = Microsoft.Get()
+#        yield from jsonxml(self.arg, [], get, method='POST', data=self.data, headers=self.headers, field=self.field, format=self.format)
+#        self.time = time.time()
+#        self.expire = get.expire - 60
+#        self.key = get.key
 
 @asyncio.coroutine
 def bing(arg, lines, send):
@@ -404,7 +406,7 @@ def bing(arg, lines, send):
         'Sources': "'web'",
         'Adult': "'Off'",
         'Market': "'en-US'",
-        'Query': "'{0}'".format(' '.join(lines) or arg['query']),
+        'Query': "'{0}'".format(' '.join(lines) or arg['query'] or ''),
     }
     key = config.key['microsoft']
     auth = BasicAuth(key, key)
@@ -445,7 +447,7 @@ def mtran(arg, lines, send):
     params = {
         '$format': 'json',
         'To': "'{0}'".format(arg['to'] or 'zh-CHS'),
-        'Text': "'{0}'".format(' '.join(lines) or arg['text']),
+        'Text': "'{0}'".format(' '.join(lines) or arg['text'] or ''),
     }
     if arg['from']:
         params['From'] = "'{0}'".format(arg['from'])
@@ -512,7 +514,7 @@ def google(arg, lines, send):
         'url': 'https://www.googleapis.com/customsearch/v1',
         'xpath': '//items/item',
     })
-    params = {'key': config.key['google'], 'cx': config.key['googleseid'], 'q': ' '.join(lines) or arg['query']}
+    params = {'key': config.key['google'], 'cx': config.key['googleseid'], 'q': ' '.join(lines) or arg['query'] or ''}
     field = [('./title', 'text', '{}'), ('./link', 'text', '[\\x0302 {} \\x0f]'), ('./snippet', 'text', '{}')]
 
     return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=False, **kw), params=params, field=field))
@@ -640,7 +642,7 @@ func = [
     (google         , r"google(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
     (dictg          , r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
-    (cdict          , r"cdict(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (cdict          , r"collins(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (breezo         , r"breezo\s+(?P<city>.+)"),
     (speak          , r"speak\s+(?P<text>.+)"),
     (urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
