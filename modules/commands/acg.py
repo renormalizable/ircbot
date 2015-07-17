@@ -41,6 +41,7 @@ def moegirl(arg, send):
 
     return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
 
+
 @asyncio.coroutine
 def nmb(arg, send):
     print('nmb')
@@ -61,9 +62,14 @@ def nmb(arg, send):
             'url': url + (arg['forum'] or '综合版1'),
             'xpath': '//div[@id="h-content"]/div[1]/div[3]/div',
         })
-    field = [('.', 'data-threads-id', '[\\x0304{}\\x0f]'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', '', '{}'), ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]')]
+    field = [
+        ('.', 'data-threads-id', '[\\x0304{}\\x0f]'),
+        ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', '', '{}'),
+        ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]'),
+    ]
 
     return (yield from html(arg, [], send, field=field))
+
 
 @asyncio.coroutine
 def adnmb(arg, send):
@@ -82,9 +88,14 @@ def adnmb(arg, send):
             'url': url + 'showt/id/{0}.html'.format(arg['forum'] or '1'),
             'xpath': '//div[@id="threads"]/div[@class="threadpost"]',
         })
-    field = [('.', 'id', '[\\x0304{}\\x0f]'), ('.//div[@class="quote"]', '', '{}'), ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]')]
+    field = [
+        ('.', 'id', '[\\x0304{}\\x0f]'),
+        ('.//div[@class="quote"]', '', '{}'),
+        ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]'),
+    ]
 
     return (yield from html(arg, [], send, field=field))
+
 
 @asyncio.coroutine
 def acfun(arg, send):

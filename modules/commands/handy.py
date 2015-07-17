@@ -5,6 +5,7 @@ from .tool import html, addstyle
 
 # html parse
 
+
 @asyncio.coroutine
 def arxiv(arg, send):
     print('arxiv')
@@ -15,11 +16,15 @@ def arxiv(arg, send):
         'xpath': '//*[@id="dlpage"]/dl/dt',
     })
     params = {'query': arg['query'], 'searchtype': 'all'}
-    field = [('./span/a[1]', 'text', '{}'), ('./following-sibling::dd[1]/div/div[1]/span', 'tail', '{}')]
+    field = [
+        ('./span/a[1]', 'text', '{}'),
+        ('./following-sibling::dd[1]/div/div[1]/span', 'tail', '{}'),
+    ]
     def format(l):
         return map(lambda e: '[\\x0302{0}\\x0f] {1}'.format(e[0][6:], e[1]), l)
 
     return (yield from html(arg, [], send, params=params, field=field, format=format))
+
 
 @asyncio.coroutine
 def zhihu(arg, send):
@@ -42,6 +47,7 @@ def zhihu(arg, send):
 
     return (yield from html(arg, [], send, get=get))
 
+
 @asyncio.coroutine
 def pm25(arg, send):
     print('pm25')
@@ -57,7 +63,7 @@ def pm25(arg, send):
     try:
         location = city[arg['city']]
     except:
-        send('只有如下城市: '+ ', '.join(city.keys()))
+        send('只有如下城市: ' + ', '.join(city.keys()))
         return
 
     arg.update({
@@ -72,6 +78,7 @@ def pm25(arg, send):
 
     return (yield from html(arg, [], send, field=field, format=format))
 
+
 @asyncio.coroutine
 def btdigg(arg, send):
     print('btdigg')
@@ -84,7 +91,11 @@ def btdigg(arg, send):
     params = {'info_hash': '', 'q': arg['query']}
     #field = [('./td/table[1]//a', 'text_content', '\\x0304{}\\x0f'), ('./td/table[2]//td[not(@class)]', 'text_content', '{}'), ('./td/table[2]//td[1]/a', 'href', '[\\x0302 {} \\x0f]')]
     # magnet link
-    field = [('./td/table[1]//a', '', '\\x0300{}\\x0f'), ('./td/table[2]//td[not(@class)]', '', '{}'), ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f')]
+    field = [
+        ('./td/table[1]//a', '', '\\x0300{}\\x0f'),
+        ('./td/table[2]//td[not(@class)]', '', '{}'),
+        ('./td/table[2]//td[1]/a', 'href', '\\x0302{}\\x0f'),
+    ]
 
     def format(l):
         line = []
@@ -94,6 +105,7 @@ def btdigg(arg, send):
         return line
 
     return (yield from html(arg, [], send, params=params, field=field, format=format))
+
 
 @asyncio.coroutine
 def man(arg, send):
@@ -122,9 +134,14 @@ def man(arg, send):
         'url': url + path,
         'xpath': '//head',
     })
-    field = [('./title', '', '{}'), ('./base', 'href', '[\\x0302 {} \\x0f]'), ('./meta[@name = "description"]', 'content', '{}')]
+    field = [
+        ('./title', '', '{}'),
+        ('./base', 'href', '[\\x0302 {} \\x0f]'),
+        ('./meta[@name = "description"]', 'content', '{}'),
+    ]
 
     return (yield from html(arg, [], send, field=field))
+
 
 @asyncio.coroutine
 def gauss(arg, send):

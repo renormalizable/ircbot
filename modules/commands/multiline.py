@@ -1,10 +1,11 @@
 import asyncio
 import re
 import json
-from urllib.parse     import urlsplit
+from urllib.parse import urlsplit
 
 from .common import Get
 from .tool import fetch, html, regex
+
 
 @asyncio.coroutine
 def getcode(url):
@@ -35,6 +36,7 @@ def getcode(url):
 
     return get.line
 
+
 @asyncio.coroutine
 def geturl(msg):
     reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>http\S+)(?:\s+(?P<params>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
@@ -54,6 +56,7 @@ def geturl(msg):
         raise Exception()
 
     return [text]
+
 
 @asyncio.coroutine
 def fetcher(msg):

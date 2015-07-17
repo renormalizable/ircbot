@@ -17,6 +17,7 @@ fetcher = multiline.fetcher
 
 help = dict(sum((getattr(m, 'help', []) for m in modules), []))
 
+
 @asyncio.coroutine
 def helper(arg, send):
     c = arg['command']
@@ -28,6 +29,7 @@ def helper(arg, send):
         send('\\x0300help:\\x0f help [command] -- "{0} 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous'.format(arg['meta']['bot'].nick))
         send('(づ￣ω￣)づ  -->>  ' + ' '.join(sorted(help.keys())))
         #send('try "\\x0300help \\x1fcommand\\x1f\\x0f" to find out more~')
+
 
 def command(f, r):
     func = f if inspect.signature(f).parameters.get('lines') else (lambda arg, lines, send: f(arg, send))
@@ -55,6 +57,7 @@ def command(f, r):
 
 func = [command(f[0], f[1]) for f in sum((getattr(m, 'func', []) for m in modules), [(helper, r"help(\s+(?P<command>\S+))?")])]
 
+
 @asyncio.coroutine
 def execute(msg, lines, send, meta):
     coros = [f(msg, lines, send, meta) for f in func]
@@ -62,6 +65,7 @@ def execute(msg, lines, send, meta):
     #yield from asyncio.wait(coros)
     status = yield from asyncio.gather(*coros)
     return any(status)
+
 
 @asyncio.coroutine
 def reply(bot, nick, message, send):
@@ -93,12 +97,14 @@ def reply(bot, nick, message, send):
     if not success and lines:
         bot.addlines(nick, lines)
 
+
 @asyncio.coroutine
 def multiline(bot, nick, message, send):
     if message[:4] == "'.. " or message == "'..":
         print('multiline')
         l = [message[4:].rstrip()]
         bot.addlines(nick, l)
+
 
 @asyncio.coroutine
 def fetchline(bot, nick, message, send):

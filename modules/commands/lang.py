@@ -7,6 +7,7 @@ from aiohttp.helpers  import FormData
 import config
 from .tool import htmlparse, jsonparse
 
+
 def unsafesend(m, send, *, raw=False):
     if raw:
         l = str(m).splitlines()
@@ -16,9 +17,11 @@ def unsafesend(m, send, *, raw=False):
 
 # util
 
+
 @asyncio.coroutine
 def clear(arg, lines, send):
     print('clear')
+
 
 @asyncio.coroutine
 def undo(arg, lines, send):
@@ -33,6 +36,7 @@ def undo(arg, lines, send):
         arg['meta']['bot'].addlines(arg['meta']['nick'], lines)
 
 # paste
+
 
 @asyncio.coroutine
 def vimcn(arg, lines, send):
@@ -53,6 +57,7 @@ def vimcn(arg, lines, send):
     text = esc.sub('', text)
     line = text.splitlines()
     send('[\\x0302 {0} \\x0f]'.format(line[0]))
+
 
 @asyncio.coroutine
 def bpaste(arg, lines, send):
@@ -86,6 +91,7 @@ def bpaste(arg, lines, send):
 
 # compiler
 
+
 @asyncio.coroutine
 def rust(arg, lines, send):
     print('rust')
@@ -118,6 +124,7 @@ def rust(arg, lines, send):
         unsafesend(result, send, raw=raw)
     else:
         unsafesend('no output', send, raw=raw)
+
 
 @asyncio.coroutine
 def codepad(arg, lines, send):
@@ -159,6 +166,7 @@ def codepad(arg, lines, send):
         except IndexError:
             unsafesend('no output', send, raw=raw)
     send('[\\x0302 {0} \\x0f]'.format(r.url))
+
 
 @asyncio.coroutine
 def hackerearth(arg, lines, send):
@@ -207,6 +215,7 @@ def hackerearth(arg, lines, send):
         unsafesend(result, send, raw=raw)
     else:
         unsafesend('no output', send, raw=raw)
+
 
 @asyncio.coroutine
 def rextester(arg, lines, send):
@@ -310,6 +319,7 @@ def rextester(arg, lines, send):
 
 # repl
 
+
 @asyncio.coroutine
 def python3(arg, lines, send):
 
@@ -330,6 +340,7 @@ def python3(arg, lines, send):
     ]
 
     return (yield from rextester(arg, line, send))
+
 
 @asyncio.coroutine
 def haskell(arg, lines, send):
@@ -365,6 +376,7 @@ def haskell(arg, lines, send):
     #print(repr(line))
 
     return (yield from rextester(arg, line, send))
+
 
 #@asyncio.coroutine
 #def ghci(arg, lines, send):

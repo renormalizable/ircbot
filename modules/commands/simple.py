@@ -9,42 +9,48 @@ def echo(arg, send):
     #send(arg[0])
     send(arg['content'], raw=True)
 
+
 @asyncio.coroutine
 def say(arg, send):
     #send(arg['content'])
     send('[{0}] '.format(arg['meta']['nick']) + arg['content'], raw=True)
+
 
 @asyncio.coroutine
 def ping(arg, send):
     send("ping!")
     #send("\\x0305ping!\\x0f")
 
+
 @asyncio.coroutine
 def pong(arg, send):
     send("pong!")
 
+
 class ping2c():
+
     def __init__(self):
         self.i = 3
         self.tt = time.time()
 
     @asyncio.coroutine
     def __call__(self, arg, send):
-       print(self.i)
-       t = time.time()
-       if t - self.tt > 20:
-          self.tt = t
-          self.i = 3
-       elif self.i <= 0:
-          send('好累啊...')
-       if self.i == 1:
-          send("\\x0304ping!!!!!!!!!\\x0f")
-          self.i = self.i - 1
-       elif self.i > 0:
-          send("\\x0304ping!\\x0f")
-          self.i = self.i - 1
+        print(self.i)
+        t = time.time()
+        if t - self.tt > 20:
+            self.tt = t
+            self.i = 3
+        elif self.i <= 0:
+            send('好累啊...')
+        if self.i == 1:
+            send("\\x0304ping!!!!!!!!!\\x0f")
+            self.i = self.i - 1
+        elif self.i > 0:
+            send("\\x0304ping!\\x0f")
+            self.i = self.i - 1
 
 ping2 = ping2c()
+
 
 @asyncio.coroutine
 def pia(arg, send):
@@ -110,6 +116,7 @@ def pia(arg, send):
     else:
         send(icon + '不要 pia 我!')
 
+
 @asyncio.coroutine
 def mua(arg, send):
     content = arg['content'] or ''
@@ -119,6 +126,7 @@ def mua(arg, send):
     else:
         send('o(*￣3￣)o ' + '谢谢啦~')
 
+
 @asyncio.coroutine
 def hug(arg, send):
     content = arg['content'] or ''
@@ -127,6 +135,7 @@ def hug(arg, send):
         send('(つ°ω°)つ ' + content)
     else:
         send('(つ°ω°)つ ' + '谢谢啦~')
+
 
 @asyncio.coroutine
 def color(arg, send):
@@ -171,6 +180,7 @@ def color(arg, send):
     send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[:8])))
     send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[8:])))
 
+
 @asyncio.coroutine
 def mode(arg, send):
     u = [
@@ -213,6 +223,7 @@ def mode(arg, send):
     send('\\x0304channel\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), c[:12])))
     send('\\x0304cont.\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), c[12:])))
     send('see [\\x0302 https://freenode.net/using_the_network.shtml \\x0f] for more infomation')
+
 
 def getrandom(show):
     # http://en.wikipedia.org/wiki/Mathematical_constant
@@ -280,13 +291,16 @@ def getrandom(show):
     l = random.choice([const, rand])
     return get(random.choice(l))
 
+
 @asyncio.coroutine
 def up(arg, send):
     send('+' + getrandom(arg['show']))
 
+
 @asyncio.coroutine
 def down(arg, send):
     send('-' + getrandom(arg['show']))
+
 
 @asyncio.coroutine
 def latex(arg, send):

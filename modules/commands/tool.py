@@ -9,6 +9,7 @@ import html5lib
 from dicttoxml import dicttoxml
 import itertools
 
+
 def drop(l, offset):
     return itertools.islice(l, offset, None)
 
@@ -27,6 +28,7 @@ def drop(l, offset):
 #    l = yield from func(byte)
 #    send(l, n=n, llimit=10)
 
+
 @asyncio.coroutine
 def fetch(method, url, content='text', **kw):
     print('fetch')
@@ -44,6 +46,7 @@ def fetch(method, url, content='text', **kw):
         return r
 
     return None
+
 
 def addstyle(e):
     # br to newline
@@ -67,8 +70,10 @@ def htmlparse(t):
 def htmlparsefast(t, *, parser=None):
     return lxml.html.fromstring(t, parser=parser)
 
+
 def htmltostr(t):
     return addstyle(htmlparse(t)).xpath('string()')
+
 
 def xmlparse(t):
     try:
@@ -76,13 +81,16 @@ def xmlparse(t):
     except:
         return etree.XML(t.encode('utf-8'))
 
+
 def jsonparse(t):
     try:
         return json.loads(t)
     except:
         return json.loads(t.decode('utf-8', 'replace'))
 
+
 class Request:
+
     def __init__(self):
         # no # in xpath
         self.rfield = re.compile(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?")
@@ -137,7 +145,7 @@ class Request:
         field = field or self.parsefield(arg.get('field'))
         transform = transform or (lambda l: l)
         ns = {'re': 'http://exslt.org/regular-expressions'}
-    
+
         print(field)
 
         get = get or self.get
@@ -156,9 +164,12 @@ class Request:
         # send
         send(format(line), n=n, llimit=10)
 
+
 class HTMLRequest(Request):
+
     def parse(self, text):
         return htmlparse(text)
+
     def get(self, e, f):
         if not f:
             return addstyle(e).xpath('string()')
@@ -169,9 +180,12 @@ class HTMLRequest(Request):
 
 html = HTMLRequest()
 
+
 class XMLRequest(Request):
+
     def parse(self, text):
         return xmlparse(text)
+
     def get(self, e, f):
         if not f:
             return htmltostr(e.text)
@@ -179,6 +193,7 @@ class XMLRequest(Request):
             return getattr(e, f)
         else:
             return e.attrib.get(f)
+
     def addns(self, t, ns):
         ns.update(t.nsmap)
         xmlns = ns.pop(None, None)
@@ -187,12 +202,15 @@ class XMLRequest(Request):
 
 xml = XMLRequest()
 
+
 class JSONRequest(Request):
+
     def parse(self, text):
         j = jsonparse(text)
         #print(j)
         #print(dicttoxml(j))
         return xmlparse(dicttoxml(j))
+
     def get(self, e, f):
         return e.text
 

@@ -1,5 +1,5 @@
 import asyncio
-from urllib.parse  import quote_plus, quote
+from urllib.parse import quote_plus, quote
 from aiohttp.helpers import BasicAuth
 import json
 import re
@@ -7,6 +7,7 @@ import time
 
 import config
 from .tool import xml, jsonxml, htmlparse
+
 
 @asyncio.coroutine
 def arxiv(arg, send):
@@ -17,7 +18,12 @@ def arxiv(arg, send):
         'url': 'http://export.arxiv.org/api/query',
         'xpath': arg['xpath'] or '//ns:entry',
     })
-    params = {'search_query': arg['query'], 'max_results': arg['n'], 'sortBy': 'lastUpdatedDate', 'sortOrder': 'descending'}
+    params = {
+        'search_query': arg['query'],
+        'max_results': arg['n'],
+        'sortBy': 'lastUpdatedDate',
+        'sortOrder': 'descending',
+    }
     field = [('./ns:id', 'text', '{}'), ('./ns:title', 'text', '{}')]
     def format(l):
         def f(e):
@@ -25,6 +31,7 @@ def arxiv(arg, send):
         return map(f, l)
 
     return (yield from xml(arg, [], send, params=params, field=field, format=format))
+
 
 @asyncio.coroutine
 def wolfram(arg, send):
@@ -35,7 +42,12 @@ def wolfram(arg, send):
         'url': 'http://api.wolframalpha.com/v2/query',
         'xpath': arg['xpath'] or '//pod',
     })
-    params = {'appid': config.key['wolfram'], 'units': 'metric', 'format': 'plaintext', 'input': arg['query']}
+    params = {
+        'appid': config.key['wolfram'],
+        'units': 'metric',
+        'format': 'plaintext',
+        'input': arg['query'],
+    }
     field = [('.', 'title', '\\x0300{}:\\x0f'), ('.//plaintext', 'text', '{}')]
     def format(l):
         #r = re.compile(r"(?<!\\)\\:([0-9a-f]{4})")
@@ -48,6 +60,7 @@ def wolfram(arg, send):
         return filter(lambda x: x, map(f, l))
 
     return (yield from xml(arg, [], send, params=params, field=field, format=format))
+
 
 @asyncio.coroutine
 def ip(arg, send):
@@ -62,6 +75,7 @@ def ip(arg, send):
 
     return (yield from jsonxml(arg, [], send, field=field))
 
+
 @asyncio.coroutine
 def whois(arg, send):
     print('whois')
@@ -72,10 +86,14 @@ def whois(arg, send):
         'xpath': '/root',
     })
     params = {'domain': arg['domain']}
-    headers = {'Accept': 'application/json', 'Authorization': 'Token token=' + config.key['jsonwhois']}
-    field = list(map(lambda x: ('./' + x, 'text', '{}'), ['status | ./status/item', 'created_on', 'updated_on']))
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Token token=' + config.key['jsonwhois'],
+    }
+    field = [('./' + x, 'text', '{}') for x in ['status | ./status/item', 'created_on', 'updated_on']]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+
 
 @asyncio.coroutine
 def aqi(arg, send):
@@ -86,10 +104,23 @@ def aqi(arg, send):
         'url': 'http://www.pm25.in/api/querys/aqi_details.json',
         'xpath': '/root/item',
     })
-    params = {'token': config.key['pm25'], 'avg': 'true', 'stations': 'no', 'city': arg['city']}
+    params = {
+        'token': config.key['pm25'],
+        'avg': 'true',
+        'stations': 'no',
+        'city': arg['city'],
+    }
     field = [('./' + x, 'text', '{}') for x in ['area', 'quality', 'aqi', 'primary_pollutant', 'time_point']]
     if arg.get('all'):
-        l = [('pm2_5', 'PM 2.5'), ('pm10', 'PM 10'), ('co', 'CO'), ('no2', 'NO2'), ('o3', 'O3'), ('o3_8h', 'O3 8h'), ('so2', 'SO2')]
+        l = [
+            ('pm2_5', 'PM 2.5'),
+            ('pm10', 'PM 10'),
+            ('co', 'CO'),
+            ('no2', 'NO2'),
+            ('o3', 'O3'),
+            ('o3_8h', 'O3 8h'),
+            ('so2', 'SO2'),
+        ]
         field += [('./' + x[0], 'text', '\\x0300{0}:\\x0f'.format(x[1]) + ' {}') for x in l]
         def format(l):
             e = list(l)[0]
@@ -129,6 +160,7 @@ def bip(arg, send):
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
 
+
 @asyncio.coroutine
 def bid(arg, send):
     print('bid')
@@ -143,6 +175,7 @@ def bid(arg, send):
     field = [('./' + x, 'text', '{}') for x in ['sex', 'birthday', 'address']]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
+
 
 @asyncio.coroutine
 def bphone(arg, send):
@@ -159,6 +192,7 @@ def bphone(arg, send):
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
 
+
 @asyncio.coroutine
 def baqi(arg, send):
     print('baqi')
@@ -173,6 +207,7 @@ def baqi(arg, send):
     field = [('./' + x, 'text', '{}') for x in ['city', 'level', 'aqi', 'core', 'time']]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
+
 
 @asyncio.coroutine
 def bweather(arg, send):
@@ -189,6 +224,7 @@ def bweather(arg, send):
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
 
+
 @asyncio.coroutine
 def btran(arg, lines, send):
     print('btran')
@@ -199,16 +235,25 @@ def btran(arg, lines, send):
         'url': 'http://openapi.baidu.com/public/2.0/bmt/translate',
         'xpath': '//trans_result/item',
     })
-    params = {'client_id': config.key['baidu'], 'from': arg['from'] or 'auto', 'to': arg['to'] or 'zh', 'q': ' '.join(lines) or arg['text'] or ''}
+    params = {
+        'client_id': config.key['baidu'],
+        'from': arg['from'] or 'auto',
+        'to': arg['to'] or 'zh',
+        'q': ' '.join(lines) or arg['text'] or '',
+    }
     field = [('./dst', 'text', '{}')]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
 
+
 class IM:
+
     class Getter:
+
         def __init__(self):
             self.l = ''
             self.len = 0
+
         def __call__(self, l, n=-1, **kw):
             if n < 0:
                 self.l += l
@@ -224,11 +269,14 @@ class IM:
         self.letter = re.compile(r"[^']")
         self.comment = re.compile(r"(?:(?<=[^a-z'])|^)''(.*?)''(?:(?=[^a-z'])|$)")
         self.Get = Getter or IM.Getter
+
     @asyncio.coroutine
     def request(self, e, get):
         pass
+
     def getpos(self, e, l):
         pass
+
     @asyncio.coroutine
     def getitem(self, e):
         if not self.pinyin.match(e):
@@ -242,6 +290,7 @@ class IM:
             pos = self.getpos(e, get.len)
             e = e[pos:]
         return get.l
+
     @asyncio.coroutine
     def __call__(self, pinyin, send):
         print('im')
@@ -263,10 +312,16 @@ class IM:
 
         return send(line)
 
+
 class BIM(IM):
+
     def __init__(self):
         IM.__init__(self)
-        self.arg = {'n': '1', 'url': 'http://olime.baidu.com/py', 'xpath': '//result/item[1]/item'}
+        self.arg = {
+            'n': '1',
+            'url': 'http://olime.baidu.com/py',
+            'xpath': '//result/item[1]/item',
+        }
         self.params = {
             'inputtype': 'py',
             'bg': '0',
@@ -280,11 +335,13 @@ class BIM(IM):
         }
         self.field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
         self.format = lambda x: x
+
     @asyncio.coroutine
     def request(self, e, get):
         params = self.params.copy()
         params['input'] = e
         yield from jsonxml(self.arg, [], get, params=params, field=self.field, format=self.format)
+
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
             return len(e)
@@ -292,16 +349,23 @@ class BIM(IM):
             if i == l:
                 return c.start()
         return len(e)
+
     @asyncio.coroutine
     def __call__(self, arg, send):
         yield from IM.__call__(self, arg['pinyin'], send)
 
 bim = BIM()
 
+
 class GIM(IM):
+
     def __init__(self):
         IM.__init__(self)
-        self.arg = {'n': '1', 'url': 'https://inputtools.google.com/request', 'xpath': '/root/item[2]/item[1]'}
+        self.arg = {
+            'n': '1',
+            'url': 'https://inputtools.google.com/request',
+            'xpath': '/root/item[2]/item[1]',
+        }
         self.params = {
             'itc': 'zh-t-i0-pinyin',
             'num': '1',
@@ -312,17 +376,23 @@ class GIM(IM):
             'app': 'demopage',
             'text': '',
         }
-        self.field = [('./item[2]/item[1]', 'text', '{}'), ('./item[3]/item[1]', 'text', '{}')]
+        self.field = [
+            ('./item[2]/item[1]', 'text', '{}'),
+            ('./item[3]/item[1]', 'text', '{}'),
+        ]
         self.format = lambda x: x
+
     @asyncio.coroutine
     def request(self, e, get):
         params = self.params.copy()
         params['text'] = e
         yield from jsonxml(self.arg, [], get, params=params, field=self.field, format=self.format)
+
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
             return len(e)
         return l
+
     @asyncio.coroutine
     def __call__(self, arg, send):
         yield from IM.__call__(self, arg['pinyin'], send)
@@ -410,7 +480,11 @@ def bing(arg, lines, send):
     }
     key = config.key['microsoft']
     auth = BasicAuth(key, key)
-    field = [('./Title', 'text', '{}'), ('./Url', 'text', '[\\x0302 {} \\x0f]'), ('./Description', 'text', '{}')]
+    field = [
+        ('./Title', 'text', '{}'),
+        ('./Url', 'text', '[\\x0302 {} \\x0f]'),
+        ('./Description', 'text', '{}'),
+    ]
 
     return (yield from jsonxml(arg, [], send, params=params, auth=auth, field=field))
 
@@ -435,6 +509,7 @@ def bing(arg, lines, send):
 #
 #mtran = Mtran()
 
+
 @asyncio.coroutine
 def mtran(arg, lines, send):
     print('mtran')
@@ -456,6 +531,7 @@ def mtran(arg, lines, send):
     field = [('./Text', 'text', '{}')]
 
     return (yield from jsonxml(arg, [], send, params=params, auth=auth, field=field))
+
 
 @asyncio.coroutine
 def couplet(arg, send):
@@ -479,6 +555,7 @@ def couplet(arg, send):
     headers = {'Content-Type': 'application/json'}
 
     return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers))
+
 
 @asyncio.coroutine
 def mice(arg, send):
@@ -514,8 +591,16 @@ def google(arg, lines, send):
         'url': 'https://www.googleapis.com/customsearch/v1',
         'xpath': '//items/item',
     })
-    params = {'key': config.key['google'], 'cx': config.key['googleseid'], 'q': ' '.join(lines) or arg['query'] or ''}
-    field = [('./title', 'text', '{}'), ('./link', 'text', '[\\x0302 {} \\x0f]'), ('./snippet', 'text', '{}')]
+    params = {
+        'key': config.key['google'],
+        'cx': config.key['googleseid'],
+        'q': ' '.join(lines) or arg['query'] or '',
+    }
+    field = [
+        ('./title', 'text', '{}'),
+        ('./link', 'text', '[\\x0302 {} \\x0f]'),
+        ('./snippet', 'text', '{}'),
+    ]
 
     return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=False, **kw), params=params, field=field))
 
@@ -528,9 +613,15 @@ def dictg(arg, send):
         'url': 'https://glosbe.com/gapi/translate',
         'xpath': '//tuc/item/meanings/item/text',
     })
-    params = {'format': 'json', 'from': arg['from'], 'dest': arg['to'], 'phrase': arg['text']}
+    params = {
+        'format': 'json',
+        'from': arg['from'],
+        'dest': arg['to'],
+        'phrase': arg['text'],
+    }
 
     return (yield from jsonxml(arg, [], send, params=params))
+
 
 @asyncio.coroutine
 def cdict(arg, send):
@@ -546,6 +637,7 @@ def cdict(arg, send):
 
     return (yield from jsonxml(arg, [], send, params=params, transform=transform, headers=headers))
 
+
 @asyncio.coroutine
 def urban(arg, send):
     print('urban')
@@ -558,9 +650,13 @@ def urban(arg, send):
     })
     params = {'term': arg['text']}
     headers = {'X-Mashape-Key': config.key['mashape']}
-    field = [('./definition', 'text', '{}'), ('./permalink', 'text', '[\\x0302 {} \\x0f]')]
+    field = [
+        ('./definition', 'text', '{}'),
+        ('./permalink', 'text', '[\\x0302 {} \\x0f]'),
+    ]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+
 
 @asyncio.coroutine
 def breezo(arg, send):
@@ -576,6 +672,7 @@ def breezo(arg, send):
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
 
+
 @asyncio.coroutine
 def speak(arg, send):
     print('speak')
@@ -585,9 +682,14 @@ def speak(arg, send):
         'url': 'http://howtospeak.org:443/api/e2c',
         'xpath': '//chinglish',
     })
-    params = {'user_key': config.key['howtospeak'], 'notrans': '0', 'text': arg['text']}
+    params = {
+        'user_key': config.key['howtospeak'],
+        'notrans': '0',
+        'text': arg['text'],
+    }
 
     return (yield from jsonxml(arg, [], send, params=params))
+
 
 @asyncio.coroutine
 def watson(arg, send):

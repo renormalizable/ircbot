@@ -2,40 +2,49 @@ import asyncio
 import re
 import base64
 
+
 def lsend(l, send, **kw):
     #send(l, n=len(l), llimit=10)
     send(l, n=0, llimit=10, **kw)
 
 # coreutils
 
+
 @asyncio.coroutine
 def echo(arg, send):
     send(arg['content'], raw=True)
+
 
 @asyncio.coroutine
 def cat(arg, lines, send):
     lsend(lines, send, raw=bool(arg['raw']))
 
+
 @asyncio.coroutine
 def tac(arg, lines, send):
     lsend(list(reversed(lines)), send)
+
 
 @asyncio.coroutine
 def tee(arg, lines, send):
     lsend(lines, send)
     yield from arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
 
+
 @asyncio.coroutine
 def head(arg, lines, send):
     lsend(lines[:10], send)
+
 
 @asyncio.coroutine
 def tail(arg, lines, send):
     lsend(lines[-10:], send)
 
+
 @asyncio.coroutine
 def sort(arg, lines, send):
     lsend(sorted(lines), send)
+
 
 @asyncio.coroutine
 def uniq(arg, lines, send):
@@ -47,6 +56,7 @@ def uniq(arg, lines, send):
         if e != l[-1]:
             l.append(e)
     lsend(l, send)
+
 
 @asyncio.coroutine
 def b64(arg, lines, send):
@@ -63,7 +73,9 @@ def b64(arg, lines, send):
 
 # other
 
+
 class Sed:
+
     def __init__(self):
         #self.ra = r'(?:{0}|(?P<na>\d+))'.format(r'(?:\\(?P<da>[^\\/])|/)(?P<ra>.+?)(?(da)(?P=da)|/)')
         #self.rb = r'(?:{0}|(?P<nb>\d+))'.format(r'(?:\\(?P<db>[^\\/])|/)(?P<rb>.+?)(?(db)(?P=db)|/)')
