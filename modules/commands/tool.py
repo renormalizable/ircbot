@@ -76,10 +76,11 @@ def htmltostr(t):
 
 
 def xmlparse(t):
+    parser = etree.XMLParser(recover=True)
     try:
-        return etree.XML(t)
+        return etree.XML(t, parser)
     except:
-        return etree.XML(t.encode('utf-8'))
+        return etree.XML(t.encode('utf-8'), parser)
 
 
 def jsonparse(t):
@@ -207,9 +208,10 @@ class JSONRequest(Request):
 
     def parse(self, text):
         j = jsonparse(text)
+        b = dicttoxml(j, attr_type=False)
         #print(j)
-        #print(dicttoxml(j))
-        return xmlparse(dicttoxml(j))
+        #print(b)
+        return xmlparse(b)
 
     def get(self, e, f):
         return e.text
