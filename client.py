@@ -5,16 +5,20 @@ import bottom
 
 
 class dePrefix:
+
     def __init__(self):
         #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
         self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?): )?(?P<message>.*)')
+
     def __call__(self, n, m):
         r = self.r.fullmatch(m).groupdict()
         #return (r['to'].strip() if r['to'] else r['nick'].strip() if r['nick'] else n, r['message'])
         return (r['to'] or r['nick'] or n, r['message'])
 
+
 class Normalize:
+
     def __init__(self):
         self.alias = str.maketrans({
             '　': '  ',
@@ -40,6 +44,7 @@ class Normalize:
             (r'\x1d', '\x1d'),
             (r'\x1f', '\x1f'),
         ]
+
     def __call__(self, message, *, stripspace=True, stripline=True, newline=True, convert=True, escape=True):
         #lines = str(message).splitlines() if stripline else [str(message)]
         l = str(message).translate(self.alias) if convert else str(message)
@@ -56,6 +61,7 @@ class Normalize:
                 line = line.replace(s, e)
         return line
 
+
 def splitmessage(s, n):
     while len(s) > n:
         i = n
@@ -66,7 +72,9 @@ def splitmessage(s, n):
         s = s[i:]
     yield s
 
+
 class Client(bottom.Client):
+
     def __init__(self, loop, host, port, **kw):
         super().__init__(host, port, **kw)
         self.loop = loop
