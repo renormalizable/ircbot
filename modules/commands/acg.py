@@ -2,6 +2,7 @@ import asyncio
 import re
 from urllib.parse  import quote_plus
 from aiohttp       import request
+from colorsys      import rgb_to_hsv
 
 from .common import Get
 from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse
@@ -108,19 +109,46 @@ def acfun(arg, send):
         # nested tag not handled
         table = [
             (r"\[size=\S+?\](.*?)\[\/size\]"                           , r"\1"),
-            #(r"\[s\](.*?)\[\/s\]"                                     , r"\1"),
+            #(r"\[s\](.*?)\[\/s\]"                                      , r"\1"),
             (r"\[at\](.*?)\[\/at\]"                                    , r"\x0300@\1\x0f"),
             (r"\[img=\S+?\](.*?)\[\/img\]"                             , r"[\x0302 \1 \x0f]"),
             (r"\[ac=\S+?\](.*?)\[\/ac\]"                               , r"[\x0302 http://www.acfun.tv/v/\1 \x0f]"),
             (r"\[b\](.*?)\[\/b\]"                                      , r"\x02\1\x02"),
             (r"\[i\](.*?)\[\/i\]"                                      , r"\x1d\1\x1d"),
             (r"\[u\](.*?)\[\/u\]"                                      , r"\x1f\1\x1f"),
-            (r"\[color=#(?!00)[0-9a-zA-Z]{2}0000\](.*?)\[\/color\]"    , r"\x0304\1\x0f"),
-            (r"\[color=#00(?!00)[0-9a-zA-Z]{2}00\](.*?)\[\/color\]"    , r"\x0303\1\x0f"),
-            (r"\[color=#0000(?!00)[0-9a-zA-Z]{2}\](.*?)\[\/color\]"    , r"\x0302\1\x0f"),
+            #(r"\[color=#(?!00)[0-9a-zA-Z]{2}0000\](.*?)\[\/color\]"    , r"\x0304\1\x0f"),
+            #(r"\[color=#00(?!00)[0-9a-zA-Z]{2}00\](.*?)\[\/color\]"    , r"\x0303\1\x0f"),
+            #(r"\[color=#0000(?!00)[0-9a-zA-Z]{2}\](.*?)\[\/color\]"    , r"\x0302\1\x0f"),
+            #(r"\[color=#[fF]{6}\](.*?)\[\/color\]"                     , r"\x0301\1\x0f"),
         ]
+        colorreg = re.compile(r"\[color=#(?P<r>[0-9a-zA-Z]{2})(?P<g>[0-9a-zA-Z]{2})(?P<b>[0-9a-zA-Z]{2})\](?P<text>.*?)\[\/color\]")
+        convert = {
+            0: '05',
+            1: '08',
+            2: '03',
+            3: '10',
+            4: '02',
+            5: '06',
+            6: '05',
+        }
+        def color(m):
+            d = m.groupdict()
+            text = d['text']
+            r = int(d['r'], 16) / 255.0
+            g = int(d['g'], 16) / 255.0
+            b = int(d['b'], 16) / 255.0
+
+            (h, s, v) = rgb_to_hsv(r, g, b)
+
+            hshift = (h + 1.0 / 12)
+            hshift = hshift - 1.0 if hshift >= 1.0 else hshift
+            color = int(hshift * 6)
+
+            return '\x03{0}{1}\x0f'.format(convert[color], text)
+
         for (r, f) in table:
             s = re.sub(r, f, s)
+        s = colorreg.sub(color, s)
         return s
 
     @asyncio.coroutine
