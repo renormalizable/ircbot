@@ -13,6 +13,12 @@ from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse
 def moegirl(arg, send):
     print('moegirl')
 
+    def clean(e):
+        #for s in e.xpath('.//script'):
+        #    s.getparent().remove(s)
+        for span in e.xpath('.//span[@class="mw-editsection"]'):
+            span.getparent().remove(span)
+        return e
     # apply function before addstyle()
     # \x0f should be the last character before tail
     def hidden(e):
@@ -38,8 +44,12 @@ def moegirl(arg, send):
         'rvprop': 'content',
         'rvparse': '',
     }
-    transform = lambda l: htmlparse(l[0].text).xpath('//body/*[not(self::div or self::table or self::h2)]')
-    get = lambda e, f: addstyle(hidden(e)).xpath('string()')
+    # script                 -> js
+    # div and table          -> box, table and navbox
+    # h2                     -> section title
+    # preceding-sibling      -> don't select nodes after navbox or MOEAttribute, usually external links
+    transform = lambda l: htmlparse(l[0].text).xpath('//body/*[not(self::script or self::div or self::table or self::h2 or preceding-sibling::*[@class="navbox" or @class="MOEAttribute"])]')
+    get = lambda e, f: addstyle(hidden(clean(e))).xpath('string()')
 
     return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
 
