@@ -2,7 +2,6 @@ import asyncio
 import re
 import time
 from urllib.parse  import quote_plus
-from aiohttp       import request
 from colorsys      import rgb_to_hsv
 
 from .common import Get

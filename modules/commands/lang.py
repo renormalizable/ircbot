@@ -1,11 +1,10 @@
 import asyncio
 import json
 import re
-from aiohttp          import request
-from aiohttp.helpers  import FormData
+from aiohttp.helpers import FormData
 
 import config
-from .tool import htmlparse, jsonparse
+from .tool import fetch, htmlparse, jsonparse
 
 
 def unsafesend(m, send, *, raw=False):
@@ -50,9 +49,8 @@ def vimcn(arg, lines, send):
 
     data = FormData()
     data.add_field('vimcn', code, content_type='multipart/form-data')
-    r = yield from request('POST', url, data=data)
+    text = yield from fetch('POST', url, data=data, content='text')
 
-    text = yield from r.text()
     esc = re.compile(r'\x1b[^m]*m')
     text = esc.sub('', text)
     line = text.splitlines()
@@ -85,7 +83,7 @@ def bpaste(arg, lines, send):
         'expiry': time,
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    r = yield from request('POST', url, data=data, headers=headers)
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
 
     send('[\\x0302 {0} \\x0f]'.format(r.url))
 
@@ -112,7 +110,7 @@ def rust(arg, lines, send):
         'version': 'stable',
     })
     headers = {'Content-Type': 'application/json'}
-    r = yield from request('POST', url, data=data, headers=headers)
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
     byte = yield from r.read()
 
     j = jsonparse(byte)
@@ -155,7 +153,7 @@ def codepad(arg, lines, send):
         'submit': 'Submit',
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    r = yield from request('POST', url, data=data, headers=headers)
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
 
     if run:
         byte = yield from r.read()
@@ -202,7 +200,7 @@ def hackerearth(arg, lines, send):
         'input': '',
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    r = yield from request('POST', url, data=data, headers=headers)
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
     byte = yield from r.read()
     print(byte)
 
@@ -299,7 +297,7 @@ def rextester(arg, lines, send):
         'CompilerArgs': args,
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    r = yield from request('POST', url, data=data, headers=headers)
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
     byte = yield from r.read()
 
     j = jsonparse(byte)
@@ -392,7 +390,7 @@ def haskell(arg, lines, send):
 #        'data': code,
 #    }
 #    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-#    r = yield from request('POST', url, data=data, headers=headers)
+#    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
 #    byte = yield from r.read()
 #
 #    print(byte)
