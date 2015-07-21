@@ -9,7 +9,7 @@ class dePrefix:
     def __init__(self):
         #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
-        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?): )?(?P<message>.*)')
+        self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)')
 
     def __call__(self, n, m):
         r = self.r.fullmatch(m).groupdict()
