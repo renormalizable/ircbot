@@ -65,3 +65,34 @@ def fetcher(msg):
     except:
         print('not paste bin')
         return (yield from geturl(msg))
+
+# util
+
+
+@asyncio.coroutine
+def clear(arg, lines, send):
+    print('clear')
+
+
+@asyncio.coroutine
+def undo(arg, lines, send):
+    print('undo')
+
+    n = int(arg['n'] or 1)
+
+    if n < len(lines):
+        for i in range(n):
+            lines.pop()
+        print(lines)
+
+        arg['meta']['bot'].addlines(arg['meta']['nick'], lines)
+
+help = [
+    ('clear'        , 'clear'),
+    ('undo'         , 'undo [number]'),
+]
+
+func = [
+    (clear          , r"clear"),
+    (undo           , r"undo(?:\s+(?P<n>\d+))?"),
+]

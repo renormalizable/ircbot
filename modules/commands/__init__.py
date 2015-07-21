@@ -6,14 +6,12 @@ import importlib
 import inspect
 
 path = 'modules.commands.'
-files = ['simple', 'util', 'tool', 'lang', 'api', 'acg', 'handy']
+files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'acg', 'handy', 'multiline']
 modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
 table = dict(zip(files, modules))
 
-common = importlib.reload(importlib.import_module(path + 'common'))
-Get = common.Get
-multiline = importlib.reload(importlib.import_module(path + 'multiline'))
-fetcher = multiline.fetcher
+Get = table['common'].Get
+fetcher = table['multiline'].fetcher
 
 help = dict(sum((getattr(m, 'help', []) for m in modules), []))
 

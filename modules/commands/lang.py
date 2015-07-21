@@ -14,26 +14,6 @@ def unsafesend(m, send, *, raw=False):
     else:
         send(m, mlimit=5)
 
-# util
-
-
-@asyncio.coroutine
-def clear(arg, lines, send):
-    print('clear')
-
-
-@asyncio.coroutine
-def undo(arg, lines, send):
-    print('undo')
-
-    n = int(arg['n'] or 1)
-
-    if n < len(lines):
-        for i in range(n):
-            lines.pop()
-
-        arg['meta']['bot'].addlines(arg['meta']['nick'], lines)
-
 # paste
 
 
@@ -405,8 +385,6 @@ def haskell(arg, lines, send):
 #        unsafesend('no output', send, raw=raw)
 
 help = [
-    ('clear'        , 'clear'),
-    ('undo'         , 'undo [number]'),
     ('vimcn'        , 'vimcn (code)'),
     ('bpaste'       , 'bpaste[:lang] (code)'),
     ('rust'         , 'rust (code)'),
@@ -415,8 +393,6 @@ help = [
 ]
 
 func = [
-    (clear          , r"clear"),
-    (undo           , r"undo(?:\s+(?P<n>\d+))?"),
     (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
     (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
     (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
