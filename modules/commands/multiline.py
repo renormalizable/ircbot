@@ -10,18 +10,28 @@ from .tool import fetch, html, regex
 @asyncio.coroutine
 def getcode(url):
     site = {
-        'codepad.org':         '/html/body/div/table/tbody/tr/td/div[1]/table/tbody/tr/td[2]/div/pre',
-        'paste.ubuntu.com':    '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
+        # raw
         'cfp.vim-cn.com':      '.',
         'p.vim-cn.com':        '.',
+        'ix.io':               '.',
+        'sprunge.us':          '.',
+        # parse
+        'codepad.org':         '/html/body/div/table/tbody/tr/td/div[1]/table/tbody/tr/td[2]/div/pre',
+        'paste.ubuntu.com':    '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
         'www.fpaste.org':      '//*[@id="paste_form"]/div[1]/div/div[3]',
         'bpaste.net':          '//*[@id="paste"]/div/table/tbody/tr/td[2]/div',
         'pastebin.com':        '//*[@id="paste_code"]',
         'code.bulix.org':      '//*[@id="contents"]/pre',
-        'ix.io':               '.',
         'dpaste.com':          '//*[@id="content"]/table/tbody/tr/td[2]/div/pre',
         'ideone.com':          '//*[@id="source"]/pre/ol/li/div',
-        'pastebin.com':        '//*[@id="selectable"]/div/ol',
+        'pastebin.com':        '//*[@id="selectable"]/div',
+        'gist.github.com':     '//*[@class="file"]/div[2]/table/tbody/tr/td[contains(@class, "blob-code")]',
+        'lpaste.net':          '//*[@id="paste"]/div/div[3]/table/tbody/tr/td[2]/pre',
+        'paste.kde.org':       '//*[@id="show"]/div[1]/div/div[2]/div',
+        'paste.xinu.at':       '//*[@id="wrap"]/div[3]/div[2]/div/pre/div/span',
+        #'notepad.cc':          '//*[@id="contents"]',
+        'www.refheap.com':     '//*[@id="paste"]/table/tbody/tr/td[2]/div/pre',
+        'paste.opensuse.org':  '//*[@id="content"]/div[2]/div[2]/div',
     }
 
     get = Get()
@@ -49,7 +59,7 @@ def geturl(msg):
         if content:
             r = yield from fetch(d['method'], d['url'], params=params, content='raw')
             #text = str(getattr(r, content.lower()) or '')
-            text = str(getattr(r, content) or '')
+            text = str(getattr(r, content))
         else:
             text = yield from fetch(d['method'], d['url'], params=params, content='text')
     else:
@@ -83,7 +93,6 @@ def undo(arg, lines, send):
     if n < len(lines):
         for i in range(n):
             lines.pop()
-        print(lines)
 
         arg['meta']['bot'].addlines(arg['meta']['nick'], lines)
 
