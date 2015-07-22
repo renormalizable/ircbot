@@ -75,9 +75,18 @@ def splitmessage(s, n):
 
 class Client(bottom.Client):
 
-    def __init__(self, loop, host, port, **kw):
-        super().__init__(host, port, **kw)
+    def __init__(self, loop, config):
+        self.config = importlib.import_module(config)
+        super().__init__(self.config.host, self.config.port, **self.config.option)
         self.loop = loop
+
+        self.admin = self.config.admin
+        self.nick = self.config.nick
+        self.login = self.config.login
+        self.password = self.config.password
+        self.channel = self.config.channel
+        self.key = self.config.key
+
         self.lines = {}
         self.time = 60
         # (512 - 2) / 3 = 170

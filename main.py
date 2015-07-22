@@ -1,6 +1,5 @@
 import asyncio
 
-import config
 import client
 
 import logging
@@ -8,13 +7,7 @@ import logging
 
 loop = asyncio.get_event_loop()
 
-bot = client.Client(loop, config.host, config.port, **config.option)
-
-bot.admin = config.admin
-bot.nick = config.nick
-bot.login = config.login
-bot.password = config.password
-bot.channel = config.channel
+bot = client.Client(loop, 'config')
 
 
 @bot.on('CLIENT_CONNECT')
