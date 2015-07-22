@@ -99,6 +99,8 @@ class Client(bottom.Client):
 
     def reload(self):
         self.modules = importlib.reload(self.modules)
+        self.config = importlib.reload(self.config)
+        self.key = self.config.key
 
     def addlines(self, nick, l):
         if nick not in self.lines:

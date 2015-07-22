@@ -5,7 +5,6 @@ import json
 import re
 import time
 
-import config
 from .tool import xml, jsonxml, htmlparse
 
 
@@ -43,7 +42,7 @@ def wolfram(arg, send):
         'xpath': arg['xpath'] or '//pod',
     })
     params = {
-        'appid': config.key['wolfram'],
+        'appid': arg['meta']['bot'].key['wolfram'],
         'units': 'metric',
         'format': 'plaintext',
         'input': arg['query'],
@@ -88,7 +87,7 @@ def whois(arg, send):
     params = {'domain': arg['domain']}
     headers = {
         'Accept': 'application/json',
-        'Authorization': 'Token token=' + config.key['jsonwhois'],
+        'Authorization': 'Token token=' + arg['meta']['bot'].key['jsonwhois'],
     }
     field = [('./' + x, 'text', '{}') for x in ['status | ./status/item', 'created_on', 'updated_on']]
 
@@ -105,7 +104,7 @@ def aqi(arg, send):
         'xpath': '/root/item',
     })
     params = {
-        'token': config.key['pm25'],
+        'token': arg['meta']['bot'].key['pm25'],
         'avg': 'true',
         'stations': 'no',
         'city': arg['city'],
@@ -236,7 +235,7 @@ def btran(arg, lines, send):
         'xpath': '//trans_result/item',
     })
     params = {
-        'client_id': config.key['baidu'],
+        'client_id': arg['meta']['bot'].key['baidu'],
         'from': arg['from'] or 'auto',
         'to': arg['to'] or 'zh',
         'q': ' '.join(lines) or arg['text'] or '',
@@ -478,7 +477,7 @@ def bing(arg, lines, send):
         'Market': "'en-US'",
         'Query': "'{0}'".format(' '.join(lines) or arg['query'] or ''),
     }
-    key = config.key['microsoft']
+    key = arg['meta']['bot'].key['microsoft']
     auth = BasicAuth(key, key)
     field = [
         ('./Title', 'text', '{}'),
@@ -490,7 +489,7 @@ def bing(arg, lines, send):
 
 #class Mtran(Microsoft):
 #    def __init__(self):
-#        super().__init__(config.key['microsoft'], 'http://api.microsofttranslator.com', 'client_credentials')
+#        super().__init__(arg['meta']['bot'].key['microsoft'], 'http://api.microsofttranslator.com', 'client_credentials')
 #    @asyncio.coroutine
 #    def __call__(self, arg, send):
 #        print('mtran')
@@ -526,7 +525,7 @@ def mtran(arg, lines, send):
     }
     if arg['from']:
         params['From'] = "'{0}'".format(arg['from'])
-    key = config.key['microsoft']
+    key = arg['meta']['bot'].key['microsoft']
     auth = BasicAuth(key, key)
     field = [('./Text', 'text', '{}')]
 
@@ -592,8 +591,8 @@ def google(arg, lines, send):
         'xpath': '//items/item',
     })
     params = {
-        'key': config.key['google'],
-        'cx': config.key['googleseid'],
+        'key': arg['meta']['bot'].key['google'],
+        'cx': arg['meta']['bot'].key['googleseid'],
         'q': ' '.join(lines) or arg['query'] or '',
     }
     field = [
@@ -632,7 +631,7 @@ def cdict(arg, send):
         'xpath': '//entryContent',
     })
     params = {'format': 'html', 'q': arg['text']}
-    headers = {'accessKey': config.key['collins']}
+    headers = {'accessKey': arg['meta']['bot'].key['collins']}
     transform = lambda l: htmlparse(l[0].text).xpath('//span[@class = "pos"] | //span[@class = "def"]')
 
     return (yield from jsonxml(arg, [], send, params=params, transform=transform, headers=headers))
@@ -649,7 +648,7 @@ def urban(arg, send):
         'xpath': '//list/item',
     })
     params = {'term': arg['text']}
-    headers = {'X-Mashape-Key': config.key['mashape']}
+    headers = {'X-Mashape-Key': arg['meta']['bot'].key['mashape']}
     field = [
         ('./definition', 'text', '{}'),
         ('./permalink', 'text', '[\\x0302 {} \\x0f]'),
@@ -667,7 +666,7 @@ def breezo(arg, send):
         'url': 'http://api-beta.breezometer.com/baqi/',
         'xpath': '/root',
     })
-    params = {'key': config.key['breezo'], 'location': arg['city']}
+    params = {'key': arg['meta']['bot'].key['breezo'], 'location': arg['city']}
     field = [('./' + x, 'text', '{}') for x in ['breezometer_description', 'breezometer_aqi', 'dominant_pollutant_text/main', 'random_recommendations/health']]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field))
@@ -683,7 +682,7 @@ def speak(arg, send):
         'xpath': '//chinglish',
     })
     params = {
-        'user_key': config.key['howtospeak'],
+        'user_key': arg['meta']['bot'].key['howtospeak'],
         'notrans': '0',
         'text': arg['text'],
     }

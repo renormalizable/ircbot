@@ -3,7 +3,6 @@ import json
 import re
 from aiohttp.helpers import FormData
 
-import config
 from .tool import fetch, htmlparse, jsonparse
 
 
@@ -174,7 +173,7 @@ def hackerearth(arg, lines, send):
         raise Exception()
 
     data = {
-        'client_secret': config.key['hackerearth'],
+        'client_secret': arg['meta']['bot'].key['hackerearth'],
         'lang': lang,
         'source': code,
         'input': '',
@@ -200,6 +199,7 @@ def rextester(arg, lines, send):
     print('rextester')
 
     url = 'http://rextester.com/rundotnet/Run'
+    #url = 'http://rextester.com/rundotnet/api'
 
     default = {
         'c#':               (  1, '', '' ),
