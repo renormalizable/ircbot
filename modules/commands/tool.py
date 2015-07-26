@@ -1,9 +1,10 @@
 import asyncio
 import re
 import json
-from urllib.parse  import quote_plus, quote, urldefrag
-from aiohttp       import request
-from lxml          import etree
+from urllib.parse    import quote_plus, quote, urldefrag
+from aiohttp         import request
+from aiohttp.helpers import parse_mimetype
+from lxml            import etree
 import lxml.html
 import html5lib
 from dicttoxml import dicttoxml
@@ -29,21 +30,33 @@ def drop(l, offset):
 #    send(l, n=n, llimit=10)
 
 
+def charset(r):
+    ctype = r.headers.get('content-type', '').lower()
+    _, _, _, params = parse_mimetype(ctype)
+    return params.get('charset')
+
+
 @asyncio.coroutine
 def fetch(method, url, content='text', **kw):
     print('fetch')
     r = yield from asyncio.wait_for(request(method, urldefrag(url)[0], **kw), 10)
     #r = yield from request(method, urldefrag(url)[0], **kw)
     print('get byte')
-    if content == 'text':
-        try:
-            text = yield from r.text()
-        except:
-            print('bad encoding')
-            text = (yield from r.read()).decode('utf-8', 'replace')
-        return text
-    elif content == 'raw':
+    if content == 'raw':
         return r
+    elif content == 'byte':
+        return ((yield from r.read()), charset(r))
+    elif content == 'text':
+        # we skip chardet in r.text()
+        # as sometimes it yields wrong result
+        encoding = charset(r) or 'utf-8'
+        text = (yield from r.read()).decode(encoding, 'replace')
+        #try:
+        #    text = yield from r.text()
+        #except:
+        #    print('bad encoding')
+        #    text = (yield from r.read()).decode('utf-8', 'replace')
+        return text
 
     return None
 
@@ -65,8 +78,8 @@ def addstyle(e):
     return e
 
 # use html5lib for standard compliance
-def htmlparse(t):
-    return html5lib.parse(t, treebuilder='lxml', namespaceHTMLElements=False)
+def htmlparse(t, encoding=None):
+    return html5lib.parse(t, treebuilder='lxml', namespaceHTMLElements=False, encoding=encoding)
 def htmlparsefast(t, *, parser=None):
     return lxml.html.fromstring(t, parser=parser)
 
@@ -75,19 +88,19 @@ def htmltostr(t):
     return addstyle(htmlparse(t)).xpath('string()')
 
 
-def xmlparse(t):
-    parser = etree.XMLParser(recover=True)
+def xmlparse(t, encoding=None):
+    parser = etree.XMLParser(recover=True, encoding=encoding)
     try:
         return etree.XML(t, parser)
     except:
         return etree.XML(t.encode('utf-8'), parser)
 
 
-def jsonparse(t):
+def jsonparse(t, encoding=None):
     try:
         return json.loads(t)
     except:
-        return json.loads(t.decode('utf-8', 'replace'))
+        return json.loads(t.decode(encoding or 'utf-8', 'replace'))
 
 
 class Request:
@@ -95,7 +108,33 @@ class Request:
     def __init__(self):
         # no # in xpath
         self.rfield = re.compile(r"\s*(?P<xpath>[^#]+)?#(?P<field>[^\s']+)?(?:'(?P<format>[^']+)')?")
-        self.rvalid = re.compile(r"[^\u0020-\uD7FF\u0009\u000A\u000D\uE000-\uFFFD\u10000-\u10FFFF]+")
+        # illegal char in xml
+        illegal = [
+            b"[\x00-\x08]",
+            b"[\x0B-\x0C]",
+            b"[\x0E-\x1F]",
+            b"[\x7F-\x84]",
+            b"[\x86-\x9F]",
+            b"\xFD[\xD0-\xDF]",
+            b"\xFF[\xFE-\xFF]",
+            b"\x01\xFF[\xFE-\xFF]",
+            b"\x02\xFF[\xFE-\xFF]",
+            b"\x03\xFF[\xFE-\xFF]",
+            b"\x04\xFF[\xFE-\xFF]",
+            b"\x05\xFF[\xFE-\xFF]",
+            b"\x06\xFF[\xFE-\xFF]",
+            b"\x07\xFF[\xFE-\xFF]",
+            b"\x08\xFF[\xFE-\xFF]",
+            b"\x09\xFF[\xFE-\xFF]",
+            b"\x0A\xFF[\xFE-\xFF]",
+            b"\x0B\xFF[\xFE-\xFF]",
+            b"\x0C\xFF[\xFE-\xFF]",
+            b"\x0D\xFF[\xFE-\xFF]",
+            b"\x0E\xFF[\xFE-\xFF]",
+            b"\x0F\xFF[\xFE-\xFF]",
+            b"\x10\xFF[\xFE-\xFF]",
+        ]
+        self.rvalid = re.compile(b"(?:" + b"|".join(illegal) + b")+")
 
     def parsefield(self, field):
         if field:
@@ -119,7 +158,7 @@ class Request:
             return f[2].format(', '.join(l)) if l else ''
         return (lambda e: [getf(e, f) for f in field])
 
-    def parse(self, text):
+    def parse(self, text, encoding):
         pass
 
     def get(self, e, f):
@@ -133,15 +172,14 @@ class Request:
 
     @asyncio.coroutine
     def fetch(self, method, url, **kw):
-        text = yield from fetch(method, url, **kw)
-        return self.rvalid.sub('', text)
+        return (yield from fetch(method, url, content='byte', **kw))
 
     @asyncio.coroutine
     def __call__(self, arg, lines, send, *, method='GET', field=None, transform=None, get=None, format=None, **kw):
         n = int(arg.get('n') or 5)
         offset = int(arg.get('offset') or 0)
         method = method
-        url = arg['url']
+        url = arg.get('url')
         xpath = arg['xpath']
         field = field or self.parsefield(arg.get('field'))
         transform = transform or (lambda l: l)
@@ -153,9 +191,19 @@ class Request:
         format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else self.format)
 
         # fetch
-        text = '\n'.join(lines) if lines else (yield from self.fetch(method, url, **kw))
+        if lines:
+            text = '\n'.join(lines)
+            encoding = None
+        else:
+            (text, encoding) = yield from self.fetch(method, url, **kw)
         # parse
-        tree = self.parse(text)
+        try:
+            tree = self.parse(text, encoding)
+        except ValueError:
+            # handle bad char
+            # actually only works with utf-8 encoding
+            # https://bpaste.net/show/438a3ef4f0b7
+            tree = self.parse(self.rvalid.sub(b'', text), encoding)
         self.addns(tree, ns)
         # find
         l = tree.xpath(xpath, namespaces=ns)
@@ -168,8 +216,8 @@ class Request:
 
 class HTMLRequest(Request):
 
-    def parse(self, text):
-        return htmlparse(text)
+    def parse(self, text, encoding):
+        return htmlparse(text, encoding=encoding)
 
     def get(self, e, f):
         if not f:
@@ -184,8 +232,8 @@ html = HTMLRequest()
 
 class XMLRequest(Request):
 
-    def parse(self, text):
-        return xmlparse(text)
+    def parse(self, text, encoding):
+        return xmlparse(text, encoding=encoding)
 
     def get(self, e, f):
         if not f:
@@ -206,8 +254,8 @@ xml = XMLRequest()
 
 class JSONRequest(Request):
 
-    def parse(self, text):
-        j = jsonparse(text)
+    def parse(self, text, encoding):
+        j = jsonparse(text, encoding=encoding)
         b = dicttoxml(j, attr_type=False)
         #print(j)
         #print(b)
@@ -224,13 +272,14 @@ def regex(arg, lines, send, **kw):
     print('regex')
 
     n = int(arg.get('n') or 5)
-    url = arg['url']
+    url = arg.get('url')
 
-    reg = re.compile(arg['regex'])
-    #reg = re.compile(arg['regex'], re.MULTILINE)
+    if arg.get('multi'):
+        reg = re.compile(arg['regex'], re.MULTILINE)
+    else:
+        reg = re.compile(arg['regex'])
 
     text = '\n'.join(lines) if lines else (yield from fetch('GET', url, **kw))
-    print(text)
     line = map(lambda e: ', '.join(e.groups()), reg.finditer(text))
     send(line, n=n, llimit=10)
 
@@ -247,5 +296,5 @@ func = [
     (html           , r"html(?:\s+(?P<url>http\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (xml            , r"xml(?:\s+(?P<url>http\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (jsonxml        , r"json(?:\s+(?P<url>http\S+))?\s+(?P<xpath>[^{]+?)(\s+{(?P<field>.+)})?(\s+'(?P<format>[^']+)')?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (regex          , r"regex(?:\s+(?P<url>http\S+))?\s+(?P<regex>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (regex          , r"regex(:(?P<multi>multi)?)?(?:\s+(?P<url>http\S+))?\s+(?P<regex>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]
