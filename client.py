@@ -44,6 +44,7 @@ class Normalize:
             (r'\x1d', '\x1d'),
             (r'\x1f', '\x1f'),
         ]
+        self.colorreg = re.compile(r'(\\x03\d{1,2}(,\d{1,2})?)')
 
     def __call__(self, message, *, stripspace=True, stripline=True, newline=True, convert=True, escape=True):
         #lines = str(message).splitlines() if stripline else [str(message)]
@@ -59,6 +60,10 @@ class Normalize:
         if escape:
             for (s, e) in self.esc:
                 line = line.replace(s, e)
+        else:
+            line = self.colorreg.sub('', line)
+            for (s, e) in self.esc:
+                line = line.replace(s, '')
         return line
 
 
