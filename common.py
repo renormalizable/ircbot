@@ -17,7 +17,13 @@ class dePrefix:
 
 class Normalize:
 
-    def __init__(self):
+    def __init__(self, stripspace=True, stripline=True, newline='\\x0304\\n\\x0f ', convert=True, escape=True):
+        self.stripspace = stripspace
+        self.stripline = stripline
+        self.newline = newline
+        self.convert = convert
+        self.escape = escape
+
         self.alias = str.maketrans({
             '　': '  ',
             '，': ', ',
@@ -44,7 +50,13 @@ class Normalize:
         ]
         self.colorreg = re.compile(r'(\\x03\d{1,2}(,\d{1,2})?)')
 
-    def __call__(self, message, *, stripspace=True, stripline=True, newline=True, convert=True, escape=True):
+    def __call__(self, message, *, stripspace=None, stripline=None, newline=None, convert=None, escape=None):
+        if stripspace == None: stripspace = self.stripspace
+        if stripline == None: stripline = self.stripline
+        if newline == None: newline = self.newline
+        if convert == None: convert = self.convert
+        if escape == None: escape = self.escape
+
         #lines = str(message).splitlines() if stripline else [str(message)]
         l = str(message).translate(self.alias) if convert else str(message)
         lines = l.splitlines() if stripline else [l]
@@ -52,7 +64,7 @@ class Normalize:
             lines = map(lambda l: ' '.join(l.split()), lines)
         if stripline:
             lines = filter(lambda l: l, lines)
-        line = '\\x0304\\n\\x0f '.join(lines) if newline else ' '.join(lines)
+        line = newline.join(lines)
         #if convert:
         #    line = line.translate(self.alias)
         if escape:
@@ -63,3 +75,14 @@ class Normalize:
             for (s, e) in self.esc:
                 line = line.replace(s, '')
         return line
+
+
+def splitmessage(s, n):
+    while len(s) > n:
+        i = n
+        while (s[i] & 0xc0) == 0x80:
+            i = i - 1
+        print(i)
+        yield s[:i]
+        s = s[i:]
+    yield s

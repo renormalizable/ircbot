@@ -2,18 +2,7 @@ import importlib
 
 import bottom
 
-from common import dePrefix, Normalize
-
-
-def splitmessage(s, n):
-    while len(s) > n:
-        i = n
-        while (s[i] & 0xc0) == 0x80:
-            i = i - 1
-        print(i)
-        yield s[:i]
-        s = s[i:]
-    yield s
+from common import dePrefix, Normalize, splitmessage
 
 
 class Client(bottom.Client):
