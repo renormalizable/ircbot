@@ -319,12 +319,12 @@ class BIM(IM):
         self.arg = {
             'n': '1',
             'url': 'http://olime.baidu.com/py',
-            'xpath': '//result/item[1]/item',
+            'xpath': '//result/item[1]/item[child::item]',
         }
         self.params = {
             'inputtype': 'py',
             'bg': '0',
-            'ed': '1',
+            'ed': '5',
             'result': 'hanzi',
             'resultcoding': 'unicode',
             'ch_en': '0',
@@ -363,6 +363,7 @@ class GIM(IM):
         self.arg = {
             'n': '1',
             'url': 'https://inputtools.google.com/request',
+            # is always well formed?
             'xpath': '/root/item[2]/item[1]',
         }
         self.params = {
@@ -601,7 +602,33 @@ def google(arg, lines, send):
         ('./snippet', 'text', '{}'),
     ]
 
-    return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=False, **kw), params=params, field=field))
+    return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=' ', **kw), params=params, field=field))
+
+
+@asyncio.coroutine
+def gtran(arg, lines, send):
+    print('google')
+
+    arg.update({
+        'n': '1',
+        'url': 'https://translate.google.com/translate_a/single?dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at',
+        'xpath': '/root/item/item/item',
+    })
+    params = {
+        'client': 't',
+        'ie': 'UTF-8',
+        'oe': 'UTF-8',
+        'sl': arg['from'] or 'auto',
+        'tl': arg['to'] or 'zh-CN',
+        'hl': 'en',
+        'q': ' '.join(lines) or arg['text'] or '',
+    }
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.125 Safari/537.36',
+    }
+    field = [('.', 'text', '{}')]
+
+    return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
 
 
 @asyncio.coroutine
@@ -711,6 +738,7 @@ help = [
     #('google'       , 'google <query> [#max number][+offset]'),
     ('google'       , 'google (query) [#max number][+offset]'),
     #('google'       , 'google [#max number][+offset] (query)'),
+    ('gtran'        , 'gtran [source lang:target lang] (text)'),
     ('urban'        , 'urban <text> [#max number][+offset]'),
     ('speak'        , 'speak <text>'),
     ('wolfram'      , 'wolfram <query> [#max number][+offset]'),
@@ -742,6 +770,7 @@ func = [
     #(google         , r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (google         , r"google(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
+    (gtran          , r"gtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (dictg          , r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (cdict          , r"collins(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (breezo         , r"breezo\s+(?P<city>.+)"),
