@@ -1,7 +1,7 @@
 import asyncio
 import re
 import time
-from urllib.parse  import quote_plus
+from urllib.parse  import quote_plus, urlsplit
 from colorsys      import rgb_to_hsv
 
 from .common import Get
@@ -13,8 +13,10 @@ def moegirl(arg, send):
     print('moegirl')
 
     def clean(e):
-        #for s in e.xpath('.//script'):
-        #    s.getparent().remove(s)
+        for s in e.xpath('.//script'):
+            #s.getparent().remove(s)
+            # don't remove tail
+            s.text = ''
         for span in e.xpath('.//span[@class="mw-editsection"]'):
             span.getparent().remove(span)
         return e
@@ -43,10 +45,11 @@ def moegirl(arg, send):
         'rvprop': 'content',
         'rvparse': '',
     }
+    # don't select following nodes
     # script                 -> js
     # div and table          -> box, table and navbox
     # h2                     -> section title
-    # preceding-sibling      -> don't select nodes after navbox or MOEAttribute, usually external links
+    # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
     transform = lambda l: htmlparse(l[0].text).xpath('//body/*[not(self::script or self::div or self::table or self::h2 or preceding-sibling::*[@class="navbox" or @class="MOEAttribute"])]')
     get = lambda e, f: addstyle(hidden(clean(e))).xpath('string()')
 
@@ -221,6 +224,7 @@ class Acfun:
         hshift = (h + 1.0 / 12)
         hshift = hshift - 1.0 if hshift >= 1.0 else hshift
         color = int(hshift * 6)
+        #print('color', color)
 
         return r"\x03{0}{1}\x0f".format(self.convert[color], t)
 
@@ -266,7 +270,10 @@ class Acfun:
     def __call__(self, arg, send):
         print('acfun')
         count = int(arg['count'])
-        url = 'http://www.acfun.tv/comment_list_json.aspx?contentId={0}&currentPage='.format(quote_plus(arg['id']))
+        path = urlsplit(arg['url'])[2]
+        #print(path)
+        id = path.split('/')[-1][2:]
+        url = 'http://www.acfun.tv/comment_list_json.aspx?contentId={0}&currentPage='.format(quote_plus(id))
 
         line = yield from self.func(url, 1, count)
         return send(line, n=1)
@@ -277,12 +284,12 @@ help = [
     ('moegirl'      , 'moegirl <title> [#max number][+offset]'),
     ('nmb'          , 'nmb [fforum] [thread id] [#max number][+offset] -- 丧失你好'),
     #('adnmb'        , 'adnmb [fforum id] [rthread id] [#max number][+offset] -- 丧失你好'),
-    ('acfun'        , 'acfun [acpage id] <#comment number>'),
+    ('acfun'        , 'acfun <url> <#comment number>'),
 ]
 
 func = [
     (moegirl        , r"moegirl\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (nmb            , r"nmb(\s+f(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
     (adnmb          , r"adnmb(\s+f(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
-    (acfun          , r"acfun\s+ac(?P<id>\d+)\s+#(?P<count>\d+)"),
+    (acfun          , r"acfun\s+(?P<url>http\S+)\s+#(?P<count>\d+)"),
 ]
