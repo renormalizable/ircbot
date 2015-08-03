@@ -8,8 +8,10 @@ from lxml            import etree
 import lxml.html
 import html5lib
 from dicttoxml import dicttoxml
+import demjson
 import itertools
 
+demjson.undefined = None
 
 def drop(l, offset):
     return itertools.islice(l, offset, None)
@@ -98,9 +100,12 @@ def xmlparse(t, encoding=None):
 
 def jsonparse(t, encoding=None):
     try:
-        return json.loads(t)
+        try:
+            return json.loads(t)
+        except TypeError:
+            return json.loads(t.decode(encoding or 'utf-8', 'replace'))
     except:
-        return json.loads(t.decode(encoding or 'utf-8', 'replace'))
+        return demjson.decode(t, encoding=encoding)
 
 
 class Request:
@@ -175,8 +180,8 @@ class Request:
         return (yield from fetch(method, url, content='byte', **kw))
 
     @asyncio.coroutine
-    def __call__(self, arg, lines, send, *, method='GET', field=None, transform=None, get=None, format=None, **kw):
-        n = int(arg.get('n') or 5)
+    def __call__(self, arg, lines, send, *, method='GET', field=None, transform=None, get=None, preget=None, format=None, **kw):
+        n = int(arg.get('n') or 3)
         offset = int(arg.get('offset') or 0)
         method = method
         url = arg.get('url')
@@ -187,7 +192,11 @@ class Request:
 
         print(field)
 
-        get = get or self.get
+        getter = get or self.get
+        if preget:
+            get = lambda e, f: getter(preget(e), f)
+        else:
+            get = getter
         format = format or ((lambda l: map(lambda e: arg['format'].format(*e), l)) if arg.get('format') else self.format)
 
         # fetch
@@ -207,9 +216,11 @@ class Request:
         self.addns(tree, ns)
         # find
         l = tree.xpath(xpath, namespaces=ns)
-        l = drop(transform(l), offset)
+        #l = drop(transform(l), offset)
+        l = transform(l)
         # get
         line = filter(lambda e: any(e), map(self.getfield(get, ns, field), l))
+        line = drop(line, offset)
         # send
         send(format(line), n=n, llimit=10)
 
