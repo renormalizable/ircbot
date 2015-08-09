@@ -5,7 +5,7 @@ import json
 import re
 import time
 
-from .tool import xml, jsonxml, htmlparse
+from .tool import xml, jsonxml, htmlparse, jsonparse
 
 
 @asyncio.coroutine
@@ -245,6 +245,44 @@ def btran(arg, lines, send):
     return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 
+@asyncio.coroutine
+def xiaodu(arg, lines, send):
+    print('xiaodu')
+
+    arg.update({
+        'n': '0',
+        'url': 'https://sp0.baidu.com/yLsHczq6KgQFm2e88IuM_a/s',
+        'xpath': '//result_content',
+    })
+    params = {
+        'sample_name': 'bear_brain',
+        'bear_type': '2',
+        # don't need login when using this
+        'plugin_uid': 'plugin_1438940543_206396858986507404845284847222447199875',
+        'request_time': int(time.time() * 1000),
+        'request_query': arg['query'],
+    }
+    def transform(l):
+        field = [
+            ('answer', '{}'),
+            ('img', '[\\x0302 {} \\x0f]'),
+        ]
+        def get(e):
+            if e.text:
+                d = jsonparse(e.text)
+                l = [f[1].format(d.get(f[0])) if d.get(f[0]) else '' for f in field]
+                return ' '.join(filter(any, l))
+            else:
+                l = e.xpath('.//answer')
+                if l:
+                    return e.xpath('.//answer')[0].text
+                else:
+                    return ''
+        return map(get, l)
+
+    return (yield from jsonxml(arg, [], send, params=params, transform=transform))
+
+
 class IM:
 
     class Getter:
@@ -264,7 +302,7 @@ class IM:
 
     def __init__(self, Getter=None):
         self.sep = re.compile(r"([^a-z']+)")
-        self.pinyin = re.compile(r"[a-z']")
+        self.valid = re.compile(r"[a-z']")
         self.letter = re.compile(r"[^']")
         self.comment = re.compile(r"(?:(?<=[^a-z'])|^)''(.*?)''(?:(?=[^a-z'])|$)")
         self.Get = Getter or IM.Getter
@@ -278,7 +316,7 @@ class IM:
 
     @asyncio.coroutine
     def getitem(self, e):
-        if not self.pinyin.match(e):
+        if not self.valid.match(e):
             return e
         if e[0] == "'":
             return e[1:]
@@ -398,6 +436,49 @@ class GIM(IM):
         yield from IM.__call__(self, arg['pinyin'], send)
 
 gim = GIM()
+
+class GIM5(GIM):
+
+    def __init__(self):
+        GIM.__init__(self)
+        self.arg = {
+            'n': '1',
+            'url': 'https://inputtools.google.com/request',
+            # is always well formed?
+            'xpath': '/root/item[2]/item[1]',
+        }
+        self.params = {
+            'itc': 'zh-t-i0-wubi-1986',
+            'num': '1',
+            'cp': '0',
+            'cs': '0',
+            'ie': 'utf-8',
+            'oe': 'utf-8',
+            'app': 'demopage',
+            'text': '',
+        }
+
+    @asyncio.coroutine
+    def getitem(self, e):
+        if not self.valid.match(e):
+            return e
+        if e[0] == "'":
+            return e[1:]
+        get = self.Get()
+        # ' is used as separator in wubi
+        for c in e.split("'"):
+            while len(c) > 0:
+                #print(c)
+                yield from self.request(c, get)
+                pos = self.getpos(c, get.len)
+                c = c[pos:]
+        return get.l
+
+    @asyncio.coroutine
+    def __call__(self, arg, send):
+        yield from IM.__call__(self, arg['wubi'], send)
+
+gim5 = GIM5()
 
 # qq
 
@@ -728,8 +809,10 @@ help = [
     ('bip'          , 'bip <ip address>'),
     ('bweather'     , 'bweather <city>'),
     ('btran'        , 'btran [source lang:target lang] (text)'),
+    ('xiaodu'       , 'xiaodu <query>'),
     ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
     ('gim'          , 'gim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
+    ('gim5'         , 'gim5 <wubi> (a valid wubi starts with a lower case letter, followed by lower case letters or \' (here \' is only used as a separator); use \'\' in pair for comment)'),
     #('bing'         , 'bing <query> [#max number][+offset]'),
     ('bing'         , 'bing (query) [#max number][+offset]'),
     #('bing'         , 'bing [#max number][+offset] (query)'),
@@ -755,9 +838,11 @@ func = [
     (bweather       , r"bweather\s+(?P<city>.+)"),
     #(btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
+    (xiaodu         , r"xiaodu\s+(?P<query>.+)"),
     #(bim            , r"bim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (bim            , r"bim\s+(?P<pinyin>.+)"),
     (gim            , r"gim\s+(?P<pinyin>.+)"),
+    (gim5           , r"gim5\s+(?P<wubi>.+)"),
     #(qim            , r"qim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bing           , r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (bing           , r"bing(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
