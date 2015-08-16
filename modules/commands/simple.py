@@ -3,6 +3,8 @@ import time
 import random
 import math
 
+import romkan
+
 
 @asyncio.coroutine
 def echo(arg, send):
@@ -303,6 +305,11 @@ def down(arg, send):
 
 
 @asyncio.coroutine
+def kana(arg, send):
+    send(romkan.to_hiragana(arg['romaji']))
+
+
+@asyncio.coroutine
 def latex(arg, send):
     symbol = [
         (r'\alpha',       '\U0001d6fc'),
@@ -366,16 +373,17 @@ help = [
     ('say'          , 'say <content>'),
     ('ping!'        , 'ping!'),
     ('pong!'        , 'pong!'),
-    ('pia'          , 'pia <content> -- Каждая несчастливая семья несчастлива по-своему'),
-    ('mua'          , 'mua <content> -- Все счастливые семьи похожи друг на друга'),
+    ('pia'          , 'pia [content] -- Каждая несчастливая семья несчастлива по-своему'),
+    ('mua'          , 'mua [content] -- Все счастливые семьи похожи друг на друга'),
     ('color'        , 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!'),
     ('mode'         , 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!'),
     ('up'           , 'up [show] -- nice boat!'),
     ('down'         , 'down [show]'),
+    ('kana'         , 'kana <romaji>'),
 ]
 
 func = [
-    (say            , r"say (?P<content>.*)"),
+    (say            , r"say (?P<content>.+)"),
     (pong           , r"ping!"),
     (ping           , r"pong!"),
     #(ping2          , r"(?:.*): pong!"),
@@ -383,8 +391,9 @@ func = [
     (mode           , r"mode"),
     (up             , r"up(?:\s+(?P<show>show))?"),
     (down           , r"down(?:\s+(?P<show>show))?"),
-    (pia            , r"pia( (?P<content>.*))?"),
-    (mua            , r"mua( (?P<content>.*))?"),
-    (hug            , r"hug( (?P<content>.*))?"),
-    (latex          , r"latex\s+(?P<content>.*)"),
+    (pia            , r"pia( (?P<content>.+))?"),
+    (mua            , r"mua( (?P<content>.+))?"),
+    (hug            , r"hug( (?P<content>.+))?"),
+    (kana           , r"kana\s+(?P<romaji>.+)"),
+    (latex          , r"latex\s+(?P<content>.+)"),
 ]
