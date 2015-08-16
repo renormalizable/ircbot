@@ -71,6 +71,12 @@ def b64(arg, lines, send):
     else:
         send(base64.b64encode(content.encode('utf-8')).decode('utf-8', 'replace'))
 
+
+@asyncio.coroutine
+def sleep(arg, lines, send):
+    yield from asyncio.sleep(int(arg['time']))
+    send('wake up')
+
 # other
 
 
@@ -212,6 +218,8 @@ func = [
     (tail           , r"tail"),
     (sort           , r"sort"),
     (uniq           , r"uniq"),
-    (sed            , r"sed\s(?P<quote>['\"])(?P<script>.+)(?P=quote)"),
+    #(sed            , r"sed\s(?P<quote>['\"])(?P<script>.+)(?P=quote)"),
+    (sed            , r"sed\s+(?P<script>.+)"),
     (b64            , r"base64(?::(?P<decode>decode))?(?:\s+(?P<content>.+))?"),
+    (sleep          , r"sleep\s+(?P<time>\d+)"),
 ]
