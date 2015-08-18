@@ -21,7 +21,7 @@ def vimcn(arg, lines, send):
     print('vimcn')
 
     url = 'https://cfp.vim-cn.com/'
-    code = '\n'.join(lines) or arg['code']
+    code = '\n'.join(lines) or arg['code'] or ''
 
     if not code:
         raise Exception()
@@ -41,7 +41,7 @@ def bpaste(arg, lines, send):
     print('bpaste')
 
     url = 'https://bpaste.net/'
-    code = '\n'.join(lines) or arg['code']
+    code = '\n'.join(lines) or arg['code'] or ''
     lang = (arg['lang'] or 'text').lower()
     #time = arg['time'] or 'never'
     time = 'never'
@@ -74,7 +74,7 @@ def rust(arg, lines, send):
     print('rust')
 
     url = 'https://play.rust-lang.org/evaluate.json'
-    code = '\n'.join(lines) or arg['code']
+    code = '\n'.join(lines) or arg['code'] or ''
     raw = arg['raw']
 
     if not code:
@@ -115,7 +115,7 @@ def codepad(arg, lines, send):
         'Ocaml':  'OCaml',
     }
 
-    code = '\n'.join(lines) or arg['code']
+    code = '\n'.join(lines) or arg['code'] or ''
     lang = arg['lang'].title()
     lang = alias.get(lang, lang)
     run = bool(arg['run'])
@@ -164,7 +164,7 @@ def hackerearth(arg, lines, send):
         'c#':               'csharp',
     }
 
-    code = '\n'.join(lines) or arg['code']
+    code = '\n'.join(lines) or arg['code'] or ''
     lang = arg['lang'].lower()
     lang = alias.get(lang, lang).upper()
     raw = arg['raw']
@@ -258,7 +258,7 @@ def rextester(arg, lines, send):
         'cxx':              'c++(gcc)',
     }
 
-    code = '\n'.join(lines) or arg['code']
+    code = '\n'.join(lines) or arg['code'] or ''
     lang = arg['lang'].lower()
     conf = default.get(alias.get(lang, lang))
     lang = conf[0]
@@ -361,7 +361,7 @@ def haskell(arg, lines, send):
 #    print('ghci')
 #
 #    url = 'http://ghc.io/ghci'
-#    code = '\n'.join(lines) or arg['code']
+#    code = '\n'.join(lines) or arg['code'] or ''
 #
 #    if not code:
 #        raise Exception()
