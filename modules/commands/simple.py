@@ -310,6 +310,11 @@ def kana(arg, send):
 
 
 @asyncio.coroutine
+def romaji(arg, send):
+    send(romkan.to_roma(arg['kana']))
+
+
+@asyncio.coroutine
 def latex(arg, send):
     symbol = [
         (r'\alpha',       '\U0001d6fc'),
@@ -380,6 +385,7 @@ help = [
     ('up'           , 'up [show] -- nice boat!'),
     ('down'         , 'down [show]'),
     ('kana'         , 'kana <romaji>'),
+    ('romaji'       , 'romaji <kana>'),
 ]
 
 func = [
@@ -395,5 +401,6 @@ func = [
     (mua            , r"mua( (?P<content>.+))?"),
     (hug            , r"hug( (?P<content>.+))?"),
     (kana           , r"kana\s+(?P<romaji>.+)"),
+    (romaji         , r"romaji\s+(?P<kana>.+)"),
     (latex          , r"latex\s+(?P<content>.+)"),
 ]
