@@ -17,8 +17,6 @@ class ToxClient(pytriam.Messager):
         self.config = importlib.import_module(config)
         self.key = self.config.key
 
-        self.lines = {}
-        self.time = 60
         self.msglimit = 1300
 
         self.deprefix = dePrefix()
@@ -88,20 +86,6 @@ class ToxClient(pytriam.Messager):
         self.modules = importlib.reload(self.modules)
         self.config = importlib.reload(self.config)
         self.key = self.config.key
-
-    def addlines(self, nick, l):
-        if nick not in self.lines:
-            self.lines[nick] = [l, self.loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
-        else:
-            self.lines[nick][0].extend(l)
-
-    def getlines(self, nick):
-        item = self.lines.pop(nick, None)
-        if item:
-            item[1].cancel()
-            return item[0]
-        else:
-            return []
 
     def sendm(self, target, message, *, command='PRIVMSG', to='', raw=False, mlimit=0, color=None, **kw):
         prefix = '' if raw else (to + ': ') if to else ''

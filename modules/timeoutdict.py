@@ -3,7 +3,7 @@ from collections.abc import MutableMapping
 
 class TimeoutDict(MutableMapping):
 
-    def __init__(self, timeout=10):
+    def __init__(self, timeout=60):
         self.loop = asyncio.get_event_loop()
 
         self.d = {}
