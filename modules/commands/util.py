@@ -1,6 +1,7 @@
 import asyncio
 import re
 import base64
+import random
 
 
 def lsend(l, send, **kw):
@@ -28,17 +29,20 @@ def tac(arg, lines, send):
 @asyncio.coroutine
 def tee(arg, lines, send):
     lsend(lines, send)
+    # do not tee again?
     yield from arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
 
 
 @asyncio.coroutine
 def head(arg, lines, send):
-    lsend(lines[:10], send)
+    l = int(arg['line'] or 10)
+    lsend(lines[:l], send)
 
 
 @asyncio.coroutine
 def tail(arg, lines, send):
-    lsend(lines[-10:], send)
+    l = int(arg['line'] or 10)
+    lsend(lines[(-l):], send)
 
 
 @asyncio.coroutine
@@ -48,10 +52,7 @@ def sort(arg, lines, send):
 
 @asyncio.coroutine
 def uniq(arg, lines, send):
-    if not lines:
-        raise Exception()
-
-    l = [lines[0]]
+    l = lines[:1]
     for e in lines:
         if e != l[-1]:
             l.append(e)
@@ -61,7 +62,7 @@ def uniq(arg, lines, send):
 @asyncio.coroutine
 def b64(arg, lines, send):
     decode = arg['decode']
-    content = '\n'.join(lines) or arg['content']
+    content = '\n'.join(lines) or arg['content'] or ''
 
     if not content:
         raise Exception()
@@ -76,6 +77,29 @@ def b64(arg, lines, send):
 def sleep(arg, lines, send):
     yield from asyncio.sleep(int(arg['time']))
     send('wake up')
+
+
+@asyncio.coroutine
+def wc(arg, lines, send):
+    content = ('\n'.join(lines) or arg['content'] or '') + '\n'
+
+    l = len(content.splitlines())
+    w = len(content.split())
+    b = len(content.encode())
+    send('{0} {1} {2}'.format(l, w, b))
+
+
+@asyncio.coroutine
+def shuf(arg, lines, send):
+    random.shuffle(lines)
+    lsend(lines, send)
+
+
+@asyncio.coroutine
+def nl(arg, lines, send):
+    for i in range(len(lines)):
+        lines[i] = '{0} {1}'.format(i + 1, lines[i])
+    lsend(lines, send)
 
 # other
 
@@ -214,12 +238,15 @@ func = [
     (cat            , r"cat(?:\s+(?P<raw>raw))?"),
     (tac            , r"tac"),
     (tee            , r"tee(?:\s+(?P<command>.+))?"),
-    (head           , r"head"),
-    (tail           , r"tail"),
+    (head           , r"head(?:\s+(?P<line>\d+))?"),
+    (tail           , r"tail(?:\s+(?P<line>\d+))?"),
     (sort           , r"sort"),
     (uniq           , r"uniq"),
     #(sed            , r"sed\s(?P<quote>['\"])(?P<script>.+)(?P=quote)"),
     (sed            , r"sed\s+(?P<script>.+)"),
     (b64            , r"base64(?::(?P<decode>decode))?(?:\s+(?P<content>.+))?"),
     (sleep          , r"sleep\s+(?P<time>\d+)"),
+    (wc             , r"wc(?:\s+(?P<content>.+))?"),
+    (shuf           , r"shuf"),
+    (nl             , r"nl"),
 ]
