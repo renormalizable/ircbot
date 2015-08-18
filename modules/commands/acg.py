@@ -13,7 +13,7 @@ def moegirl(arg, send):
     print('moegirl')
 
     def clean(e):
-        for s in e.xpath('.//script'):
+        for s in e.xpath('.//script | .//style'):
             #s.getparent().remove(s)
             # don't remove tail
             s.text = ''
@@ -50,7 +50,22 @@ def moegirl(arg, send):
     # div and table          -> box, table and navbox
     # h2                     -> section title
     # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
-    transform = lambda l: htmlparse(l[0].text).xpath('//body/*[not(self::script or self::div or self::table or self::h2 or preceding-sibling::*[@class="navbox" or @class="MOEAttribute"])]')
+    transform = lambda l: htmlparse(l[0].text).xpath('//body/*['
+        # filter script, style and section title
+        #'not(self::script or self::style or self::h2)'
+        #'not(self::div or self::table)'
+        # or just select p and ul ?
+        '(self::p or self::ul)'
+        ' and '
+        # select main part
+        'not('
+        'following-sibling::div[@class="infotemplatebox"]'
+        ' or '
+        'preceding-sibling::div[@class="MOEAttribute"]'
+        ' or '
+        'preceding-sibling::table[@class="navbox"]'
+        ')'
+        ']')
     get = lambda e, f: addstyle(hidden(clean(e))).xpath('string()')
 
     return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
@@ -73,13 +88,13 @@ def nmb(arg, send):
             send('[\\x0302 {} \\x0f]'.format(arg['url']))
     else:
         arg.update({
-            'url': url + (arg['forum'] or '综合版1'),
+            'url': url + 'f/{0}'.format(arg['forum'] or '综合版1'),
             'xpath': '//div[@id="h-content"]/div[1]/div[3]/div',
         })
     field = [
         ('.', 'data-threads-id', '[\\x0304{}\\x0f]'),
         ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', '', '{}'),
-        ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]'),
+        ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 ' + url.rstrip('/') + '{} \\x0f]'),
     ]
 
     return (yield from html(arg, [], send, field=field))
