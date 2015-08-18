@@ -56,14 +56,21 @@ def privmsg(nick, target, message):
 
     coros = [f(bot, nick, message, sender) for f in bot.modules.privmsg]
 
-    return (yield from asyncio.wait(coros))
+    yield from asyncio.wait(coros)
+    #asyncio.async(asyncio.wait(coros))
 
 
 @asyncio.coroutine
 def dump(loop):
     while True:
-        print('dump lines')
-        print(bot.lines)
+        #print('dump lines')
+        #print(bot.lines)
+        print('----- dump -----')
+        all = asyncio.Task.all_tasks()
+        not_done = [t for t in all if not t.done()]
+        print('all: {0}, not done: {1}'.format(len(all), len(not_done)))
+        for t in not_done:
+            print(t)
         yield from asyncio.sleep(1)
 
 #tasks = [bot.run(), dump(loop)]

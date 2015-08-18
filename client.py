@@ -20,9 +20,6 @@ class Client(bottom.Client):
         self.channel = self.config.channel
         self.key = self.config.key
 
-        self.lines = {}
-        self.locks = {}
-        self.time = 60
         # (512 - 2) / 3 = 170
         # 430 bytes should be safe
         self.msglimit = 430
@@ -31,40 +28,19 @@ class Client(bottom.Client):
         self.normalize = Normalize()
         self.modules = importlib.import_module('modules')
 
-    # fully async
-    @asyncio.coroutine
-    def trigger(self, event, **kwargs):
-        partials = self.__partials__[event]
-        tasks = [func(**kwargs) for func in partials]
-        if not tasks:
-            return
-        asyncio.async(asyncio.wait(tasks))
+    ## fully async
+    #@asyncio.coroutine
+    #def trigger(self, event, **kwargs):
+    #    partials = self.__partials__[event]
+    #    tasks = [func(**kwargs) for func in partials]
+    #    if not tasks:
+    #        return
+    #    asyncio.async(asyncio.wait(tasks))
 
     def reload(self):
         self.modules = importlib.reload(self.modules)
         self.config = importlib.reload(self.config)
         self.key = self.config.key
-
-    def addlines(self, nick, l):
-        if nick not in self.lines:
-            self.lines[nick] = [l, self.loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
-            if nick not in self.locks:
-                self.locks[nick] = asyncio.Lock()
-        else:
-            self.lines[nick][0].extend(l)
-        #item = self.lines.get(nick, None)
-        #if item:
-        #    item[0].extend(l)
-        #else:
-        #    self.lines[nick] = [l, self.loop.call_later(self.time, lambda: self.lines.pop(nick, None))]
-
-    def getlines(self, nick):
-        item = self.lines.pop(nick, None)
-        if item:
-            item[1].cancel()
-            return item[0]
-        else:
-            return []
 
     def sendm(self, target, message, *, command='PRIVMSG', to='', raw=False, mlimit=0, color=None, **kw):
         prefix = (to + ': ') if to else ''
