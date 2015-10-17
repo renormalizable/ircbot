@@ -41,6 +41,13 @@ def charset(r):
 @asyncio.coroutine
 def fetch(method, url, content='text', **kw):
     print('fetch')
+    h = kw.get('headers')
+    if h:
+        c = h.get('Connection')
+        if not c:
+            h['Connection'] = 'close'
+    else:
+        kw['headers'] = {'Connection': 'close'}
     r = yield from asyncio.wait_for(request(method, urldefrag(url)[0], **kw), 10)
     #r = yield from request(method, urldefrag(url)[0], **kw)
     print('get byte')
