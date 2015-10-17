@@ -4,8 +4,11 @@ from aiohttp.helpers import BasicAuth
 import json
 import re
 import time
+import base64
 
-from .tool import xml, jsonxml, htmlparse, jsonparse
+import romkan
+
+from .tool import xml, jsonxml, htmlparse, jsonparse, fetch
 
 
 @asyncio.coroutine
@@ -53,7 +56,8 @@ def wolfram(arg, send):
         r = re.compile(r"\\:([0-9a-f]{4})")
         def f(e):
             if e[1]:
-                return ' '.join(r.sub(lambda m: ('\\u' + m.group(1)).encode('utf-8').decode('unicode_escape'), x) for x in e)
+                #return ' '.join(r.sub(lambda m: ('\\u' + m.group(1)).encode('utf-8').decode('unicode_escape'), x) for x in e)
+                return ' '.join(r.sub(lambda m: chr(int(m.group(1), 16)), x) for x in e)
             else:
                 return ''
         return filter(lambda x: x, map(f, l))
@@ -258,7 +262,8 @@ def xiaodu(arg, lines, send):
         'sample_name': 'bear_brain',
         'bear_type': '2',
         # don't need login when using this
-        'plugin_uid': 'plugin_1438940543_206396858986507404845284847222447199875',
+        #'plugin_uid': 'plugin_1438940543_206396858986507404845284847222447199875',
+        'plugin_uid': 'plugin_1439213357_271859313658586265056880721379820623739',
         'request_time': int(time.time() * 1000),
         'request_query': arg['query'],
     }
@@ -283,6 +288,34 @@ def xiaodu(arg, lines, send):
     return (yield from jsonxml(arg, [], send, params=params, transform=transform))
 
 
+@asyncio.coroutine
+def bocr(arg, send):
+    print('bocr')
+
+    if arg['url'][-3:] != 'jpg':
+        return send('only support jpg...')
+
+    (img, charset) = yield from fetch('GET', arg['url'], content='byte')
+
+    url = 'http://apis.baidu.com/apistore/idlocr/ocr'
+    arg.update({
+        'url': url,
+        'xpath': '//retData//word',
+    })
+    headers = {'apikey': arg['meta']['bot'].key['baiduocr']}
+    data = {
+        'fromdevice': 'pc',
+        'clientip': '127.0.0.1',
+        'detecttype': 'LocateRecognize',
+        'languagetype': 'CHN_ENG',
+        'imagetype': '1',
+        'image': base64.b64encode(img).decode(),
+    }
+    print(data)
+
+    return (yield from jsonxml(arg, [], send, method='POST', headers=headers, data=data))
+
+
 class IM:
 
     class Getter:
@@ -301,11 +334,15 @@ class IM:
                 self.len = int(l[1] or 0)
 
     def __init__(self, Getter=None):
+        self.prefix = "'"
         self.sep = re.compile(r"([^a-z']+)")
         self.valid = re.compile(r"[a-z']")
         self.letter = re.compile(r"[^']")
         self.comment = re.compile(r"(?:(?<=[^a-z'])|^)''(.*?)''(?:(?=[^a-z'])|$)")
         self.Get = Getter or IM.Getter
+
+    def special(self, e):
+        return e[1:]
 
     @asyncio.coroutine
     def request(self, e, get):
@@ -315,11 +352,7 @@ class IM:
         pass
 
     @asyncio.coroutine
-    def getitem(self, e):
-        if not self.valid.match(e):
-            return e
-        if e[0] == "'":
-            return e[1:]
+    def process(self, e):
         get = self.Get()
         while len(e) > 0:
             #print(e)
@@ -327,6 +360,15 @@ class IM:
             pos = self.getpos(e, get.len)
             e = e[pos:]
         return get.l
+
+    @asyncio.coroutine
+    def getitem(self, e):
+        if not self.valid.match(e):
+            return e
+        if e[0] == self.prefix:
+            return self.special(e)
+
+        return (yield from self.process(e))
 
     @asyncio.coroutine
     def __call__(self, pinyin, send):
@@ -441,12 +483,6 @@ class GIM5(GIM):
 
     def __init__(self):
         GIM.__init__(self)
-        self.arg = {
-            'n': '1',
-            'url': 'https://inputtools.google.com/request',
-            # is always well formed?
-            'xpath': '/root/item[2]/item[1]',
-        }
         self.params = {
             'itc': 'zh-t-i0-wubi-1986',
             'num': '1',
@@ -459,11 +495,7 @@ class GIM5(GIM):
         }
 
     @asyncio.coroutine
-    def getitem(self, e):
-        if not self.valid.match(e):
-            return e
-        if e[0] == "'":
-            return e[1:]
+    def process(self, e):
         get = self.Get()
         # ' is used as separator in wubi
         for c in e.split("'"):
@@ -479,6 +511,40 @@ class GIM5(GIM):
         yield from IM.__call__(self, arg['wubi'], send)
 
 gim5 = GIM5()
+
+class GIMJA(GIM):
+
+    def __init__(self):
+        GIM.__init__(self)
+        self.params = {
+            'itc': 'ja-t-ja-hira-i0-und',
+            'num': '1',
+            'cp': '0',
+            'cs': '0',
+            'ie': 'utf-8',
+            'oe': 'utf-8',
+            'app': 'demopage',
+            'text': '',
+        }
+
+    @asyncio.coroutine
+    def process(self, e):
+        get = self.Get()
+        # ' is used as separator in wubi
+        for c in e.split("'"):
+            c = romkan.to_hiragana(c)
+            while len(c) > 0:
+                #print(c)
+                yield from self.request(c, get)
+                pos = self.getpos(c, get.len)
+                c = c[pos:]
+        return get.l
+
+    @asyncio.coroutine
+    def __call__(self, arg, send):
+        yield from IM.__call__(self, arg['romaji'], send)
+
+gimja = GIMJA()
 
 # qq
 
@@ -692,13 +758,14 @@ def gtran(arg, lines, send):
 
     arg.update({
         'n': '1',
-        'url': 'https://translate.google.com/translate_a/single?dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at',
+        #'url': 'https://translate.google.com/translate_a/single?dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at',
+        'url': 'https://translate.google.com/translate_a/single?client=t&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at&ie=UTF-8&oe=UTF-8&otf=2&ssel=0&tsel=0&kc=3&tk=264845|136301',
         'xpath': '/root/item/item/item',
     })
     params = {
-        'client': 't',
-        'ie': 'UTF-8',
-        'oe': 'UTF-8',
+        #'client': 't',
+        #'ie': 'UTF-8',
+        #'oe': 'UTF-8',
         'sl': arg['from'] or 'auto',
         'tl': arg['to'] or 'zh-CN',
         'hl': 'en',
@@ -709,7 +776,11 @@ def gtran(arg, lines, send):
     }
     field = [('.', 'text', '{}')]
 
-    return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+    #return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+    try:
+        return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+    except:
+        raise Exception("Traffic limit reached?")
 
 
 @asyncio.coroutine
@@ -809,10 +880,11 @@ help = [
     ('bip'          , 'bip <ip address>'),
     ('bweather'     , 'bweather <city>'),
     ('btran'        , 'btran [source lang:target lang] (text)'),
-    ('xiaodu'       , 'xiaodu <query>'),
+    #('xiaodu'       , 'xiaodu <query>'),
     ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
     ('gim'          , 'gim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
     ('gim5'         , 'gim5 <wubi> (a valid wubi starts with a lower case letter, followed by lower case letters or \' (here \' is only used as a separator); use \'\' in pair for comment)'),
+    ('gimja'        , 'gimja <romaji> (a valid romaji starts with a lower case letter, followed by lower case letters or \' (here \' is only used as a separator); use \'\' in pair for comment)'),
     #('bing'         , 'bing <query> [#max number][+offset]'),
     ('bing'         , 'bing (query) [#max number][+offset]'),
     #('bing'         , 'bing [#max number][+offset] (query)'),
@@ -839,10 +911,12 @@ func = [
     #(btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (xiaodu         , r"xiaodu\s+(?P<query>.+)"),
+    (bocr           , r"bocr\s+(?P<url>http.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bim            , r"bim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (bim            , r"bim\s+(?P<pinyin>.+)"),
     (gim            , r"gim\s+(?P<pinyin>.+)"),
     (gim5           , r"gim5\s+(?P<wubi>.+)"),
+    (gimja          , r"gimja\s+(?P<romaji>.+)"),
     #(qim            , r"qim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bing           , r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (bing           , r"bing(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
@@ -861,6 +935,7 @@ func = [
     (breezo         , r"breezo\s+(?P<city>.+)"),
     (speak          , r"speak\s+(?P<text>.+)"),
     (urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (urban          , r"rural\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(arxiv          , r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (wolfram        , r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]
