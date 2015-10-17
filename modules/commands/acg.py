@@ -31,44 +31,97 @@ def moegirl(arg, send):
             span.tail = '\\x0f' + (span.tail or '')
         return e
 
-    arg.update({
-        'url': 'http://zh.moegirl.org/api.php',
-        'xpath': '//rev',
-    })
-    params = {
-        'format': 'xml',
-        'action': 'query',
-        'generator': 'search',
-        'gsrlimit': '1',
-        'gsrsearch': arg['query'],
-        'prop': 'revisions',
-        'rvprop': 'content',
-        'rvparse': '',
-    }
+    #arg.update({
+    #    'url': 'http://zh.moegirl.org/api.php',
+    #    'xpath': '//rev',
+    #})
+    #params = {
+    #    'format': 'xml',
+    #    'action': 'query',
+    #    'generator': 'search',
+    #    'gsrlimit': '1',
+    #    'gsrwhat': 'nearmatch',
+    #    'gsrsearch': arg['query'],
+    #    'prop': 'revisions',
+    #    'rvprop': 'content',
+    #    'rvparse': '',
+    #}
     # don't select following nodes
     # script                 -> js
     # div and table          -> box, table and navbox
     # h2                     -> section title
     # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
-    transform = lambda l: htmlparse(l[0].text).xpath('//body/*['
-        # filter script, style and section title
-        #'not(self::script or self::style or self::h2)'
-        #'not(self::div or self::table)'
-        # or just select p and ul ?
-        '(self::p or self::ul)'
-        ' and '
-        # select main part
-        'not('
-        'following-sibling::div[@class="infotemplatebox"]'
-        ' or '
-        'preceding-sibling::div[@class="MOEAttribute"]'
-        ' or '
-        'preceding-sibling::table[@class="navbox"]'
-        ')'
-        ']')
+    #def transform(l):
+    #    if l:
+    #        return htmlparse(l[0].text).xpath('//body/*['
+    #            # filter script, style and section title
+    #            #'not(self::script or self::style or self::h2)'
+    #            #'not(self::div or self::table)'
+    #            # or just select p and ul ?
+    #            '(self::p or self::ul)'
+    #            ' and '
+    #            # select main part
+    #            'not('
+    #            'following-sibling::div[@class="infotemplatebox"]'
+    #            ' or '
+    #            'preceding-sibling::div[@class="MOEAttribute"]'
+    #            ' or '
+    #            'preceding-sibling::table[@class="navbox"]'
+    #            ')'
+    #            ']')
+    #    else:
+    #        raise Exception("maybe it's not moe enough?")
+
+    #get = lambda e, f: addstyle(hidden(clean(e))).xpath('string()')
+
+    #return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
+
+    arg.update({
+        'url': 'http://zh.moegirl.org/api.php',
+        'xpath': '//ns:Url',
+    })
+    params = {
+        'format': 'xml',
+        'action': 'opensearch',
+        'limit': '1',
+        'search': arg['query'],
+    }
+    geturl = Get()
+    yield from xml(arg, [], geturl, params=params)
+    if geturl.line:
+        url = geturl.line[0]
+    else:
+        raise Exception("maybe it's not moe enough?")
+
+    # don't select following nodes
+    # script                 -> js
+    # div and table          -> box, table and navbox
+    # h2                     -> section title
+    # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
+    arg.update({
+        'url': url,
+        'xpath': (
+            '//*[@id="mw-content-text"]/*['
+            # filter script, style and section title
+            #'not(self::script or self::style or self::h2)'
+            #'not(self::div or self::table)'
+            # or just select p and ul ?
+            '(self::p or self::ul)'
+            ' and '
+            # select main part
+            'not('
+            'following-sibling::div[@class="infotemplatebox"]'
+            ' or '
+            'preceding-sibling::div[@class="MOEAttribute"]'
+            ' or '
+            'preceding-sibling::table[@class="navbox"]'
+            ')'
+            ']'
+        ),
+    })
     get = lambda e, f: addstyle(hidden(clean(e))).xpath('string()')
 
-    return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
+    return (yield from html(arg, [], send, get=get))
 
 
 @asyncio.coroutine
@@ -94,10 +147,13 @@ def nmb(arg, send):
     field = [
         ('.', 'data-threads-id', '[\\x0304{}\\x0f]'),
         ('./div[re:test(@class, "main$")]/div[@class="h-threads-content"]', '', '{}'),
-        ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 ' + url.rstrip('/') + '{} \\x0f]'),
+        #('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 ' + url.rstrip('/') + '{} \\x0f]'),
+        ('./div[re:test(@class, "main$")]/div[@class="h-threads-img-box"]/a', 'href', '[\\x0302 {} \\x0f]'),
     ]
+    def format(l):
+        return map(lambda e: ' '.join((e[0], e[1].strip(), e[2])), l)
 
-    return (yield from html(arg, [], send, field=field))
+    return (yield from html(arg, [], send, field=field, format=format))
 
 
 @asyncio.coroutine
@@ -120,6 +176,7 @@ def adnmb(arg, send):
     field = [
         ('.', 'id', '[\\x0304{}\\x0f]'),
         ('.//div[@class="quote"]', '', '{}'),
+        # maybe wrong?
         ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]'),
     ]
 
@@ -297,14 +354,15 @@ acfun = Acfun()
 
 help = [
     ('moegirl'      , 'moegirl <title> [#max number][+offset]'),
-    ('nmb'          , 'nmb [fforum] [thread id] [#max number][+offset] -- 丧失你好'),
-    #('adnmb'        , 'adnmb [fforum id] [rthread id] [#max number][+offset] -- 丧失你好'),
+    ('nmb'          , 'nmb [:forum] [thread id] [#max number][+offset] -- 丧失你好'),
+    #('adnmb'        , 'adnmb [:forum id] [rthread id] [#max number][+offset] -- 丧失你好'),
     ('acfun'        , 'acfun <url> <#comment number>'),
 ]
 
 func = [
     (moegirl        , r"moegirl\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (nmb            , r"nmb(\s+f(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
-    (adnmb          , r"adnmb(\s+f(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
+    (moegirl        , r"moeboy\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (nmb            , r"nmb(\s+:(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
+    (adnmb          , r"adnmb(\s+:(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
     (acfun          , r"acfun\s+(?P<url>http\S+)\s+#(?P<count>\d+)"),
 ]
