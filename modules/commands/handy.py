@@ -1,7 +1,7 @@
 import asyncio
 
 from .common import Get
-from .tool import html, addstyle
+from .tool import html
 
 # html parse
 
@@ -32,20 +32,67 @@ def zhihu(arg, send):
 
     def image(e):
         for ns in e.xpath('.//noscript'):
-            ns.getparent().remove(ns)
+            ns.text = ''
         for img in e.xpath('.//img'):
             src = img.attrib.get('data-actualsrc')
             if src:
-                img.tail = ' [\\x0302 {0} \\x0f] '.format(src) + (img.tail or '')
+                if src[:2] == '//':
+                    img.tail = ' [\\x0302 http:{0} \\x0f] '.format(src) + (img.tail or '')
+                else:
+                    img.tail = ' [\\x0302 {0} \\x0f] '.format(src) + (img.tail or '')
         return e
 
     arg.update({
         'n': '1',
         'xpath': '//*[@id="zh-question-answer-wrap"]/div/div[3]/div',
     })
-    get = lambda e, f: addstyle(image(e)).xpath('string()')
+    preget = lambda e: image(e)
 
-    return (yield from html(arg, [], send, get=get))
+    return (yield from html(arg, [], send, preget=preget))
+
+
+@asyncio.coroutine
+def bihu(arg, send):
+    print('bihu')
+
+    def image(e):
+        for ns in e.xpath('.//noscript'):
+            ns.text = ''
+        for img in e.xpath('.//img'):
+            img.tail = ' <img> ' + (img.tail or '')
+        return e
+    def bio(e):
+        for t in e.xpath('.//*[@class="zu-question-my-bio"]'):
+            t.text = ''
+        for t in e.xpath('.//*[@class="zm-item-link-avatar"]/*'):
+            t.getparent().remove(t)
+        return e
+
+    arg.update({
+        'xpath': '//*[@id="zh-question-answer-wrap"]/div',
+    })
+    field = [
+        ('./div[1]/button[1]/span[2]', 'text', '{}'),
+        ('./div[2]/div[1]/h3', '', '{}'),
+        ('./div[3]/div', '', '{}'),
+        ('./div[4]/div/span[1]/a', 'href', '{}'),
+        ('./a[1]', 'name', '{}'),
+    ]
+    preget = lambda e: image(bio(e))
+    def format(l):
+        for e in l:
+           vote = e[0]
+           name = e[1].strip().strip('，')
+           digest = e[2].strip()
+           length = 70
+           if len(digest) > length:
+               digest = digest[:length] + '...'
+           digest = digest.replace('\n', ' ')
+           link = '/' + e[3].split('/', 3)[-1]
+           anchor = '#' + e[4]
+           yield '[\\x0304{0}\\x0f] \\x0300{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
+
+    return (yield from html(arg, [], send, field=field, preget=preget, format=format))
 
 
 @asyncio.coroutine
@@ -157,9 +204,11 @@ def gauss(arg, send):
 
 func = [
     (zhihu          , r"zhihu\s+(?P<url>http\S+)"),
+    (bihu           , r"bihu\s+(?P<url>http\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (pm25           , r"pm2.5\s+(?P<city>.+)"),
     (btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (man            , r"man(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
+    (man            , r"woman(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
     (gauss          , r"gauss(\s+#(?P<n>\d+))?"),
     (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]
