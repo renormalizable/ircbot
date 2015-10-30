@@ -685,9 +685,9 @@ def couplet(arg, send):
     print('couplet')
 
     shanglian = arg['shanglian']
-    if len(shanglian) > 10:
-        send('最多十个汉字喔')
-        return
+    #if len(shanglian) > 10:
+    #    send('最多十个汉字喔')
+    #    return
 
     arg.update({
         'n': arg['n'] or '1',
