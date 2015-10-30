@@ -44,7 +44,7 @@ def zhihu(arg, send):
 
     arg.update({
         'n': '1',
-        'xpath': '//*[@id="zh-question-answer-wrap"]/div/div[3]/div',
+        'xpath': '//*[@id="zh-question-answer-wrap"]//div[contains(@class, "zm-editable-content")]',
     })
     preget = lambda e: image(e)
 
