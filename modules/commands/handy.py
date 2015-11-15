@@ -73,8 +73,10 @@ def bihu(arg, send):
     })
     field = [
         ('./div[1]/button[1]/span[2]', 'text', '{}'),
-        ('./div[2]/div[1]/h3', '', '{}'),
-        ('./div[3]/div', '', '{}'),
+        #('./div[2]/div[1]/h3', '', '{}'),
+        ('./div[2]/div[1]/*[contains(@class, "author-link") or contains(@class, "name")]', '', '{}'),
+        #('./div[3]/div', '', '{}'),
+        ('./div[3]/div[contains(@class, "zm-editable-content")]', '', '{}'),
         ('./div[4]/div/span[1]/a', 'href', '{}'),
         ('./a[1]', 'name', '{}'),
     ]
@@ -85,8 +87,9 @@ def bihu(arg, send):
            name = e[1].strip().strip('，')
            digest = e[2].strip()
            length = 70
-           if len(digest) > length:
-               digest = digest[:length] + '...'
+           #if len(digest) > length:
+           #    digest = digest[:length] + '...'
+           digest = digest[:length] + '\\x0f...'
            digest = digest.replace('\n', ' ')
            link = '/' + e[3].split('/', 3)[-1]
            anchor = '#' + e[4]
