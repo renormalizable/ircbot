@@ -760,7 +760,8 @@ def gtran(arg, lines, send):
         'n': '1',
         #'url': 'https://translate.google.com/translate_a/single?dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at',
         'url': 'https://translate.google.com/translate_a/single?client=t&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at&ie=UTF-8&oe=UTF-8&otf=2&ssel=0&tsel=0&kc=3&tk=264845|136301',
-        'xpath': '/root/item/item/item',
+        #'xpath': '/root/item/item/item',
+        'xpath': '/root/item[1]',
     })
     params = {
         #'client': 't',
@@ -774,11 +775,18 @@ def gtran(arg, lines, send):
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.125 Safari/537.36',
     }
-    field = [('.', 'text', '{}')]
+    field = [
+        ('./item[1]/item[1]', 'text', '{}'),
+        ('./item[2]/item[4]', 'text', '{}'),
+    ]
+    if arg.get('to') == 'speak':
+        format = lambda l: map(lambda e: e[1], l)
+    else:
+        format = lambda l: map(lambda e: e[0], l)
 
     #return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
     try:
-        return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+        return (yield from jsonxml(arg, [], send, params=params, field=field, format=format, headers=headers))
     except:
         raise Exception("Traffic limit reached?")
 
@@ -830,7 +838,7 @@ def urban(arg, send):
     headers = {'X-Mashape-Key': arg['meta']['bot'].key['mashape']}
     field = [
         ('./definition', 'text', '{}'),
-        ('./permalink', 'text', '[\\x0302 {} \\x0f]'),
+        #('./permalink', 'text', '[\\x0302 {} \\x0f]'),
     ]
 
     return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
@@ -889,7 +897,8 @@ help = [
     ('bing'         , 'bing (query) [#max number][+offset]'),
     #('bing'         , 'bing [#max number][+offset] (query)'),
     ('mtran'        , 'mtran [source lang:target lang] (text)'),
-    ('couplet'      , 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
+    #('couplet'      , 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
+    ('couplet'      , 'couplet <shanglian> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
     #('google'       , 'google <query> [#max number][+offset]'),
     ('google'       , 'google (query) [#max number][+offset]'),
     #('google'       , 'google [#max number][+offset] (query)'),
