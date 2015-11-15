@@ -17,6 +17,7 @@ def getcode(url):
         'sprunge.us':                  '.',
         # parse
         'paste.ubuntu.com':            '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
+        'pastebin.ubuntu.com':         '//*[@id="contentColumn"]/div/div/div/table/tbody/tr/td[2]/div/pre',
         'paste.kde.org':               '//*[@id="show"]/div[1]/div/div[2]/div',
         'paste.opensuse.org':          '//*[@id="content"]/div[2]/div[2]/div',
         'paste.fedoraproject.org':     '//*[@id="paste_form"]/div[1]/div/div[3]',
@@ -50,19 +51,21 @@ def getcode(url):
 
 @asyncio.coroutine
 def geturl(msg):
-    reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>http\S+)(?:\s+(?P<params>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
+    #reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>http\S+)(?:\s+(?P<params>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
+    reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>http\S+)(?:\s+p(?P<params>\{.+?\}))?(?:\s+h(?P<headers>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
     arg = reg.fullmatch(msg)
     if arg:
         d = arg.groupdict()
         print(d)
         params = json.loads(d.get('params') or '{}')
+        headers = json.loads(d.get('headers') or '{}')
         content = d.get('content')
         if content:
-            r = yield from fetch(d['method'], d['url'], params=params, content='raw')
+            r = yield from fetch(d['method'], d['url'], params=params, headers=headers, content='raw')
             #text = str(getattr(r, content.lower()) or '')
             text = str(getattr(r, content))
         else:
-            text = yield from fetch(d['method'], d['url'], params=params, content='text')
+            text = yield from fetch(d['method'], d['url'], params=params, headers=headers, content='text')
     else:
         raise Exception()
 
