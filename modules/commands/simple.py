@@ -2,6 +2,8 @@ import asyncio
 import time
 import random
 import math
+import unicodedata
+import re
 
 import romkan
 
@@ -54,6 +56,19 @@ class ping2c():
 ping2 = ping2c()
 
 
+class unicodenormalize:
+
+    def __init__(self):
+        self.reg = re.compile(r"(?:[\u0300-\u036F]|[\u1AB0–\u1AFF]|[\u1DC0–\u1DFF]|[\u20D0–\u20FF]|[\uFE20–\uFE2F])+")
+        self.trans = str.maketrans(
+            'абвгдеёзийклмнопрстуфхъыьэАБВГДЕЁЗИЙКЛМНОПРСТУФХЪЫЬЭ',
+            'abvgdeezijklmnoprstufh y eABVGDEEZIJKLMNOPRSTUFH Y E',
+        )
+
+    def __call__(self, s):
+        return self.reg.sub('', unicodedata.normalize('NFKD', s.lower())).translate(self.trans)
+unormalize = unicodenormalize()
+
 @asyncio.coroutine
 def pia(arg, send):
     content = arg['content'] or ''
@@ -68,7 +83,6 @@ def pia(arg, send):
         '>∧<',
         '´∀`',
         '°_°',
-        'ˊ_>ˋ',
         '￣皿￣',
         '￣ω￣',
         '° △ °',
@@ -79,6 +93,10 @@ def pia(arg, send):
         '┬＿┬',
         '￣︿￣',
         '╥﹏╥',
+        # csslayer
+        'ˊ_>ˋ',
+        # felixonmars
+        '=﹁"﹁=',
     ]
     face = [
         '°{}°',
@@ -112,12 +130,18 @@ def pia(arg, send):
         '＿',
         '︿',
     ]
+    face.extend([
+        # csslayer
+        'ˊ_>ˋ',
+        # felixonmars
+        '=﹁"﹁=',
+    ])
     icon = '(╯{0})╯ ┻━┻ '.format(random.choice(face).format(random.choice(mouth)))
     #if arg['meta']['bot'].nick not in content:
     #    send(icon + content)
     #else:
     #    send(icon + '不要 pia 我!')
-    if arg['meta']['bot'].nick in content:
+    if arg['meta']['bot'].nick.lower() in unormalize(content):
         send(icon + '不要 pia 我!')
     else:
         send(icon + content)
@@ -131,7 +155,7 @@ def mua(arg, send):
     #    send('o(*￣3￣)o ' + content)
     #else:
     #    send('o(*￣3￣)o ' + '谢谢啦~')
-    if arg['meta']['bot'].nick in content:
+    if arg['meta']['bot'].nick.lower() in unormalize(content):
         send('o(*￣3￣)o ' + '谢谢啦~')
     else:
         send('o(*￣3￣)o ' + content)
@@ -145,7 +169,7 @@ def hug(arg, send):
     #    send('(つ°ω°)つ ' + content)
     #else:
     #    send('(つ°ω°)つ ' + '谢谢啦~')
-    if arg['meta']['bot'].nick in content:
+    if arg['meta']['bot'].nick.lower() in unormalize(content):
         send('(つ°ω°)つ ' + '谢谢啦~')
     else:
         send('(つ°ω°)つ ' + content)
