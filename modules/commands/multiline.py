@@ -34,6 +34,7 @@ def getcode(url):
         'paste.xinu.at':               '//*[@id="wrap"]/div[3]/div[2]/div/pre/div/span',
         #'notepad.cc':                  '//*[@id="contents"]',
         'www.refheap.com':             '//*[@id="paste"]/table/tbody/tr/td[2]/div/pre',
+        'paste.pound-python.org':      '//*[@id="paste"]/div/ol/li/span',
     }
 
     get = Get()
