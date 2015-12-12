@@ -371,18 +371,18 @@ class IM:
         return (yield from self.process(e))
 
     @asyncio.coroutine
-    def __call__(self, pinyin, send):
+    def __call__(self, input, send):
         print('im')
 
         l = []
         pos = 0
-        for m in self.comment.finditer(pinyin):
-            l.extend(self.sep.split(pinyin[pos:m.start()]))
+        for m in self.comment.finditer(input):
+            l.extend(self.sep.split(input[pos:m.start()]))
             #l.append("'" + m.group()[2:-2])
             l.append(m.group()[1:-2])
             pos = m.end()
-        l.extend(self.sep.split(pinyin[pos:]))
-        #l = self.sep.split(pinyin)
+        l.extend(self.sep.split(input[pos:]))
+        #l = self.sep.split(input)
         print(l)
 
         coros = [self.getitem(e) for e in l]
@@ -516,6 +516,9 @@ class GIMJA(GIM):
 
     def __init__(self):
         GIM.__init__(self)
+        self.sep = re.compile(r"([^a-z'\-]+)")
+        self.valid = re.compile(r"[a-z'\-]")
+        self.comment = re.compile(r"(?:(?<=[^a-z'\-])|^)''(.*?)''(?:(?=[^a-z'\-])|$)")
         self.params = {
             'itc': 'ja-t-ja-hira-i0-und',
             'num': '1',
@@ -530,7 +533,7 @@ class GIMJA(GIM):
     @asyncio.coroutine
     def process(self, e):
         get = self.Get()
-        # ' is used as separator in wubi
+        # ' is used as separator in ja
         for c in e.split("'"):
             c = romkan.to_hiragana(c)
             while len(c) > 0:
@@ -681,10 +684,11 @@ def mtran(arg, lines, send):
 
 
 @asyncio.coroutine
-def couplet(arg, send):
+def couplet(arg, lines, send):
     print('couplet')
 
-    shanglian = arg['shanglian']
+    #shanglian = arg['shanglian']
+    shanglian = ' '.join(lines) or arg['shanglian'] or ''
     #if len(shanglian) > 10:
     #    send('最多十个汉字喔')
     #    return
@@ -898,7 +902,8 @@ help = [
     #('bing'         , 'bing [#max number][+offset] (query)'),
     ('mtran'        , 'mtran [source lang:target lang] (text)'),
     #('couplet'      , 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
-    ('couplet'      , 'couplet <shanglian> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
+    #('couplet'      , 'couplet <shanglian> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
+    ('couplet'      , 'couplet (shanglian) [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
     #('google'       , 'google <query> [#max number][+offset]'),
     ('google'       , 'google (query) [#max number][+offset]'),
     #('google'       , 'google [#max number][+offset] (query)'),
@@ -932,7 +937,8 @@ func = [
     #(bing           , r"bing(\s+type:(?P<type>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
     #(mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     (mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
-    (couplet        , r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(couplet        , r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (couplet        , r"couplet(?:\s+(?P<shanglian>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(mice           , r"mice\s+(?P<input>.+)"),
     #(google         , r"google(\s+type:(?P<type>(web|image)))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
