@@ -47,7 +47,8 @@ def wolfram(arg, send):
     params = {
         'appid': arg['meta']['bot'].key['wolfram'],
         'units': 'metric',
-        'format': 'plaintext',
+        'format': 'plaintext,image',
+        #'scantimeout': '4.0',
         'input': arg['query'],
     }
     field = [('.', 'title', '\\x0300{}:\\x0f'), ('.//plaintext', 'text', '{}')]
@@ -755,6 +756,63 @@ def google(arg, lines, send):
 
     return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=' ', **kw), params=params, field=field))
 
+def gtrantoken(source, target, query):
+    def rshift(v, n):
+        if v > 0:
+            return v >> n
+        else:
+            return (v + 0x100000000) >> n
+    def rl(a, b):
+        for c in range(0, len(b) - 2, 3):
+            d = b[c + 2]
+            # int() won't panic
+            d = ord(d) - 87 if d >= 'a' else int(d)
+            if b[c + 1] == '+':
+                d = rshift(a, d)
+            else:
+                d = a << d & (2 ** 32 - 1)
+                if d & 0x80000000:
+                   d = d - 2 ** 32
+            #print(a, d)
+            a = a + d & 4294967295 if b[c] == '+' else a ^ d
+        return a
+
+    a = query
+    # any better way to do this?
+    b = int(time.time() / 3600) - 2
+
+    d = []
+    for f in range(len(a)):
+        g = ord(a[f]);
+
+        if 128 > g:
+            d.append(g)
+            continue
+
+        if 2048 > g:
+            d.append(g >> 6 | 192)
+        elif 55296 == (g & 64512) and f + 1 < len(a) and 56320 == (ord(a[f + 1]) & 64512):
+            g = 65536 + ((g & 1023) << 10) + (ord(a[f + 1]) & 1023)
+            d.append(g >> 18 | 240)
+            d.append(g >> 12 & 63 | 128)
+        else:
+            d.append(g >> 12 | 224)
+            d.append(g >> 6 & 63 | 128)
+
+        d.append(g & 63 | 128)
+
+    a = b
+    for e in range(len(d)):
+        a += d[e]
+        a = rl(a, '+-a^+6')
+    a = rl(a, '+-3^+b+-f')
+    if 0 > a:
+        a = (a & 2147483647) + 2147483648
+    a = int(a % 1E6)
+    #print(b)
+    #print(d)
+    #print(str(a) + '.' + str(a ^ b))
+    return str(a) + '.' + str(a ^ b)
 
 @asyncio.coroutine
 def gtran(arg, lines, send):
@@ -762,20 +820,20 @@ def gtran(arg, lines, send):
 
     arg.update({
         'n': '1',
-        #'url': 'https://translate.google.com/translate_a/single?dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at',
-        'url': 'https://translate.google.com/translate_a/single?client=t&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at&ie=UTF-8&oe=UTF-8&otf=2&ssel=0&tsel=0&kc=3&tk=264845|136301',
+        'url': 'https://translate.google.com/translate_a/single?client=t&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at&otf=1&ssel=0&tsel=0&kc=0',
         #'xpath': '/root/item/item/item',
         'xpath': '/root/item[1]',
     })
     params = {
-        #'client': 't',
-        #'ie': 'UTF-8',
-        #'oe': 'UTF-8',
+        'ie': 'UTF-8',
+        'oe': 'UTF-8',
         'sl': arg['from'] or 'auto',
         'tl': arg['to'] or 'zh-CN',
         'hl': 'en',
         'q': ' '.join(lines) or arg['text'] or '',
+        'tk': '',
     }
+    params['tk'] = gtrantoken(params['sl'], params['tl'], params['q'])
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.125 Safari/537.36',
     }
@@ -891,7 +949,7 @@ help = [
     ('aqi'          , 'aqi <city> [all]'),
     ('bip'          , 'bip <ip address>'),
     ('bweather'     , 'bweather <city>'),
-    ('btran'        , 'btran [source lang:target lang] (text)'),
+    #('btran'        , 'btran [source lang:target lang] (text)'),
     #('xiaodu'       , 'xiaodu <query>'),
     ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
     ('gim'          , 'gim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
@@ -923,7 +981,7 @@ func = [
     (baqi           , r"baqi\s+(?P<city>.+)"),
     (bweather       , r"bweather\s+(?P<city>.+)"),
     #(btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
-    (btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
+    #(btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (xiaodu         , r"xiaodu\s+(?P<query>.+)"),
     (bocr           , r"bocr\s+(?P<url>http.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bim            , r"bim\s+(?P<pinyin>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
