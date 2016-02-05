@@ -32,6 +32,7 @@ def moegirl(arg, send):
         return e
 
     arg.update({
+        'n': arg['n'] or '1',
         'url': 'http://zh.moegirl.org/api.php',
         'xpath': '//rev',
     })
@@ -288,6 +289,8 @@ class Acfun:
             4: '02',
             5: '06',
             6: '05',
+            7: '00',
+            8: '01',
         }
 
     def color(self, a, t):
@@ -296,11 +299,17 @@ class Acfun:
         g = int(d['g'], 16) / 255.0
         b = int(d['b'], 16) / 255.0
 
+
         (h, s, v) = rgb_to_hsv(r, g, b)
 
-        hshift = (h + 1.0 / 12)
-        hshift = hshift - 1.0 if hshift >= 1.0 else hshift
-        color = int(hshift * 6)
+        if v < 0.2:
+            color = 8
+        elif s < 0.2:
+            color = 7
+        else:
+            hshift = (h + 1.0 / 12)
+            hshift = hshift - 1.0 if hshift >= 1.0 else hshift
+            color = int(hshift * 6)
         #print('color', color)
 
         return r"\x03{0}{1}\x0f".format(self.convert[color], t)
