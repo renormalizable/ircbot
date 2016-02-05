@@ -9,9 +9,9 @@ from .tool import fetch, htmlparse, jsonparse
 def unsafesend(m, send, *, raw=False):
     if raw:
         l = str(m).splitlines()
-        send(l, n=len(l), llimit=16, mlimit=5, raw=True)
+        send(l, n=len(l), llimit=16, mlimit=3, raw=True)
     else:
-        send(m, mlimit=5)
+        send(m, mlimit=3)
 
 # paste
 
@@ -195,6 +195,38 @@ def hackerearth(arg, lines, send):
 
 
 @asyncio.coroutine
+def hylang(arg, lines, send):
+    print('hylang')
+
+    url = 'https://try-hy.appspot.com/eval'
+
+    code = '\n'.join(lines) or arg['code'] or ''
+    raw = False
+
+    if not code:
+        raise Exception()
+
+    data = json.dumps({
+        'code': code,
+        'env': [],
+    })
+    headers = {'Content-Type': 'application/json'}
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
+    byte = yield from r.read()
+    print(byte)
+
+    j = jsonparse(byte)
+    error = j.get('stderr')
+    result = j.get('stdout')
+    if error:
+        unsafesend('\\x0304errors:\\x0f {0}'.format(error), send)
+    if result:
+        unsafesend(result, send, raw=raw)
+    else:
+        unsafesend('no output', send, raw=raw)
+
+
+@asyncio.coroutine
 def rextester(arg, lines, send):
     print('rextester')
 
@@ -334,7 +366,7 @@ def haskell(arg, lines, send):
         'import DynFlags',
         'import Data.List (isPrefixOf)',
         'import Data.Char (isSpace)',
-        'stmts = [{0}]'.format(', '.join('"{0}"'.format(e) for e in (lines + [arg['code']]))),
+        'stmts = [{0}]'.format(', '.join('"{0}"'.format(e.replace('"', '\\"')) for e in (lines + [arg['code']]))),
         'run stmt',
         '    | stmt `looks_like` "import "',
         '    = do ctx <- getContext',
@@ -384,6 +416,97 @@ def haskell(arg, lines, send):
 #    else:
 #        unsafesend('no output', send, raw=raw)
 
+
+@asyncio.coroutine
+def rustmain(arg, lines, send):
+    print('rustmain')
+
+    arg.update({ 'raw': None })
+    code = '\n'.join(lines) or arg['code'] or ''
+    #line = [
+    #    'macro_rules! safe {',
+    #    '    ($x:expr) => { println!("expr"); $x };',
+    #    '    ($x:stmt) => { println!("stmt"); $x };',
+    #    '    ($x:block) => { println!("block"); $x };',
+    #    '}',
+    #    'macro_rules! safe_rec {',
+    #    '    () => {};',
+    #    '    ($x:expr; $($y:tt)*) => { $x; safe_rec!($($y)*); };',
+    #    '    ($x:stmt; $($y:tt)*) => { $x; safe_rec!($($y)*); };',
+    #    '    ($x:block $($y:tt)*) => { $x; safe_rec!($($y)*); };',
+    #    '}',
+    #    'fn main() {',
+    #    '    safe_rec!({});'.format(code),
+    #    '}',
+    #]
+
+    return (yield from rust(arg, ['#![allow(bad_style, unused)]', 'fn main() {{ {} }}'.format(code)], send))
+
+
+@asyncio.coroutine
+def geordi(arg, lines, send):
+
+    arg.update({
+        'lang': 'c++(gcc)',
+        'args': '-std=c++14',
+        'raw': None,
+    })
+ 
+    line = [
+        '#include <bits/stdc++.h>',
+        '#include <cxxabi.h>',
+        'using namespace std;',
+        # comma in ostream
+        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator,(std::basic_ostream<Ch, Tr> & o, T const & t) { return o << ", " << t; }',
+        'template <typename Ch, typename Tr> std::basic_ostream<Ch, Tr> &operator,(std::basic_ostream<Ch, Tr> & o, std::basic_ostream<Ch, Tr> & (* const f) (std::basic_ostream<Ch, Tr> &)) { return o << f; }',
+        # bark
+        '#define BARK (::std::printf(" %s ", __PRETTY_FUNCTION__), ::std::fflush(stdout))',
+        # type
+        'namespace type_strings_detail {',
+        'template <typename T> std::string type_string() { std::string s = std::type_index(typeid(T)).name(); int status = -1; return abi::__cxa_demangle(s.c_str(), 0, 0, &status); }',
+        'template <typename> struct type_tag {};',
+        #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<T>()) { return o << type_string<T>(); }',
+        #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<const T>()) { return o << type_string<T>() << " const"; }',
+        #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<volatile T>()) { return o << type_string<T>() << " volatile"; }',
+        #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<const volatile T>()) { return o << type_string<T>() << " const volatile"; }',
+        'struct adl_hint {};',
+        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<T>)) { return o << type_string<T>(); }',
+        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<const T>)) { return o << type_string<T>() << " const"; }',
+        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<volatile T>)) { return o << type_string<T>() << " volatile"; }',
+        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<const volatile T>)) { return o << type_string<T>() << " const volatile"; }',
+        '}',
+        #'template <typename T> type_strings_detail::type_tag<T> TYPE() { return type_strings_detail::type_tag<T>(); }',
+        'template <typename T> type_strings_detail::adl_hint TYPE(type_strings_detail::type_tag<T>) { return type_strings_detail::adl_hint(); }',
+    ]
+
+    printing = re.compile(r'<<(?P<print>.+?)(?:;(?P<code>.*))?')
+    statement = re.compile(r'{{(?P<main>.+?)}}(?P<code>.*)?')
+
+    p = printing.fullmatch(arg['code'])
+    if p:
+        p = p.groupdict()
+        line.extend([
+            p['code'] or '',
+            'int main() {{ std::cout << {}; std::cout << std::endl; return 0; }}'.format(p['print']),
+        ])
+        print(line)
+        return (yield from rextester(arg, line, send))
+
+    s = statement.fullmatch(arg['code'])
+    if s:
+        s = s.groupdict()
+        line.extend([
+            s['code'] or '',
+            'int main() {{ {} }}'.format(s['main']),
+        ])
+        print(line)
+        return (yield from rextester(arg, line, send))
+
+    line.append(arg['code'])
+    print(line)
+
+    return (yield from rextester(arg, line, send))
+
 help = [
     ('vimcn'        , 'vimcn (code)'),
     ('bpaste'       , 'bpaste[:lang] (code)'),
@@ -399,6 +522,10 @@ func = [
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
     (hackerearth    , r"hack:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (rextester      , r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
+    (hylang         , r"hy(?:\s+(?P<code>.+))?"),
     (python3        , r">> (?P<code>.+)"),
+    (python3        , r"py (?P<code>.+)"),
     (haskell        , r"\\\\ (?P<code>.+)"),
+    (rustmain       , r"rs (?P<code>.+)"),
+    (geordi         , r"geordi (?P<code>.+)"),
 ]
