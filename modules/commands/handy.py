@@ -72,7 +72,8 @@ def bihu(arg, send):
         'xpath': '//*[@id="zh-question-answer-wrap"]/div',
     })
     field = [
-        ('./div[1]/button[1]/span[2]', 'text', '{}'),
+        #('./div[1]/button[1]/span[2]', 'text', '{}'),
+        ('./div[1]/button[1]/span[1]', 'text', '{}'),
         #('./div[2]/div[1]/h3', '', '{}'),
         ('./div[2]/div[1]/*[contains(@class, "author-link") or contains(@class, "name")]', '', '{}'),
         #('./div[3]/div', '', '{}'),
