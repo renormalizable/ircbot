@@ -27,7 +27,7 @@ def vimcn(arg, lines, send):
         raise Exception()
 
     data = FormData()
-    data.add_field('vimcn', code, content_type='multipart/form-data')
+    data.add_field('vimcn', code)
     text = yield from fetch('POST', url, data=data, content='text')
 
     esc = re.compile(r'\x1b[^m]*m')
