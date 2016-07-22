@@ -25,9 +25,11 @@ def helper(arg, send):
     if c:
         h = help[c]
         send('<...> is mandatory, [...] is optional, (...) also accepts multiline input')
-        send('\\x0300{0}:\\x0f {1}'.format(c, h))
+        #send('\\x0300{0}:\\x0f {1}'.format(c, h))
+        send('\\x02{0}:\\x0f {1}'.format(c, h))
     else:
-        send('\\x0300help:\\x0f help [command] -- "{0} 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous'.format(arg['meta']['bot'].nick))
+        #send('\\x0300help:\\x0f help [command] -- "{0} 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous'.format(arg['meta']['bot'].nick))
+        send('\\x02help:\\x0f help [command] -- "{0} 可是 14 岁的\\x0304萌妹子\\x0f哦" by anonymous'.format(arg['meta']['bot'].nick))
         #send('(づ￣ω￣)づ  -->>  ' + ' '.join(sorted(help.keys())))
         send('(っ‾ω‾)っ  -->>  ' + ' '.join(sorted(help.keys())))
         #send('try "\\x0300help \\x1fcommand\\x1f\\x0f" to find out more~')

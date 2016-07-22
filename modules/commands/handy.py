@@ -1,7 +1,9 @@
 import asyncio
+from urllib.parse  import quote_plus
 
 from .common import Get
-from .tool import html
+from .tool import html, xml, addstyle, htmlparse
+#from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse
 
 # html parse
 
@@ -94,7 +96,8 @@ def bihu(arg, send):
            digest = digest.replace('\n', ' ')
            link = '/' + e[3].split('/', 3)[-1]
            anchor = '#' + e[4]
-           yield '[\\x0304{0}\\x0f] \\x0300{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
+           #yield '[\\x0304{0}\\x0f] \\x0300{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
+           yield '[\\x0304{0}\\x0f] \\x16{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
 
     return (yield from html(arg, [], send, field=field, preget=preget, format=format))
 
@@ -206,13 +209,125 @@ def gauss(arg, send):
 
     return (yield from html(arg, [], send))
 
+
+@asyncio.coroutine
+def foldoc(arg, send):
+    print('foldoc')
+
+    def clean(e):
+        for s in e.xpath('.//script | .//style'):
+            #s.getparent().remove(s)
+            # don't remove tail
+            s.text = ''
+        for span in e.xpath('.//span[@class="mw-editsection"]'):
+            span.getparent().remove(span)
+        return e
+
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': 'http://foldoc.org/' + quote_plus(arg['query']),
+        'xpath': '//*[@id="content"]/p',
+    })
+
+    get = lambda e, f: addstyle(clean(e)).xpath('string()')
+
+    return (yield from html(arg, [], send, get=get))
+
+
+@asyncio.coroutine
+def wiki(arg, send):
+    print('wiki')
+
+    def clean(e):
+        for s in e.xpath('.//script | .//style'):
+            #s.getparent().remove(s)
+            # don't remove tail
+            s.text = ''
+        for span in e.xpath('.//span[@class="mw-editsection"]'):
+            span.getparent().remove(span)
+        return e
+
+    site = {
+        # linux
+        'arch': 'https://wiki.archlinux.org/',
+        'gentoo': 'https://wiki.gentoo.org/',
+        # wikipedia
+        'zh': 'https://zh.wikipedia.org/w/',
+        'classical': 'https://zh-classical.wikipedia.org/w/',
+        'en': 'https://en.wikipedia.org/w/',
+        'ja': 'https://ja.wikipedia.org/w/',
+        # misc
+        'poke': 'https://wiki.52poke.com/',
+        #'pokemon': 'http://www.pokemon.name/w/',
+    }
+
+    try:
+        url = site[arg['site'] or 'zh']
+    except:
+        raise Exception("Do you REALLY need this wiki?")
+
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': url + 'api.php',
+        'xpath': '//page',
+    })
+    params = {
+        'format': 'xml',
+        'action': 'query',
+        'generator': 'search',
+        'gsrlimit': '1',
+        'gsrwhat': 'nearmatch',
+        'gsrsearch': arg['query'],
+        'prop': 'revisions',
+        'rvprop': 'content',
+        'rvparse': '',
+    }
+    # don't select following nodes
+    # script                 -> js
+    # div and table          -> box, table and navbox
+    # h2                     -> section title
+    # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
+    def transform(l):
+        if l:
+            #pageid = l[0].get('pageid')
+            return htmlparse(l[0].xpath('//rev')[0].text).xpath('//body/*['
+                # filter script, style and section title
+                #'not(self::script or self::style or self::h2)'
+                #'not(self::div or self::table)'
+                # or just select p and ul ?
+                '(self::p or self::ul)'
+                ' and '
+                # select main part
+                'not('
+                'following-sibling::div[@class="infotemplatebox"]'
+                ' or '
+                'preceding-sibling::div[@class="MOEAttribute"]'
+                ' or '
+                'preceding-sibling::table[@class="navbox"]'
+                ')'
+                ']')
+        else:
+            raise Exception("oops...")
+
+    get = lambda e, f: addstyle(clean(e)).xpath('string()')
+
+    #return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
+    try:
+        yield from xml(arg, [], send, params=params, transform=transform, get=get)
+    except:
+        params['gsrwhat'] = 'text'
+        yield from xml(arg, [], send, params=params, transform=transform, get=get)
+
+
 func = [
     (zhihu          , r"zhihu\s+(?P<url>http\S+)"),
     (bihu           , r"bihu\s+(?P<url>http\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (pm25           , r"pm2.5\s+(?P<city>.+)"),
-    (btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (man            , r"man(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
     (man            , r"woman(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
     (gauss          , r"gauss(\s+#(?P<n>\d+))?"),
+    (foldoc         , r"foldoc\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (wiki           , r"wiki(?::(?P<site>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]

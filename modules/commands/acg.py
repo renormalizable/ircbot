@@ -23,17 +23,17 @@ def moegirl(arg, send):
     # apply function before addstyle()
     # \x0f should be the last character before tail
     def hidden(e):
-        for b in e.xpath('.//b'):
-            b.text = '\\x0300' + (b.text or '')
-            b.tail = '\\x0f' + (b.tail or '')
+        #for b in e.xpath('.//b'):
+        #    b.text = '\\x0300' + (b.text or '')
+        #    b.tail = '\\x0f' + (b.tail or '')
         for span in e.xpath('.//span[@class="heimu"]'):
-            span.text = '\\x0301' + (span.text or '')
+            span.text = '\\x0301,01' + (span.text or '')
             span.tail = '\\x0f' + (span.tail or '')
         return e
 
     arg.update({
         'n': arg['n'] or '1',
-        'url': 'http://zh.moegirl.org/api.php',
+        'url': 'https://zh.moegirl.org/api.php',
         'xpath': '//rev',
     })
     params = {
@@ -272,7 +272,8 @@ class Acfun:
         self.table = {
             'size':     lambda a, t: t,
             #'s':        lambda a, t: t,
-            'at':       lambda a, t: r"\x0300@{0}\x0f".format(t),
+            #'at':       lambda a, t: r"\x0300@{0}\x0f".format(t),
+            'at':       lambda a, t: r"\x16@{0}\x0f".format(t),
             'img':      lambda a, t: r"[\x0302 {0} \x0f]".format(t),
             'ac':       lambda a, t: r"[\x0302 http://www.acfun.tv/v/{0} \x0f]".format(t),
             'b':        lambda a, t: r"\x02{0}\x02".format(t),
@@ -343,7 +344,8 @@ class Acfun:
             while True:
                 e = d.popitem()[1]
                 if e.get('count') == count:
-                    return ['\\x0300{0}:\\x0f {1}'.format(e.get('userName'), self.ubb(htmltostr(e.get('content'))))]
+                    #return ['\\x0300{0}:\\x0f {1}'.format(e.get('userName'), self.ubb(htmltostr(e.get('content'))))]
+                    return ['\\x16{0}:\\x0f {1}'.format(e.get('userName'), self.ubb(htmltostr(e.get('content'))))]
         except KeyError:
             n = j.get('totalPage')
             i = j.get('page')
