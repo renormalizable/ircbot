@@ -104,6 +104,37 @@ def rust(arg, lines, send):
 
 
 @asyncio.coroutine
+def go(arg, lines, send):
+    print('go')
+
+    url = 'http://play.golang.org/compile'
+    code = '\n'.join(lines) or arg['code'] or ''
+    raw = arg['raw']
+
+    if not code:
+        raise Exception()
+
+    data = {
+        'version': 2,
+        'body': code,
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
+    byte = yield from r.read()
+
+    print(byte)
+    j = jsonparse(byte)
+    error = j.get('Errors')
+    result = j.get('Events')[0].get('Message')
+    if error:
+        unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
+    if result:
+        unsafesend(result, send, raw=raw)
+    else:
+        unsafesend('no output', send, raw=raw)
+
+
+@asyncio.coroutine
 def codepad(arg, lines, send):
     print('codepad')
 
@@ -361,22 +392,25 @@ def haskell(arg, lines, send):
         'raw': None,
     })
     # https://github.com/ghc/ghc/blob/master/ghc/InteractiveUI.hs
+    # https://github.com/ghc/ghc/blob/master/ghc/GHCi/UI.hs
     line = [
         'import GHC',
         'import DynFlags',
         'import Data.List (isPrefixOf)',
         'import Data.Char (isSpace)',
-        'stmts = [{0}]'.format(', '.join('"{0}"'.format(e.replace('"', '\\"')) for e in (lines + [arg['code']]))),
+        # strange bug of rextester
+        # we won't get result unless output is long enough
+        'stmts = [{0}, "putStrLn . concat . replicate 100000 $ \\" \\""]'.format(', '.join('"{0}"'.format(e.replace('\\', '\\\\').replace('"', '\\"')) for e in (lines + [arg['code']]))),
         'run stmt',
         '    | stmt `looks_like` "import "',
         '    = do ctx <- getContext',
         '         mod <- parseImportDecl stmt',
         '         setContext $ (IIDecl mod) : ctx',
         '    | any (stmt `looks_like`) prefixes = do runDecls stmt; return ()',
-        '    | otherwise = do runStmt stmt RunToCompletion; return ()',
+        '    | otherwise = do execStmt stmt execOptions; return ()',
         '    where s `looks_like` p = p `isPrefixOf` dropWhile isSpace s',
         '          prefixes = [ "class ", "instance ", "data ", "newtype ", "type ", "default ", "default("]',
-        'main = runGhc (Just "/usr/lib/ghc") $ do',
+        'main = runGhc (Just "/opt/ghc/8.0.1/lib/ghc-8.0.0.20160127/") $ do',
         '    dflags <- getSessionDynFlags',
         '    setSessionDynFlags dflags',
         '    ctx <- getContext',
@@ -519,6 +553,7 @@ func = [
     (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
     (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
     (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
+    (go             , r"go(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
     (hackerearth    , r"hack:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (rextester      , r"rex:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
