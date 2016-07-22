@@ -51,7 +51,8 @@ def wolfram(arg, send):
         #'scantimeout': '4.0',
         'input': arg['query'],
     }
-    field = [('.', 'title', '\\x0300{}:\\x0f'), ('.//plaintext', 'text', '{}')]
+    #field = [('.', 'title', '\\x0300{}:\\x0f'), ('.//plaintext', 'text', '{}')]
+    field = [('.', 'title', '\\x02{}:\\x0f'), ('.//plaintext', 'text', '{}')]
     def format(l):
         #r = re.compile(r"(?<!\\)\\:([0-9a-f]{4})")
         r = re.compile(r"\\:([0-9a-f]{4})")
@@ -125,7 +126,8 @@ def aqi(arg, send):
             ('o3_8h', 'O3 8h'),
             ('so2', 'SO2'),
         ]
-        field += [('./' + x[0], 'text', '\\x0300{0}:\\x0f'.format(x[1]) + ' {}') for x in l]
+        #field += [('./' + x[0], 'text', '\\x0300{0}:\\x0f'.format(x[1]) + ' {}') for x in l]
+        field += [('./' + x[0], 'text', '\\x02{0}:\\x0f'.format(x[1]) + ' {}') for x in l]
         def format(l):
             e = list(l)[0]
             return [' '.join(e[:5]), ', '.join(e[5:])]
@@ -712,20 +714,23 @@ def couplet(arg, lines, send):
 @asyncio.coroutine
 def mice(arg, send):
     print('mice')
-    url = 'http://www.msxiaoice.com/v2/context'
+    #url = 'http://www.msxiaoice.com/v2/context'
+    url = 'http://webapps.msxiaobing.com/api/simplechat/getresponse?workflow=Q20'
 
     input = arg['input']
 
     arg['n'] = '1'
     arg['url'] = url
-    arg['xpath'] = '//d/XialianSystemGeneratedSets/item/XialianCandidates/item'
+    arg['xpath'] = '//text'
 
-    data = {
-        'requirement': 1,
-        'input': input,
-        'args': '',
-    }
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    data = json.dumps({
+        'senderId': '6c54b3cf-bc0f-484e-9aee-7e00ce1c92be',
+        'content': {
+            'text': '开始',
+            'imageUrl': ''
+        }
+    })
+    headers = {'Content-Type': 'application/json'}
 
     return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers))
 
@@ -779,7 +784,11 @@ def gtrantoken(source, target, query):
 
     a = query
     # any better way to do this?
-    b = int(time.time() / 3600) - 2
+    #t = "{:.10f}".format(time.time() / 3600).split('.')
+    #b = int(t[0])
+    #c = int(t[1])
+    b = 406446
+    c = 626866870
 
     d = []
     for f in range(len(a)):
@@ -806,6 +815,7 @@ def gtrantoken(source, target, query):
         a += d[e]
         a = rl(a, '+-a^+6')
     a = rl(a, '+-3^+b+-f')
+    a ^= c
     if 0 > a:
         a = (a & 2147483647) + 2147483648
     a = int(a % 1E6)
@@ -818,11 +828,20 @@ def gtrantoken(source, target, query):
 def gtran(arg, lines, send):
     print('google')
 
+    if arg.get('to') == 'speak':
+        xpath = '/root/item[1]/item[4]'
+    elif arg.get('to') == 'lang':
+        xpath = '/root/item[3]'
+    else:
+        xpath = '/root/item[1]/item[1]'
+
     arg.update({
         'n': '1',
         'url': 'https://translate.google.com/translate_a/single?client=t&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at&otf=1&ssel=0&tsel=0&kc=0',
         #'xpath': '/root/item/item/item',
-        'xpath': '/root/item[1]',
+        #'xpath': '/root/item[1]',
+        #'xpath': '/root/item[1]/item' + ('/item[4]' if arg.get('to') == 'speak' else if '/item[1]'),
+        'xpath': xpath
     })
     params = {
         'ie': 'UTF-8',
@@ -837,18 +856,11 @@ def gtran(arg, lines, send):
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.125 Safari/537.36',
     }
-    field = [
-        ('./item[1]/item[1]', 'text', '{}'),
-        ('./item[2]/item[4]', 'text', '{}'),
-    ]
-    if arg.get('to') == 'speak':
-        format = lambda l: map(lambda e: e[1], l)
-    else:
-        format = lambda l: map(lambda e: e[0], l)
+    format = lambda l: [' '.join(map(lambda e: e[0], l))]
 
     #return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
     try:
-        return (yield from jsonxml(arg, [], send, params=params, field=field, format=format, headers=headers))
+        return (yield from jsonxml(arg, [], send, params=params, format=format, headers=headers))
     except:
         raise Exception("Traffic limit reached?")
 
@@ -947,8 +959,8 @@ help = [
     ('ip'           , 'ip <ip address>'),
     #('whois'        , 'whois <domain>'),
     ('aqi'          , 'aqi <city> [all]'),
-    ('bip'          , 'bip <ip address>'),
-    ('bweather'     , 'bweather <city>'),
+    #('bip'          , 'bip <ip address>'),
+    #('bweather'     , 'bweather <city>'),
     #('btran'        , 'btran [source lang:target lang] (text)'),
     #('xiaodu'       , 'xiaodu <query>'),
     ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
@@ -975,11 +987,11 @@ func = [
     (ip             , r"ip\s+(?P<addr>.+)"),
     (whois          , r"whois\s+(?P<domain>.+)"),
     (aqi            , r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
-    (bip            , r"bip\s+(?P<addr>.+)"),
-    (bid            , r"bid\s+(?P<id>.+)"),
-    (bphone         , r"bphone\s+(?P<tel>.+)"),
-    (baqi           , r"baqi\s+(?P<city>.+)"),
-    (bweather       , r"bweather\s+(?P<city>.+)"),
+    #(bip            , r"bip\s+(?P<addr>.+)"),
+    #(bid            , r"bid\s+(?P<id>.+)"),
+    #(bphone         , r"bphone\s+(?P<tel>.+)"),
+    #(baqi           , r"baqi\s+(?P<city>.+)"),
+    #(bweather       , r"bweather\s+(?P<city>.+)"),
     #(btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
     #(btran          , r"btran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (xiaodu         , r"xiaodu\s+(?P<query>.+)"),
