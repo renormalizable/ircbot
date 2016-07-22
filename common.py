@@ -8,9 +8,10 @@ class dePrefix:
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)')
         self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
+        self.esc = re.compile(r'(\x03\d{1,2}(,\d{1,2})?|\x02|\x03|\x04|\x06|\x07|\x0f|\x16|\x1b|\x1d|\x1f)')
 
     def __call__(self, n, m):
-        r = self.r.fullmatch(m).groupdict()
+        r = self.r.fullmatch(self.esc.sub('', m)).groupdict()
         #return (r['to'].strip() if r['to'] else r['nick'].strip() if r['nick'] else n, r['message'])
         return (r['to'] or r['nick'] or n, r['message'])
 
