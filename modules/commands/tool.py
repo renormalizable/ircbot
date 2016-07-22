@@ -41,13 +41,13 @@ def charset(r):
 @asyncio.coroutine
 def fetch(method, url, content='text', **kw):
     print('fetch')
-    h = kw.get('headers')
-    if h:
-        c = h.get('Connection')
-        if not c:
-            h['Connection'] = 'close'
-    else:
-        kw['headers'] = {'Connection': 'close'}
+    #h = kw.get('headers')
+    #if h:
+    #    c = h.get('Connection')
+    #    if not c:
+    #        h['Connection'] = 'close'
+    #else:
+    #    kw['headers'] = {'Connection': 'close'}
     r = yield from asyncio.wait_for(request(method, urldefrag(url)[0], **kw), 10)
     #r = yield from request(method, urldefrag(url)[0], **kw)
     print('get byte')
@@ -303,9 +303,12 @@ def regex(arg, lines, send, **kw):
 
 
 help = [
-    ('html'         , 'html (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
-    ('xml'          , 'xml (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
-    ('json'         , 'json (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
+    #('html'         , 'html (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
+    #('xml'          , 'xml (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
+    #('json'         , 'json (url) <xpath (no { allowed)> [output fields (e.g. {[xpath (no # allowed)]#[attrib][\'format\']})] [#max number][+offset]'),
+    ('html'         , 'html (url) <xpath> [output fields (e.g. {[xpath]#[attrib][\'format\']})] [#max number][+offset]'),
+    ('xml'          , 'xml (url) <xpath> [output fields (e.g. {[xpath]#[attrib][\'format\']})] [#max number][+offset]'),
+    ('json'         , 'json (url) <xpath> [output fields (e.g. {[xpath]#[attrib][\'format\']})] [#max number][+offset]'),
     ('regex'        , 'regex (url) <regex> [#max number][+offset]'),
 ]
 
