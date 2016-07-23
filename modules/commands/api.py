@@ -829,11 +829,11 @@ def gtran(arg, lines, send):
     print('google')
 
     if arg.get('to') == 'speak':
-        xpath = '/root/item[1]/item[4]'
+        xpath = '/root/item[1]/item/item[4]'
     elif arg.get('to') == 'lang':
         xpath = '/root/item[3]'
     else:
-        xpath = '/root/item[1]/item[1]'
+        xpath = '/root/item[1]/item/item[1]'
 
     arg.update({
         'n': '1',
