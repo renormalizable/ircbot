@@ -473,8 +473,16 @@ def rustmain(arg, lines, send):
     #    '    safe_rec!({});'.format(code),
     #    '}',
     #]
+    line = [
+        '#![allow(bad_style, unused)]',
+        'fn main() {',
+        '    println!("{:?}", {',
+        code,
+        '    });',
+        '}',
+    ]
 
-    return (yield from rust(arg, ['#![allow(bad_style, unused)]', 'fn main() {{ {} }}'.format(code)], send))
+    return (yield from rust(arg, line, send))
 
 
 @asyncio.coroutine
