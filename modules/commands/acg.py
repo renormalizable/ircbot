@@ -338,8 +338,11 @@ class Acfun:
     def func(self, url, num, count):
         text = yield from fetch('GET', url + str(num))
         j = jsonparse(text)
-        # or branch is for older comment format
-        d = j.get('commentContentArr') or j.get('data').get('commentContentArr')
+        d = j.get('commentContentArr')
+        # for older comment format
+        if d is None:
+            j = j.get('data')
+            d = j.get('commentContentArr')
         try:
             while True:
                 e = d.popitem()[1]
@@ -347,8 +350,9 @@ class Acfun:
                     #return ['\\x0300{0}:\\x0f {1}'.format(e.get('userName'), self.ubb(htmltostr(e.get('content'))))]
                     return ['\\x16{0}:\\x0f {1}'.format(e.get('userName'), self.ubb(htmltostr(e.get('content'))))]
         except KeyError:
-            n = j.get('totalPage')
-            i = j.get('page')
+            # convert to integer
+            n = int(j.get('totalPage'))
+            i = int(j.get('page'))
             if i >= n:
                 raise Exception()
             else:
