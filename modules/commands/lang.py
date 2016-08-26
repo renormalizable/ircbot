@@ -9,9 +9,9 @@ from .tool import fetch, htmlparse, jsonparse
 def unsafesend(m, send, *, raw=False):
     if raw:
         l = str(m).splitlines()
-        send(l, n=len(l), llimit=16, mlimit=3, raw=True)
+        send(l, n=len(l), llimit=16, mlimit=1, raw=True)
     else:
-        send(m, mlimit=3)
+        send(m, mlimit=1)
 
 # paste
 
@@ -97,10 +97,11 @@ def rust(arg, lines, send):
     result = j.get('program')
     if error:
         unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
-    if result:
-        unsafesend(result, send, raw=raw)
     else:
-        unsafesend('no output', send, raw=raw)
+        if result:
+            unsafesend(result, send, raw=raw)
+        else:
+            unsafesend('no output', send, raw=raw)
 
 
 @asyncio.coroutine
@@ -128,10 +129,11 @@ def go(arg, lines, send):
     result = j.get('Events')[0].get('Message')
     if error:
         unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
-    if result:
-        unsafesend(result, send, raw=raw)
     else:
-        unsafesend('no output', send, raw=raw)
+        if result:
+            unsafesend(result, send, raw=raw)
+        else:
+            unsafesend('no output', send, raw=raw)
 
 
 @asyncio.coroutine
@@ -219,10 +221,11 @@ def hackerearth(arg, lines, send):
     result = j.get('run_status').get('output')
     if compile != 'OK':
         unsafesend('\\x0304errors:\\x0f {0}'.format(compile), send)
-    if result:
-        unsafesend(result, send, raw=raw)
     else:
-        unsafesend('no output', send, raw=raw)
+        if result:
+            unsafesend(result, send, raw=raw)
+        else:
+            unsafesend('no output', send, raw=raw)
 
 
 @asyncio.coroutine
@@ -251,10 +254,11 @@ def hylang(arg, lines, send):
     result = j.get('stdout')
     if error:
         unsafesend('\\x0304errors:\\x0f {0}'.format(error), send)
-    if result:
-        unsafesend(result, send, raw=raw)
     else:
-        unsafesend('no output', send, raw=raw)
+        if result:
+            unsafesend(result, send, raw=raw)
+        else:
+            unsafesend('no output', send, raw=raw)
 
 
 @asyncio.coroutine
@@ -353,10 +357,11 @@ def rextester(arg, lines, send):
         unsafesend('\\x0304warnings:\\x0f {0}'.format(warnings), send)
     if errors:
         unsafesend('\\x0304errors:\\x0f {0}'.format(errors), send)
-    if result:
-        unsafesend(result, send, raw=raw)
     else:
-        unsafesend('no output', send, raw=raw)
+        if result:
+            unsafesend(result, send, raw=raw)
+        else:
+            unsafesend('no output', send, raw=raw)
 
 # repl
 
@@ -393,6 +398,8 @@ def haskell(arg, lines, send):
     })
     # https://github.com/ghc/ghc/blob/master/ghc/InteractiveUI.hs
     # https://github.com/ghc/ghc/blob/master/ghc/GHCi/UI.hs
+    # how to support input like 'import Prelude ()' ?
+    # currently it cannot unload Prelude functions
     line = [
         'import GHC',
         'import DynFlags',
@@ -490,7 +497,7 @@ def geordi(arg, lines, send):
 
     arg.update({
         'lang': 'c++(gcc)',
-        'args': '-std=c++14',
+        'args': arg['args'] or '-std=c++14',
         'raw': None,
     })
  
@@ -520,6 +527,13 @@ def geordi(arg, lines, send):
         #'template <typename T> type_strings_detail::type_tag<T> TYPE() { return type_strings_detail::type_tag<T>(); }',
         'template <typename T> type_strings_detail::adl_hint TYPE(type_strings_detail::type_tag<T>) { return type_strings_detail::adl_hint(); }',
     ]
+    # not correct but maybe enough?
+    if '++14' in arg['args'] or '++1y' in arg['args']:
+        line = [
+            # experimental
+            '#include <experimental/string_view>',
+            '#include <experimental/optional>',
+        ] + line
 
     printing = re.compile(r'<<(?P<print>.+?)(?:;(?P<code>.*))?')
     statement = re.compile(r'{{(?P<main>.+?)}}(?P<code>.*)?')
@@ -570,5 +584,5 @@ func = [
     (python3        , r"py (?P<code>.+)"),
     (haskell        , r"\\\\ (?P<code>.+)"),
     (rustmain       , r"rs (?P<code>.+)"),
-    (geordi         , r"geordi (?P<code>.+)"),
+    (geordi         , r"geordi(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
 ]
