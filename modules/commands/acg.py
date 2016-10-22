@@ -1,7 +1,7 @@
 import asyncio
 import re
 import time
-from urllib.parse  import quote_plus, urlsplit
+from urllib.parse  import quote_plus, urlsplit, unquote
 from colorsys      import rgb_to_hsv
 
 from .common import Get
@@ -34,7 +34,7 @@ def moegirl(arg, send):
     arg.update({
         'n': arg['n'] or '1',
         'url': 'https://zh.moegirl.org/api.php',
-        'xpath': '//rev',
+        'xpath': '//page',
     })
     params = {
         'format': 'xml',
@@ -43,7 +43,8 @@ def moegirl(arg, send):
         'gsrlimit': '1',
         'gsrwhat': 'nearmatch',
         'gsrsearch': arg['query'],
-        'prop': 'revisions',
+        'prop': 'info|revisions',
+        'inprop': 'url',
         'rvprop': 'content',
         'rvparse': '',
     }
@@ -54,7 +55,7 @@ def moegirl(arg, send):
     # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
     def transform(l):
         if l:
-            return htmlparse(l[0].text).xpath('//body/*['
+            node = htmlparse(l[0].xpath('//rev')[0].text).xpath('//body/*['
                 # filter script, style and section title
                 #'not(self::script or self::style or self::h2)'
                 #'not(self::div or self::table)'
@@ -70,6 +71,9 @@ def moegirl(arg, send):
                 'preceding-sibling::table[@class="navbox"]'
                 ')'
                 ']')
+            if node and arg['withurl']:
+                send('[\\x0302 {0} \\x0f]'.format(unquote(l[0].xpath('./@fullurl')[0])))
+            return node
         else:
             raise Exception("maybe it's not moe enough?")
 
@@ -373,15 +377,15 @@ class Acfun:
 acfun = Acfun()
 
 help = [
-    ('moegirl'      , 'moegirl <title> [#max number][+offset]'),
+    ('moegirl'      , 'moegirl[:url] <title> [#max number][+offset]'),
     ('nmb'          , 'nmb [:forum] [thread id] [#max number][+offset] -- 丧失你好'),
     #('adnmb'        , 'adnmb [:forum id] [rthread id] [#max number][+offset] -- 丧失你好'),
     ('acfun'        , 'acfun <url> <#comment number>'),
 ]
 
 func = [
-    (moegirl        , r"moegirl\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (moegirl        , r"moeboy\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (moegirl        , r"moegirl(?P<withurl>:url)?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (moegirl        , r"moeboy(?P<withurl>:url)?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (nmb            , r"nmb(\s+:(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
     (adnmb          , r"adnmb(\s+:(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
     (acfun          , r"acfun\s+(?P<url>http\S+)\s+#(?P<count>\d+)"),
