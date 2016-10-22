@@ -275,10 +275,11 @@ def rextester(arg, lines, send):
         'java':             (  4, '', '' ),
         'python':           (  5, '', '' ),
         'c(gcc)':           (  6, '-o a.out source_file.c', '-Wall -std=gnu99 -O2' ),
-        'c++(gcc)':         (  7, '-o a.out source_file.cpp', '-Wall -std=c++11 -O2' ),
+        'c++(gcc)':         (  7, '-o a.out source_file.cpp', '-Wall -std=c++14 -O2' ),
         'php':              (  8, '', '' ),
         'pascal':           (  9, '', '' ),
-        'objective-c':      ( 10, '-o a.out source_file.m', '' ),
+        # better way ?
+        'objective-c':      ( 10, '-o a.out source_file.m', '-MMD -MP -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1 -DGNU_RUNTIME=1 -DGNUSTEP_BASE_LIBRARY=1 -fno-strict-aliasing -fexceptions -fobjc-exceptions -D_NATIVE_OBJC_EXCEPTIONS -pthread -fPIC -Wall -DGSWARN -DGSDIAGNOSE -Wno-import -g -O2 -fgnu-runtime -fconstant-string-class=NSConstantString -I. -I /usr/include/GNUstep -I/usr/include/GNUstep -lobjc -lgnustep-base' ),
         'haskell':          ( 11, '-o a.out source_file.hs', '' ),
         'ruby':             ( 12, '', '' ),
         'perl':             ( 13, '', '' ),
@@ -295,12 +296,15 @@ def rextester(arg, lines, send):
         'python3':          ( 24, '', '' ),
         'octave':           ( 25, '', '' ),
         'c(clang)':         ( 26, '-o a.out source_file.c', '-Wall -std=gnu99 -O2' ),
-        'c++(clang)':       ( 27, '-o a.out source_file.cpp', '-Wall -std=c++11 -O2' ),
-        'c++(vc++)':        ( 28, '-o a.exe source_file.cpp', '' ),
+        'c++(clang)':       ( 27, '-o a.out source_file.cpp', '-Wall -std=c++14 -stdlib=libc++ -O2' ),
+        'c++(vc++)':        ( 28, '-o a.exe source_file.cpp', '/EHsc /MD /I C:\boost_1_60_0 /link /LIBPATH:C:\boost_1_60_0\stage\lib' ),
         'c(vc)':            ( 29, '-o a.exe source_file.c', '' ),
         'd':                ( 30, '-ofa.out source_file.d', '' ),
         'r':                ( 31, '', '' ),
         'tcl':              ( 32, '', '' ),
+        'mysql':            ( 33, '', '' ),
+        'postgresql':       ( 34, '', '' ),
+        'oracle':           ( 35, '', '' ),
     }
     alias = {
         # default
@@ -313,6 +317,7 @@ def rextester(arg, lines, send):
         'asm':              'nasm',
         'vb':               'vb.net',
         'node':             'node.js',
+        'pgsql':            'postgresql',
         # extension
         'js':               'javascript',
         'py':               'python',
@@ -400,6 +405,8 @@ def haskell(arg, lines, send):
     # https://github.com/ghc/ghc/blob/master/ghc/GHCi/UI.hs
     # how to support input like 'import Prelude ()' ?
     # currently it cannot unload Prelude functions
+    # output stderr ?
+    # call stack dump ?
     line = [
         'import GHC',
         'import DynFlags',
