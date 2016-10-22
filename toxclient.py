@@ -91,11 +91,11 @@ class ToxClient(pytriam.Messager):
         prefix = '' if raw else (to + ': ') if to else ''
         message = self.normalize(message, **kw)
         print(repr(message))
-        for (i, m) in enumerate(splitmessage(message.encode('utf-8'), self.msglimit)):
+        for (i, m) in enumerate(splitmessage(message, self.msglimit)):
             if mlimit > 0 and i >= mlimit:
                 self.send(command, target=target, message=prefix + '太多了啦...')
                 break
-            self.send(command, target=target, message=prefix + m.decode('utf-8'))
+            self.send(command, target=target, message=prefix + m)
 
     def sendl(self, target, line, n, *, llimit=0, **kw):
         sent = False

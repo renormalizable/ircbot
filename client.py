@@ -46,11 +46,11 @@ class Client(bottom.Client):
         prefix = (to + ': ') if to else ''
         message = ('' if raw else prefix) + self.normalize(message, **kw)
         print(message)
-        for (i, m) in enumerate(splitmessage(message.encode('utf-8'), self.msglimit)):
+        for (i, m) in enumerate(splitmessage(message, self.msglimit)):
             if mlimit > 0 and i >= mlimit:
                 self.send(command, target=target, message=prefix + '太多了啦...')
                 break
-            self.send(command, target=target, message=m.decode('utf-8'))
+            self.send(command, target=target, message=m)
 
     #def sendl(self, target, line, n, *, llimit=0, loffset=0, **kw):
     #    sent = False

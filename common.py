@@ -9,9 +9,15 @@ class dePrefix:
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)')
         self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
         self.esc = re.compile(r'(\x03\d{1,2}(,\d{1,2})?|\x02|\x03|\x04|\x06|\x07|\x0f|\x16|\x1b|\x1d|\x1f)')
+        self.orz = re.compile(r'((?:(?P<s>\[))(?P<nick>[\x00-\x1f].+?[\x00-\x1f])(?(s)\]) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
 
     def __call__(self, n, m):
-        r = self.r.fullmatch(self.esc.sub('', m)).groupdict()
+        # orizon
+        r = self.orz.fullmatch(m).groupdict()
+        if r['nick']:
+            r['nick'] = self.esc.sub('', r['nick'])
+        else:
+            r = self.r.fullmatch(self.esc.sub('', m)).groupdict()
         #return (r['to'].strip() if r['to'] else r['nick'].strip() if r['nick'] else n, r['message'])
         return (r['to'] or r['nick'] or n, r['message'])
 
@@ -38,6 +44,10 @@ class Normalize:
         })
         self.esc = [
             # irssi
+            # https://github.com/irssi/irssi/blob/master/src/fe-common/core/formats.c#L1086
+            # IS_COLOR_CODE(...)
+            # https://github.com/irssi/irssi/blob/master/src/fe-common/core/formats.c#L1254
+            # format_send_to_gui(...)
             (r'\x02', '\x02'),
             (r'\x03', '\x03'),
             (r'\x04', '\x04'),
@@ -79,11 +89,55 @@ class Normalize:
 
 
 def splitmessage(s, n):
-    while len(s) > n:
-        i = n
-        while (s[i] & 0xc0) == 0x80:
-            i = i - 1
-        print(i)
-        yield s[:i]
-        s = s[i:]
-    yield s
+    # rules
+    starting = ''
+    ending = ''
+
+    # zh
+    starting += '、。〃〆〕〗〞﹚﹜！＂％＇），．：；？！］｝～'
+    ending += '〈《「『【〔〖〝﹙﹛＄（．［｛￡￥'
+
+    # ja
+    starting += '｝〕〉》」』】〙〗〟｠' + 'ヽヾーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎゕゖㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ々〻' + '゠〜・、。'
+    ending += '｛〔〈《「『【〘〖〝｟'
+
+    if n < 4:
+        return
+
+    bs = s.encode('utf-8')
+
+    # need splitting
+    # n should large enough for a single character
+    while len(bs) > n:
+        i = n + 1
+
+        # find good ending with one extra character
+        while 0 <= i and (bs[i] & 0xc0) == 0x80:
+            i = i + 1
+
+        # result candidate
+        str = bs[:i].decode('utf-8')
+
+        j = len(str) - 1
+
+        print('j = {}'.format(j))
+
+        # check first character in next line and last character in this line
+        while (0 <= j and str[j] in starting) or (1 <= j and str[j - 1] in ending):
+            j = j - 1
+
+        # if too short
+        if j <= 0:
+            return
+
+        ## if cannot find good line
+        #if j <= 0:
+        #    j = len(str) - 1
+
+        str = str[:j]
+
+        yield str
+
+        bs = bs[len(str.encode('utf-8')):]
+
+    yield bs.decode('utf-8')
