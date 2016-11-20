@@ -81,6 +81,7 @@ def rust(arg, lines, send):
         raise Exception()
 
     data = json.dumps({
+        'backtrace': '0',
         'code': code,
         'color': False,
         'optimize': '3',
@@ -93,7 +94,7 @@ def rust(arg, lines, send):
     byte = yield from r.read()
 
     j = jsonparse(byte)
-    error = j.get('rustc')
+    error = j.get('rustc').split('\n', 1)[1]
     result = j.get('program')
     if error:
         unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
