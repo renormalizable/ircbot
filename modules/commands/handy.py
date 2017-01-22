@@ -320,6 +320,32 @@ def wiki(arg, send):
         yield from xml(arg, [], send, params=params, transform=transform, get=get)
 
 
+@asyncio.coroutine
+def xkcd(arg, send):
+    print('xkcd')
+
+    # latest by default
+    if arg['number'] == None:
+        url = 'http://xkcd.com/'
+    elif arg['number'] == 'random':
+        url = 'http://c.xkcd.com/random/comic/'
+    else:
+        url = 'http://xkcd.com/{0}/'.format(arg['number'])
+
+    arg.update({
+        'n': '1',
+        'url': url,
+        'xpath': '//*[@id="comic"]//img',
+    })
+    field = [
+        ('.', 'alt', '{}'),
+        ('.', 'src', '[\\x0302 http:{} \\x0f]'),
+        ('.', 'title', '{}'),
+    ]
+
+    return (yield from html(arg, [], send, field=field))
+
+
 func = [
     (zhihu          , r"zhihu\s+(?P<url>http\S+)"),
     (bihu           , r"bihu\s+(?P<url>http\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
@@ -331,4 +357,5 @@ func = [
     (foldoc         , r"foldoc\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (wiki           , r"wiki(?::(?P<site>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (xkcd           , r"xkcd(\s+(?P<number>(\d+)|(random)))?"),
 ]
