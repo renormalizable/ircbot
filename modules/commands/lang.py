@@ -75,6 +75,7 @@ def rust(arg, lines, send):
 
     url = 'https://play.rust-lang.org/evaluate.json'
     code = '\n'.join(lines) or arg['code'] or ''
+    version = arg['version'] or 'stable'
     raw = arg['raw']
 
     if not code:
@@ -87,7 +88,7 @@ def rust(arg, lines, send):
         'optimize': '3',
         'separate_output': True,
         'test': False,
-        'version': 'stable',
+        'version': version,
     })
     headers = {'Content-Type': 'application/json'}
     r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
@@ -333,9 +334,14 @@ def rextester(arg, lines, send):
 
     code = '\n'.join(lines) or arg['code'] or ''
     lang = arg['lang'].lower()
-    conf = default.get(alias.get(lang, lang))
-    lang = conf[0]
-    args = '{0} {1}'.format(conf[1], arg['args'] or conf[2])
+
+    try:
+        conf = default.get(alias.get(lang, lang))
+        lang = conf[0]
+        args = '{0} {1}'.format(conf[1], arg['args'] or conf[2])
+    except:
+        raise Exception('Do you REALLY need this language?')
+
     #input = arg['input'] or ''
     input = ''
     raw = arg['raw']
@@ -470,7 +476,10 @@ def haskell(arg, lines, send):
 def rustmain(arg, lines, send):
     print('rustmain')
 
-    arg.update({ 'raw': None })
+    arg.update({
+        'raw': None,
+        'version': 'nightly',
+    })
     code = '\n'.join(lines) or arg['code'] or ''
     #line = [
     #    'macro_rules! safe {',
@@ -490,6 +499,7 @@ def rustmain(arg, lines, send):
     #]
     line = [
         '#![allow(bad_style, unused)]',
+        '#![feature(stmt_expr_attributes)]',
         'fn main() {',
         '    println!("{:?}", {',
         code,
@@ -575,6 +585,7 @@ help = [
     ('vimcn'        , 'vimcn (code)'),
     ('bpaste'       , 'bpaste[:lang] (code)'),
     ('rust'         , 'rust (code)'),
+    ('go'           , 'go (code)'),
     ('codepad'      , 'codepad:<lang> [run] (code)'),
     ('rex'          , 'rex:<lang> [args --] (code)'),
 ]
@@ -582,7 +593,7 @@ help = [
 func = [
     (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
     (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
-    (rust           , r"rust(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
+    (rust           , r"rust(?::(?P<version>\S+))?(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (go             , r"go(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
     (hackerearth    , r"hack:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
