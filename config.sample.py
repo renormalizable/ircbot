@@ -12,7 +12,9 @@ channel = '#chan'
 
 key = {
     'baidu'          : '',
+    'baiduocr'       : '',
     'microsoft'      : '',
+    'translator'     : ('', ''),
     'google'         : '',
     'googleseid'     : '',
     'collins'        : '',

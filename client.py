@@ -11,7 +11,7 @@ class Client(bottom.Client):
     def __init__(self, loop, config):
         self.config = importlib.import_module(config)
         super().__init__(self.config.host, self.config.port, **self.config.option)
-        self.loop = loop
+        #self.loop = loop
 
         self.admin = self.config.admin
         self.nick = self.config.nick
@@ -22,7 +22,8 @@ class Client(bottom.Client):
 
         # (512 - 2) / 3 = 170
         # 430 bytes should be safe
-        self.msglimit = 430
+        # not really, for #archlinux-cn-offtopic
+        self.msglimit = 420
 
         self.deprefix = dePrefix()
         self.normalize = Normalize()
