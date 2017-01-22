@@ -9,7 +9,7 @@ import traceback
 from ..timeoutdict import TimeoutDict
 
 path = 'modules.commands.'
-files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'acg', 'handy', 'multiline']
+files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'acg', 'handy', 'multiline', 'blug']
 modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
 table = dict(zip(files, modules))
 
@@ -139,6 +139,7 @@ def reply(bot, nick, message, send):
         'bot': bot,
         'nick': nick,
         'send': send,
+        'save': Get(lambda l: line.append(nick, l)),
         'command': lambda msg, lines, send: execute(msg, lines, send, meta),
     }}
 
