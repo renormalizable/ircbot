@@ -88,7 +88,11 @@ def addstyle(e):
 
 # use html5lib for standard compliance
 def htmlparse(t, encoding=None):
-    return html5lib.parse(t, treebuilder='lxml', namespaceHTMLElements=False, encoding=encoding)
+    return html5lib.parse(t, treebuilder='lxml', namespaceHTMLElements=False)
+    #try:
+    #    return html5lib.parse(t, treebuilder='lxml', namespaceHTMLElements=False, transport_encoding=encoding)
+    #except TypeError:
+    #    return html5lib.parse(t, treebuilder='lxml', namespaceHTMLElements=False)
 def htmlparsefast(t, *, parser=None):
     return lxml.html.fromstring(t, parser=parser)
 
@@ -236,6 +240,7 @@ class HTMLRequest(Request):
 
     def parse(self, text, encoding):
         return htmlparse(text, encoding=encoding)
+        #return htmlparse(text.decode(encoding))
 
     def get(self, e, f):
         if not f:
@@ -273,6 +278,7 @@ xml = XMLRequest()
 class JSONRequest(Request):
 
     def parse(self, text, encoding):
+        #print(text)
         j = jsonparse(text, encoding=encoding)
         b = dicttoxml(j, attr_type=False)
         #print(j)
