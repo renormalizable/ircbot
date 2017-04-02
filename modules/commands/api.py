@@ -118,16 +118,15 @@ def aqi(arg, send):
     field = [('./' + x, 'text', '{}') for x in ['area', 'quality', 'aqi', 'primary_pollutant', 'time_point']]
     if arg.get('all'):
         l = [
-            ('pm2_5', 'PM 2.5'),
-            ('pm10', 'PM 10'),
-            ('co', 'CO'),
-            ('no2', 'NO2'),
-            ('o3', 'O3'),
-            ('o3_8h', 'O3 8h'),
-            ('so2', 'SO2'),
+            ('pm2_5', 'PM 2.5 1h', 'µg/m³'),
+            ('pm10', 'PM 10 1h', 'µg/m³'),
+            ('co', 'CO 1h', 'mg/m³'),
+            ('no2', 'NO₂ 1h', 'µg/m³'),
+            ('o3', 'O₃ 1h', 'µg/m³'),
+            ('o3_8h', 'O₃ 8h', 'µg/m³'),
+            ('so2', 'SO₂ 1h', 'µg/m³'),
         ]
-        #field += [('./' + x[0], 'text', '\\x0300{0}:\\x0f'.format(x[1]) + ' {}') for x in l]
-        field += [('./' + x[0], 'text', '\\x02{0}:\\x0f'.format(x[1]) + ' {}') for x in l]
+        field += [('./' + x[0], 'text', '\\x02{0}:\\x0f {{}} {1}'.format(x[1], x[2])) for x in l]
         def format(l):
             e = list(l)[0]
             return [' '.join(e[:5]), ', '.join(e[5:])]
@@ -663,7 +662,7 @@ def watson(arg, send):
 help = [
     ('ip'           , 'ip <ip address>'),
     #('whois'        , 'whois <domain>'),
-    ('aqi'          , 'aqi <city> [all]'),
+    #('aqi'          , 'aqi <city> [all]'),
     #('bip'          , 'bip <ip address>'),
     #('bweather'     , 'bweather <city>'),
     #('btran'        , 'btran [source lang:target lang] (text)'),
