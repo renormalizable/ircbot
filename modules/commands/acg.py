@@ -30,6 +30,14 @@ def moegirl(arg, send):
             span.text = '\\x0301,01' + (span.text or '')
             span.tail = '\\x0f' + (span.tail or '')
         return e
+    # square bucket is more appealing?
+    def ruby(e):
+        for rp in e.xpath('.//rp'):
+            if rp.text == '（':
+                rp.text = '['
+            elif rp.text == '）':
+                rp.text = ']'
+        return e
 
     arg.update({
         'n': arg['n'] or '1',
@@ -77,7 +85,7 @@ def moegirl(arg, send):
         else:
             raise Exception("maybe it's not moe enough?")
 
-    get = lambda e, f: addstyle(hidden(clean(e))).xpath('string()')
+    get = lambda e, f: addstyle(ruby(hidden(clean(e)))).xpath('string()')
 
     #return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
     try:
@@ -377,7 +385,7 @@ class Acfun:
 acfun = Acfun()
 
 help = [
-    ('moegirl'      , 'moegirl[:url] <title> [#max number][+offset]'),
+    ('moegirl'      , 'moegirl[:url] <title> [#max number][+offset] -- \\x0301,01你知道得太多了\\x0f'),
     ('nmb'          , 'nmb [:forum] [thread id] [#max number][+offset] -- 丧失你好'),
     #('adnmb'        , 'adnmb [:forum id] [rthread id] [#max number][+offset] -- 丧失你好'),
     ('acfun'        , 'acfun <url> <#comment number>'),
