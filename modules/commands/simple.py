@@ -7,12 +7,6 @@ import re
 
 
 @asyncio.coroutine
-def echo(arg, send):
-    #send(arg[0])
-    send(arg['content'], raw=True)
-
-
-@asyncio.coroutine
 def say(arg, send):
     #send(arg['content'])
     send('[{0}] '.format(arg['meta']['nick']) + arg['content'], raw=True)
@@ -57,10 +51,17 @@ ping2 = ping2c()
 class unicodenormalize:
 
     def __init__(self):
-        self.reg = re.compile(r"(?:[\u0300-\u036F]|[\u1AB0–\u1AFF]|[\u1DC0–\u1DFF]|[\u20D0–\u20FF]|[\uFE20–\uFE2F])+")
+        #self.reg = re.compile(r"(?:[\u0300-\u036F]|[\u1AB0–\u1AFF]|[\u1DC0–\u1DFF]|[\u20D0–\u20FF]|[\uFE20–\uFE2F])+")
+        # add Cyrillic combining characters
+        self.reg = re.compile(r"(?:[\u0300-\u036F]|[\u1AB0–\u1AFF]|[\u1DC0–\u1DFF]|[\u20D0–\u20FF]|[\uFE20–\uFE2F]|[\u0483-\u0489])+")
         self.trans = str.maketrans(
-            'абвгдеёзийклмнопрстуфхъыьэАБВГДЕЁЗИЙКЛМНОПРСТУФХЪЫЬЭ',
-            'abvgdeezijklmnoprstufh y eABVGDEEZIJKLMNOPRSTUFH Y E',
+            #'абвгдеёзийклмнопрстуфхъыьэАБВГДЕЁЗИЙКЛМНОПРСТУФХЪЫЬЭ',
+            #'abvgdeezijklmnoprstufh y eABVGDEEZIJKLMNOPRSTUFH Y E',
+            #'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя',
+            #'ABVGDEZZIJKLMNOPRSTUFHCCSS Y EUAabvgdezzijklnmoprstufhccss y eua',
+            'еђгєѕіјљњћкиуџабвджзлмнопрстфхцчшщъыьэюяѡѣѥѧѩѫѭѯѱѳѵѹѻѽѿҁ҂ҋҍҏґғҕҗҙқҝҟҡңҥҧҩҫҭүұҳҵҷҹһҽҿӏӄӆӈӊӌӎӕәӡөӷӻӽӿ',
+            'ehgesijbbhknyyabbaxeamhonpctpxyywwbbbeorwbeaaaaeptvyoowcxnbpgfhxekkkkhhhqctyyxyyyheelkahhymaeetgfxx',
+            '\u200b\u200c\u200d\u200e\u200f\ufeff',
         )
 
     def __call__(self, s):
@@ -91,10 +92,6 @@ def pia(arg, send):
         '┬＿┬',
         '￣︿￣',
         '╥﹏╥',
-        # csslayer
-        'ˊ_>ˋ',
-        # felixonmars
-        '=﹁"﹁=',
     ]
     face = [
         '°{}°',
@@ -133,12 +130,18 @@ def pia(arg, send):
         'ˊ_>ˋ',
         # felixonmars
         '=﹁"﹁=',
+        # frantic
+        '>_<',
+        # cuihao
+        '=3=',
     ])
     icon = '(╯{0})╯ ┻━┻ '.format(random.choice(face).format(random.choice(mouth)))
     #if arg['meta']['bot'].nick not in content:
     #    send(icon + content)
     #else:
     #    send(icon + '不要 pia 我!')
+    if 'orznzbot' in arg['meta']['nick']:
+        return send(icon + '你才是!')
     if arg['meta']['bot'].nick.lower() in unormalize(content):
         send(icon + '不要 pia 我!')
     else:
@@ -157,6 +160,16 @@ def mua(arg, send):
         send('o(*￣3￣)o ' + '谢谢啦~')
     else:
         send('o(*￣3￣)o ' + content)
+
+
+@asyncio.coroutine
+def prpr(arg, send):
+    content = arg['content'] or ''
+
+    if arg['meta']['bot'].nick.lower() in unormalize(content):
+        send('咦!')
+    else:
+        send('哧溜! ' + content)
 
 
 @asyncio.coroutine
@@ -211,54 +224,53 @@ def color(arg, send):
         ('14', 'grey'),
         ('15', 'light grey'),
     ]
-    send('\\x02bold\\x02 \\x1ditalic\\x1d \\x1funderline\\x1f \\x06blink\\x06 \\x16reverse\\x16')
-    #send('\\x07bell\\x07 \\x1bansi color\\x1b')
-    send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[:8])))
-    send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[8:])))
+    if arg['all']:
+        send(' '.join(['\\x03{0:0>#02}{0:0>#02}\\x0f'.format(x) for x in range(0, 50)]))
+        send(' '.join(['\\x03{0:0>#02}{0:0>#02}\\x0f'.format(x) for x in range(50, 100)]))
+    else:
+        send('\\x02bold\\x02 \\x1ditalic\\x1d \\x1funderline\\x1f \\x06blink\\x06 \\x16reverse\\x16')
+        #send('\\x07bell\\x07 \\x1bansi color\\x1b')
+        send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[:8])))
+        send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[8:])))
 
 
 @asyncio.coroutine
 def mode(arg, send):
     u = [
-        ('D', 'deaf'),
         ('g', 'caller-id'),
         ('i', 'invisible'),
-        ('Q', 'no forwarding'),
+        ('Q', 'disable forwarding'),
         ('R', 'block unidentified'),
         ('w', 'see wallops'),
-        ('Z', 'connected via SSL'),
+        ('Z', 'connected securely'),
     ]
     c = [
         ('b', 'channel ban'),
-        ('c', 'color filter'),
-        ('C', 'block CTCPS'),
+        ('c', 'colour filter'),
+        ('C', 'block CTCPs'),
         ('e', 'ban exemption'),
-        ('f', 'forward on uninvited'),
+        ('f', 'forward'),
         ('F', 'enable forwarding'),
-        ('g', 'allow anybody to invite'),
-        ('i', 'invite-only'),
-        ('I', 'invite-only exemption'),
-        ('j', 'join throttling'),
-        ('k', 'channel password'),
+        ('g', 'free invite'),
+        ('i', 'invite only'),
+        ('I', 'invite exemption'),
+        ('j', 'join throttle'),
+        ('k', 'password'),
         ('l', 'join limit'),
-        ('L', 'large ban/exempt/invex lists'),
         ('m', 'moderated'),
         ('n', 'prevent external send'),
-        ('p', 'paranoid'),
-        ('P', 'permanent channel'),
-        ('q', 'quiet user'),
+        ('p', 'private'),
+        ('q', 'quiet'),
         ('Q', 'block forwarded users'),
         ('r', 'block unidentified'),
-        ('s', 'secret channel'),
+        ('s', 'secret'),
         ('S', 'SSL-only'),
-        ('t', 'only ops can change topic'),
+        ('t', 'ops topic'),
         ('z', 'reduced moderation'),
     ]
-    print(len(c))
-    send('\\x0304user\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), u)))
-    send('\\x0304channel\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), c[:12])))
-    send('\\x0304cont.\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f({1})'.format(*e), c[12:])))
-    send('see [\\x0302 https://freenode.net/using_the_network.shtml \\x0f] for more infomation')
+    send('\\x0304user\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f/{1}'.format(*e), u)) + ' (see [\\x0302 https://freenode.net/kb/answer/usermodes \\x0f])')
+    send('\\x0304channel\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f/{1}'.format(*e), c[:20])))
+    send('\\x0304cont.\\x0f ' + ' '.join(map(lambda e: '\\x0300{0}\\x0f/{1}'.format(*e), c[20:])) + ' (see [\\x0302 https://freenode.net/kb/answer/channelmodes \\x0f])')
 
 
 def getrandom(show):
@@ -404,7 +416,7 @@ help = [
     ('pong!'        , 'pong!'),
     ('pia'          , 'pia [content] -- Каждая несчастливая семья несчастлива по-своему'),
     ('mua'          , 'mua [content] -- Все счастливые семьи похожи друг на друга'),
-    ('color'        , 'color -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!'),
+    ('color'        , 'color [all] -- let\'s puke \\x0304r\\x0307a\\x0308i\\x0303n\\x0310b\\x0302o\\x0306w\\x0fs!'),
     ('mode'         , 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!'),
     ('up'           , 'up [show] -- nice boat!'),
     ('down'         , 'down [show]'),
@@ -415,13 +427,13 @@ func = [
     (pong           , r"ping!"),
     (ping           , r"pong!"),
     #(ping2          , r"(?:.*): pong!"),
-    (color          , r"color"),
+    (color          , r"color(?:\s+(?P<all>all))?"),
     (mode           , r"mode"),
     (up             , r"up(?:\s+(?P<show>show))?"),
     (down           , r"down(?:\s+(?P<show>show))?"),
     (pia            , r"pia( (?P<content>.+))?"),
     (mua            , r"mua( (?P<content>.+))?"),
     (hug            , r"hug( (?P<content>.+))?"),
-    (mua            , r"prpr( (?P<content>.+))?"),
+    (prpr           , r"prpr( (?P<content>.+))?"),
     (latex          , r"latex\s+(?P<content>.+)"),
 ]
