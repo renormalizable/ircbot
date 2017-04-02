@@ -3,9 +3,21 @@ from urllib.parse import quote
 from aiohttp.client import ClientRequest
 import re
 
+# no kwa wha etc.
+# find an alternative?
 import romkan
 
 from .tool import jsonxml
+
+
+@asyncio.coroutine
+def kana(arg, send):
+    send(romkan.to_hiragana(arg['romaji']))
+
+
+@asyncio.coroutine
+def romaji(arg, send):
+    send(romkan.to_roma(arg['kana']))
 
 
 class IM:
@@ -488,10 +500,14 @@ def bimnew(arg, send):
 help = [
     ('bim'          , 'bim <pinyin> (a valid pinyin starts with a lower case letter, followed by lower case letters or \'; use \'\' in pair for comment)'),
     ('gim'          , 'gim[:lang] <text> (a valid text consists some lower case letters and other symbols; use \' for word breaking; use \'\' in pair for comment)'),
+    #('kana'         , 'kana <romaji>'),
+    #('romaji'       , 'romaji <kana>'),
 ]
 
 func = [
     #(bim            , r"bim\s+(?P<pinyin>.+)"),
     (bimnew         , r"bim\s+(?P<text>.+)"),
     (gimnew         , r"gim(?::(?P<lang>\S+))?\s+(?P<text>.+)"),
+    (kana           , r"kana\s+(?P<romaji>.+)"),
+    (romaji         , r"romaji\s+(?P<kana>.+)"),
 ]

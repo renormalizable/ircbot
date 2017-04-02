@@ -5,8 +5,6 @@ import math
 import unicodedata
 import re
 
-import romkan
-
 
 @asyncio.coroutine
 def echo(arg, send):
@@ -341,16 +339,6 @@ def down(arg, send):
 
 
 @asyncio.coroutine
-def kana(arg, send):
-    send(romkan.to_hiragana(arg['romaji']))
-
-
-@asyncio.coroutine
-def romaji(arg, send):
-    send(romkan.to_roma(arg['kana']))
-
-
-@asyncio.coroutine
 def latex(arg, send):
     symbol = [
         (r'\alpha',       '\U0001d6fc'),
@@ -420,8 +408,6 @@ help = [
     ('mode'         , 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!'),
     ('up'           , 'up [show] -- nice boat!'),
     ('down'         , 'down [show]'),
-    ('kana'         , 'kana <romaji>'),
-    ('romaji'       , 'romaji <kana>'),
 ]
 
 func = [
@@ -437,7 +423,5 @@ func = [
     (mua            , r"mua( (?P<content>.+))?"),
     (hug            , r"hug( (?P<content>.+))?"),
     (mua            , r"prpr( (?P<content>.+))?"),
-    (kana           , r"kana\s+(?P<romaji>.+)"),
-    (romaji         , r"romaji\s+(?P<kana>.+)"),
     (latex          , r"latex\s+(?P<content>.+)"),
 ]
