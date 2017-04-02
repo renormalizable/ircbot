@@ -346,6 +346,13 @@ def xkcd(arg, send):
     return (yield from html(arg, [], send, field=field))
 
 
+@asyncio.coroutine
+def killteleboto(arg, send):
+    print('killteleboto')
+
+    return send('Avada Kedavra!\\x030', raw=True)
+
+
 func = [
     (zhihu          , r"zhihu\s+(?P<url>http\S+)"),
     (bihu           , r"bihu\s+(?P<url>http\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
@@ -358,4 +365,5 @@ func = [
     (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (wiki           , r"wiki(?::(?P<site>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (xkcd           , r"xkcd(\s+(?P<number>(\d+)|(random)))?"),
+    (killteleboto   , r"killteleboto"),
 ]
