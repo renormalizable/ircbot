@@ -9,7 +9,7 @@ import traceback
 from ..timeoutdict import TimeoutDict
 
 path = 'modules.commands.'
-files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'acg', 'handy', 'multiline', 'blug']
+files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'ime', 'acg', 'handy', 'multiline', 'blug']
 modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
 table = dict(zip(files, modules))
 
