@@ -1,12 +1,10 @@
 import asyncio
-from urllib.parse import quote_plus, quote
+from urllib.parse import quote_plus, urlencode
 from aiohttp.helpers import BasicAuth
 import json
 import re
 import time
 import base64
-
-import romkan
 
 from .tool import xml, jsonxml, htmlparse, jsonparse, fetch
 
@@ -318,6 +316,51 @@ def bocr(arg, send):
     return (yield from jsonxml(arg, [], send, method='POST', headers=headers, data=data))
 
 
+# microsoft
+
+class Microsoft:
+    class Get:
+        def __init__(self):
+            self.key = ''
+            self.expire = 0
+        def __call__(self, l, n=-1, **kw):
+            e = list(l)[0]
+            self.key = e[0]
+            self.expire = int(e[1])
+    def __init__(self, scope, type):
+        self.arg = {
+            'url': 'https://datamarket.accesscontrol.windows.net/v2/OAuth2-13',
+            'xpath': '/root',
+        }
+        self.field = [('./access_token', 'text', '{}'), ('./expires_in', 'text', '{}')]
+        self.format = lambda x: x
+        self.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        self.data = {
+            'client_id': '',
+            'client_secret': '',
+            'scope': scope,
+            'grant_type': type,
+        }
+        self.key = ''
+        self.time = 0
+        self.expire = 0
+    def setclient(self, client):
+        self.data['client_id'] = client[0]
+        self.data['client_secret'] = client[1]
+    @asyncio.coroutine
+    def getkey(self):
+        t = time.time()
+        if (t - self.time) > self.expire:
+            yield from self.renew()
+        return self.key
+    @asyncio.coroutine
+    def renew(self):
+        get = Microsoft.Get()
+        yield from jsonxml(self.arg, [], get, method='POST', data=self.data, headers=self.headers, field=self.field, format=self.format)
+        self.time = time.time()
+        self.expire = get.expire - 60
+        self.key = get.key
+
 @asyncio.coroutine
 def bing(arg, lines, send):
     print('bing')
@@ -345,49 +388,32 @@ def bing(arg, lines, send):
 
     return (yield from jsonxml(arg, [], send, params=params, auth=auth, field=field))
 
-#class Mtran(Microsoft):
-#    def __init__(self):
-#        super().__init__(arg['meta']['bot'].key['microsoft'], 'http://api.microsofttranslator.com', 'client_credentials')
-#    @asyncio.coroutine
-#    def __call__(self, arg, send):
-#        print('mtran')
-#        f = arg['from'] or ''
-#        t = arg['to'] or 'zh-CHS'
-#        url = 'http://api.microsofttranslator.com/V2/Http.svc/Translate?format=json&text={0}&from={1}&to={2}'.format(quote_plus(arg['text']), quote_plus(f), quote_plus(t))
-#
-#        key = yield from self.getkey()
-#        headers = {'Authorization': 'Bearer ' + key}
-#
-#        arg['n'] = 1
-#        arg['url'] = url
-#        arg['xpath'] = '/ns:string'
-#
-#        return (yield from xml(arg, [], send, headers=headers))
-#
-#mtran = Mtran()
+class Mtran(Microsoft):
+    def __init__(self):
+        super().__init__('http://api.microsofttranslator.com', 'client_credentials')
+    @asyncio.coroutine
+    def __call__(self, arg, lines, send):
+        print('mtran')
 
+        arg.update({
+            'n': '1',
+            'url': 'http://api.microsofttranslator.com/V2/Http.svc/Translate',
+            'xpath': '/ns:string',
+        })
+        params = {
+            'format': 'json',
+            'from': arg['from'] or '',
+            'to': arg['to'] or 'zh-CHS',
+            'text': ' '.join(lines) or arg['text'] or '',
+        }
 
-@asyncio.coroutine
-def mtran(arg, lines, send):
-    print('mtran')
+        self.setclient(arg['meta']['bot'].key['translator'])
+        key = yield from self.getkey()
+        headers = {'Authorization': 'Bearer ' + key}
 
-    arg.update({
-        'n': '1',
-        'url': 'https://api.datamarket.azure.com/Bing/MicrosoftTranslator/v1/Translate',
-        'xpath': '//d/results/item',
-    })
-    params = {
-        '$format': 'json',
-        'To': "'{0}'".format(arg['to'] or 'zh-CHS'),
-        'Text': "'{0}'".format(' '.join(lines) or arg['text'] or ''),
-    }
-    if arg['from']:
-        params['From'] = "'{0}'".format(arg['from'])
-    key = arg['meta']['bot'].key['microsoft']
-    auth = BasicAuth(key, key)
-    field = [('./Text', 'text', '{}')]
+        return (yield from xml(arg, [], send, params=params, headers=headers))
 
-    return (yield from jsonxml(arg, [], send, params=params, auth=auth, field=field))
+mtran = Mtran()
 
 
 @asyncio.coroutine
@@ -465,6 +491,7 @@ def google(arg, lines, send):
 
     return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=' ', **kw), params=params, field=field))
 
+# '\U00020002' is causing problem
 def gtrantoken(source, target, query):
     def rshift(v, n):
         if v > 0:
@@ -532,6 +559,45 @@ def gtrantoken(source, target, query):
 def gtran(arg, lines, send):
     print('google')
 
+    if arg.get('to') and arg.get('to').startswith('audio'):
+        if arg['from'] == None:
+            raise Exception('please specify input language')
+
+        speed = re.fullmatch(r'audio:([0-9.]+)', arg.get('to'))
+
+        url = 'https://translate.google.com/translate_tts?client=t&prev=input&total=1&idx=0'
+        params = {
+            'ie': 'UTF-8',
+            'tl': arg['from'],
+            'q': ' '.join(lines) or arg['text'] or '',
+            'textlen': '',
+            'ttsspeed': speed.group(1) if speed else '1.0',
+            'tk': '',
+        }
+        # textlen should not larger than 200
+        # TODO we need to do splitting
+        params['textlen'] = len(params['q'])
+        params['tk'] = gtrantoken('', params['tl'], params['q'])
+        url = url + '&' + urlencode(params)
+
+        if params['textlen'] > 200:
+            raise Exception('input is toooooooooo long')
+
+        arg.update({
+            'n': '1',
+            'url': 'https://www.googleapis.com/urlshortener/v1/url?key=' + arg['meta']['bot'].key['google'],
+            'xpath': '/root/id',
+        })
+        data = json.dumps({
+            'longUrl': url,
+        })
+        headers = {'Content-Type': 'application/json'}
+        field = [
+            ('.', '', '[\\x0302 {} \\x0f] (-lisa)'),
+        ]
+
+        return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers, field=field))
+
     if arg.get('to') == 'speak':
         xpath = '/root/item[1]/item/item[4]'
     elif arg.get('to') == 'lang':
@@ -545,7 +611,7 @@ def gtran(arg, lines, send):
         #'xpath': '/root/item/item/item',
         #'xpath': '/root/item[1]',
         #'xpath': '/root/item[1]/item' + ('/item[4]' if arg.get('to') == 'speak' else if '/item[1]'),
-        'xpath': xpath
+        'xpath': xpath,
     })
     params = {
         'ie': 'UTF-8',
@@ -667,20 +733,16 @@ help = [
     #('bweather'     , 'bweather <city>'),
     #('btran'        , 'btran [source lang:target lang] (text)'),
     #('xiaodu'       , 'xiaodu <query>'),
-    #('bing'         , 'bing <query> [#max number][+offset]'),
-    ('bing'         , 'bing (query) [#max number][+offset]'),
+    #('bing'         , 'bing (query) [#max number][+offset]'),
     #('bing'         , 'bing [#max number][+offset] (query)'),
     ('mtran'        , 'mtran [source lang:target lang] (text)'),
-    #('couplet'      , 'couplet <shanglian (max ten chinese characters)> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
-    #('couplet'      , 'couplet <shanglian> [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
     ('couplet'      , 'couplet (shanglian) [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
-    #('google'       , 'google <query> [#max number][+offset]'),
     ('google'       , 'google (query) [#max number][+offset]'),
     #('google'       , 'google [#max number][+offset] (query)'),
     ('gtran'        , 'gtran [source lang:target lang] (text)'),
     ('urban'        , 'urban <text> [#max number][+offset]'),
     ('speak'        , 'speak <text>'),
-    ('wolfram'      , 'wolfram <query> [#max number][+offset]'),
+    ('wolfram'      , 'wolfram <query> [#max number][+offset] -- woof~'),
 ]
 
 func = [
@@ -697,18 +759,16 @@ func = [
     (xiaodu         , r"xiaodu\s+(?P<query>.+)"),
     (bocr           , r"bocr\s+(?P<url>http.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bing           , r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (bing           , r"bing(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(bing           , r"bing(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bing           , r"bing(\s+type:(?P<type>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
-    #(mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?\s+(?P<text>.+)"),
-    (mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
-    #(couplet        , r"couplet\s+(?P<shanglian>\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (couplet        , r"couplet(?:\s+(?P<shanglian>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(mice           , r"mice\s+(?P<input>.+)"),
     #(google         , r"google(\s+type:(?P<type>(web|image)))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (google         , r"google(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
-    (gtran          , r"gtran(\s+(?!:\s)(?P<from>\S+)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
+    (gtran          , r"gtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (dictg          , r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (cdict          , r"collins(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (breezo         , r"breezo\s+(?P<city>.+)"),
