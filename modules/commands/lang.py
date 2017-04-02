@@ -307,6 +307,13 @@ def rextester(arg, lines, send):
         'mysql':            ( 33, '', '' ),
         'postgresql':       ( 34, '', '' ),
         'oracle':           ( 35, '', '' ),
+        # no 36
+        'swift':            ( 37, '', '' ),
+        'bash':             ( 38, '', '' ),
+        'ada':              ( 39, '', '' ),
+        'erlang':           ( 40, '', '' ),
+        'elixir':           ( 41, '', '' ),
+        'ocaml':            ( 42, '', '' ),
     }
     alias = {
         # default
@@ -330,6 +337,7 @@ def rextester(arg, lines, send):
         'pl':               'perl',
         'cpp':              'c++(gcc)',
         'cxx':              'c++(gcc)',
+        'sh':               'bash',
     }
 
     code = '\n'.join(lines) or arg['code'] or ''
@@ -354,6 +362,7 @@ def rextester(arg, lines, send):
         'Program': code,
         'Input': input,
         'CompilerArgs': args,
+        'ShowWarnings': True,
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
@@ -428,10 +437,12 @@ def haskell(arg, lines, send):
         '         mod <- parseImportDecl stmt',
         '         setContext $ (IIDecl mod) : ctx',
         '    | any (stmt `looks_like`) prefixes = do runDecls stmt; return ()',
-        '    | otherwise = do execStmt stmt execOptions; return ()',
+        #'    | otherwise = do execStmt stmt execOptions; return ()',
+        '    | otherwise = do runStmt stmt SingleStep; return ()',
         '    where s `looks_like` p = p `isPrefixOf` dropWhile isSpace s',
         '          prefixes = [ "class ", "instance ", "data ", "newtype ", "type ", "default ", "default("]',
-        'main = runGhc (Just "/opt/ghc/8.0.1/lib/ghc-8.0.0.20160127/") $ do',
+        #'main = runGhc (Just "/opt/ghc/8.0.1/lib/ghc-8.0.0.20160127/") $ do',
+        'main = runGhc (Just "/usr/lib/ghc") $ do',
         '    dflags <- getSessionDynFlags',
         '    setSessionDynFlags dflags',
         '    ctx <- getContext',
@@ -499,7 +510,7 @@ def rustmain(arg, lines, send):
     #]
     line = [
         '#![allow(bad_style, unused)]',
-        '#![feature(stmt_expr_attributes)]',
+        '#![feature(non_ascii_idents, stmt_expr_attributes)]',
         'fn main() {',
         '    println!("{:?}", {',
         code,
@@ -515,7 +526,7 @@ def geordi(arg, lines, send):
 
     arg.update({
         'lang': 'c++(gcc)',
-        'args': arg['args'] or '-std=c++14',
+        'args': arg['args'] or '-std=c++1z',
         'raw': None,
     })
  
@@ -593,7 +604,7 @@ help = [
 func = [
     (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
     (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
-    (rust           , r"rust(?::(?P<version>\S+))?(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
+    (rust           , r"rust(?::(?P<version>stable|beta|nightly))?(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (go             , r"go(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
     (hackerearth    , r"hack:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
