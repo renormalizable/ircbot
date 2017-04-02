@@ -441,10 +441,48 @@ class BIMNEW(IMNEW):
         return len(e)
 
     @asyncio.coroutine
-    def __call__(self, arg, send):
-        yield from IM.__call__(self, arg['pinyin'], send)
+    def __call__(self, input, send):
+        yield from IMNEW.__call__(self, input, send)
 
-bimnew = BIMNEW()
+
+@asyncio.coroutine
+def bimnew(arg, send):
+    print('bimnew')
+
+    def parse(reg, text, f, g):
+        line = []
+        pos = 0
+        for m in reg.finditer(text):
+            line.extend(f(text[pos:m.start()]))
+            line.extend(g(m.group()))
+            pos = m.end()
+        line.extend(f(text[pos:]))
+
+        return line
+
+    def replace(text, rule):
+        if not rule:
+            return text
+        (f, t) = rule[0]
+        parts = text.split(f)
+        return t.join(replace(part, rule[1:]) for part in parts)
+
+    sep = re.compile(r"([^a-z']+)")
+    comment = re.compile(r"(?:(?<=[^a-z'])|^)''(.*?)''(?:(?=[^a-z'])|$)")
+
+    text = arg['text']
+
+    line = parse(comment, text,
+        lambda t: parse(sep, t,
+            lambda x: [(True, e) for e in x.split("'")] if x != '' else [(False, x)],
+            lambda x: [(False, x)]
+        ),
+        lambda t: [(False, t[2:-2])]
+    )
+    print(line)
+
+    im = BIMNEW()
+    yield from im(line, send)
 
 
 help = [
@@ -453,7 +491,7 @@ help = [
 ]
 
 func = [
-    (bim            , r"bim\s+(?P<pinyin>.+)"),
-    (bimnew         , r"bimnew\s+(?P<pinyin>.+)"),
+    #(bim            , r"bim\s+(?P<pinyin>.+)"),
+    (bimnew         , r"bim\s+(?P<text>.+)"),
     (gimnew         , r"gim(?::(?P<lang>\S+))?\s+(?P<text>.+)"),
 ]
