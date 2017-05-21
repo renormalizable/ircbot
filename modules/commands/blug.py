@@ -24,20 +24,27 @@ def event(arg, send):
         ('./geo', 'text', '{}'),
         ('./url', 'uri', '{}'),
     ]
+    def parsedate(s):
+        try:
+            return datetime.strptime(s, '%Y%m%dT%H%M%S')
+        except:
+            return datetime.strptime(s, '%Y%m%d')
     def transform(l):
         def future(e):
-            t = datetime.strptime(e.xpath('./dtstart')[0].xpath('string()'), '%Y%m%dT%H%M%S')
+            t = parsedate(e.xpath('./dtstart')[0].xpath('string()'))
             t = t.replace(tzinfo=timezone(timedelta(hours=8)))
             return datetime.now(timezone(timedelta(hours=8))) < t
+        def key(e):
+            return parsedate(e.xpath('./dtstart')[0].xpath('string()'))
         # workaround for dtstart format
         new = list(filter(future, l[1:]))
         if new:
-            return new
+            return sorted(new, key=key)
         else:
             raise Exception('we need more parties \o/')
     def format(l):
         def formatter(e):
-            t = datetime.strptime(e[0], '%Y%m%dT%H%M%S')
+            t = parsedate(e[0])
             sum = e[1].strip()
             des = ' '.join(e[2].strip().split())
             loc = e[3].strip()
