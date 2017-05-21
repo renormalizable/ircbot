@@ -435,6 +435,7 @@ class BIMNEW(IMNEW):
             'version': '1',
             'input': '',
         }
+        self.letter = re.compile(r"[^']")
         self.field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
         self.format = lambda x: x
 
