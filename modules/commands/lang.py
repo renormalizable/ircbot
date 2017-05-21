@@ -107,10 +107,46 @@ def rust(arg, lines, send):
 
 
 @asyncio.coroutine
+def rusti32(arg, lines, send):
+    print('rusti32')
+
+    url = 'https://play.integer32.com/execute'
+    code = '\n'.join(lines) or arg['code'] or ''
+    version = arg['version'] or 'stable'
+    raw = arg['raw']
+
+    if not code:
+        raise Exception()
+
+    data = json.dumps({
+        'channel': version,
+        'code': code,
+        'crateType': 'bin',
+        'mode': 'release',
+        'tests': False,
+    })
+    headers = {'Content-Type': 'application/json'}
+    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
+    byte = yield from r.read()
+
+    j = jsonparse(byte)
+    success = j.get('success')
+    error = j.get('stderr').split('\n', 1)[1]
+    result = j.get('stdout')
+    if not success:
+        unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
+    else:
+        if result:
+            unsafesend(result, send, raw=raw)
+        else:
+            unsafesend('no output', send, raw=raw)
+
+
+@asyncio.coroutine
 def go(arg, lines, send):
     print('go')
 
-    url = 'http://play.golang.org/compile'
+    url = 'https://play.golang.org/compile'
     code = '\n'.join(lines) or arg['code'] or ''
     raw = arg['raw']
 
@@ -128,12 +164,13 @@ def go(arg, lines, send):
     print(byte)
     j = jsonparse(byte)
     error = j.get('Errors')
-    result = j.get('Events')[0].get('Message')
+    result = j.get('Events')
     if error:
         unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
     else:
         if result:
-            unsafesend(result, send, raw=raw)
+            message = result[0].get('Message')
+            unsafesend(message, send, raw=raw)
         else:
             unsafesend('no output', send, raw=raw)
 
@@ -374,8 +411,8 @@ def rextester(arg, lines, send):
     result = j.get('Result')
     stats = j.get('Stats')
     files = j.get('Files')
-    if warnings:
-        unsafesend('\\x0304warnings:\\x0f {0}'.format(warnings), send)
+    #if warnings:
+    #    unsafesend('\\x0304warnings:\\x0f {0}'.format(warnings), send)
     if errors:
         unsafesend('\\x0304errors:\\x0f {0}'.format(errors), send)
     else:
@@ -522,6 +559,28 @@ def rustmain(arg, lines, send):
 
 
 @asyncio.coroutine
+def rusti32main(arg, lines, send):
+    print('rusti32main')
+
+    arg.update({
+        'raw': None,
+        'version': 'nightly',
+    })
+    code = '\n'.join(lines) or arg['code'] or ''
+    line = [
+        '#![allow(bad_style, unused)]',
+        '#![feature(non_ascii_idents, stmt_expr_attributes)]',
+        'fn main() {',
+        '    println!("{:?}", {',
+        code,
+        '    });',
+        '}',
+    ]
+
+    return (yield from rusti32(arg, line, send))
+
+
+@asyncio.coroutine
 def geordi(arg, lines, send):
 
     arg.update({
@@ -605,6 +664,7 @@ func = [
     (vimcn          , r"vimcn(?:\s+(?P<code>.+))?"),
     (bpaste         , r"bpaste(?::(?P<lang>\S+))?(?:\s+(?P<code>.+))?"),
     (rust           , r"rust(?::(?P<version>stable|beta|nightly))?(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
+    (rusti32        , r"rusti32(?::(?P<version>stable|beta|nightly))?(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (go             , r"go(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
     (codepad        , r"codepad:(?P<lang>\S+)(?:\s+(?P<run>run)(?::(?P<raw>raw))?)?(?:\s+(?P<code>.+))?"),
     (hackerearth    , r"hack:(?P<lang>[^\s:]+)(?::(?P<raw>raw))?(?:\s+(?P<code>.+))?"),
@@ -614,5 +674,6 @@ func = [
     (python3        , r"py (?P<code>.+)"),
     (haskell        , r"\\\\ (?P<code>.+)"),
     (rustmain       , r"rs (?P<code>.+)"),
+    (rusti32main    , r"rsi32 (?P<code>.+)"),
     (geordi         , r"geordi(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
 ]
