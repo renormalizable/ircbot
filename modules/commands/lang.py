@@ -1,7 +1,7 @@
 import asyncio
 import json
 import re
-from aiohttp.helpers import FormData
+from aiohttp import FormData
 
 from .tool import fetch, htmlparse, jsonparse
 
