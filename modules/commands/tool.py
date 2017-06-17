@@ -2,7 +2,7 @@ import asyncio
 import re
 import json
 from urllib.parse    import quote_plus, quote, urldefrag
-from aiohttp         import request
+from aiohttp         import ClientSession, ClientRequest
 from aiohttp.helpers import parse_mimetype
 from lxml            import etree
 import lxml.html
@@ -38,9 +38,9 @@ def charset(r):
     return params.get('charset')
 
 
-@asyncio.coroutine
-def fetch(method, url, content='text', **kw):
+async def fetch(method, url, content='text', **kw):
     print('fetch')
+    timeout = 10
     #h = kw.get('headers')
     #if h:
     #    c = h.get('Connection')
@@ -48,26 +48,34 @@ def fetch(method, url, content='text', **kw):
     #        h['Connection'] = 'close'
     #else:
     #    kw['headers'] = {'Connection': 'close'}
-    r = yield from asyncio.wait_for(request(method, urldefrag(url)[0], **kw), 10)
+    #r = yield from asyncio.wait_for(request(method, urldefrag(url)[0], **kw), timeout)
     #r = yield from request(method, urldefrag(url)[0], **kw)
-    print('get byte')
-    if content == 'raw':
-        return r
-    elif content == 'byte':
-        return ((yield from r.read()), charset(r))
-    elif content == 'text':
-        # we skip chardet in r.text()
-        # as sometimes it yields wrong result
-        encoding = charset(r) or 'utf-8'
-        text = (yield from r.read()).decode(encoding, 'replace')
-        #try:
-        #    text = yield from r.text()
-        #except:
-        #    print('bad encoding')
-        #    text = (yield from r.read()).decode('utf-8', 'replace')
-        return text
+    async with ClientSession(request_class=kw.get('request_class', ClientRequest)) as session:
+        # workaround
+        kw_req = kw
+        try:
+            del kw_req['request_class']
+        except:
+            pass
+        r = await asyncio.wait_for(session.request(method, urldefrag(url)[0], **kw_req), timeout)
+        print('get bytes from {}'.format(r.url))
+        if content == 'raw':
+            return r
+        elif content == 'byte':
+            return ((await r.read()), charset(r))
+        elif content == 'text':
+            # we skip chardet in r.text()
+            # as sometimes it yields wrong result
+            encoding = charset(r) or 'utf-8'
+            text = (await r.read()).decode(encoding, 'replace')
+            #try:
+            #    text = yield from r.text()
+            #except:
+            #    print('bad encoding')
+            #    text = (yield from r.read()).decode('utf-8', 'replace')
+            return text
 
-    return None
+        return None
 
 
 def addstyle(e):
@@ -256,6 +264,7 @@ html = HTMLRequest()
 class XMLRequest(Request):
 
     def parse(self, text, encoding):
+        #print(text)
         return xmlparse(text, encoding=encoding)
 
     def get(self, e, f):
