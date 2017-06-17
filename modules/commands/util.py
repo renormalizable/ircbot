@@ -2,18 +2,44 @@ import asyncio
 import re
 import base64
 import random
+from .common import Get
 
 
 def lsend(l, send, **kw):
     #send(l, n=len(l), llimit=10)
     send(l, n=0, llimit=10, **kw)
 
+
+@asyncio.coroutine
+def cmdsub(arg, string):
+    @asyncio.coroutine
+    def id(x):
+        return x
+
+    @asyncio.coroutine
+    def command(x):
+        get = Get()
+        yield from arg['meta']['command'](x, [], get)
+        return get.str()
+
+    #reg = re.compile(r"''(.*?)''")
+    reg = re.compile(r"\((.*?)\)")
+    s = reg.split(string)
+
+    coros = [command(x) if i % 2 == 1 else id(x) for (i, x) in enumerate(s)]
+    s = yield from asyncio.gather(*coros)
+    print(s)
+
+    return ''.join(s)
+
 # coreutils
 
 
 @asyncio.coroutine
 def echo(arg, send):
-    send(arg['content'], raw=True)
+    #send(arg['content'], raw=True)
+    content = yield from cmdsub(arg, arg['content'])
+    send(content, raw=True)
 
 
 @asyncio.coroutine
@@ -30,7 +56,10 @@ def tac(arg, lines, send):
 def tee(arg, lines, send):
     lsend(lines, send)
     # do not tee again?
-    yield from arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
+    if arg['output'] == '\'':
+        yield from arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
+    if arg['output'] == '"':
+        yield from arg['meta']['command'](arg['command'], lines, arg['meta']['save'])
 
 
 @asyncio.coroutine
@@ -100,6 +129,11 @@ def nl(arg, lines, send):
     for i in range(len(lines)):
         lines[i] = '{0} {1}'.format(i + 1, lines[i])
     lsend(lines, send)
+
+
+@asyncio.coroutine
+def paste(arg, lines, send):
+    lsend([(arg['delimiter'] or '\n').join(lines)], send)
 
 # other
 
@@ -237,7 +271,7 @@ func = [
     (echo           , r"echo (?P<content>.+)"),
     (cat            , r"cat(?:\s+(?P<raw>raw))?"),
     (tac            , r"tac"),
-    (tee            , r"tee(?:\s+(?P<command>.+))?"),
+    (tee            , r"tee(?:\s+(?P<output>['\"])(?P<command>.+))?"),
     (head           , r"head(?:\s+(?P<line>\d+))?"),
     (tail           , r"tail(?:\s+(?P<line>\d+))?"),
     (sort           , r"sort"),
@@ -249,4 +283,5 @@ func = [
     (wc             , r"wc(?:\s+(?P<content>.+))?"),
     (shuf           , r"shuf"),
     (nl             , r"nl"),
+    (paste          , r"paste(?:\s+(?P<quote>['\"])(?P<delimiter>.+)(?P=quote))?"),
 ]
