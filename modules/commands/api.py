@@ -4,9 +4,15 @@ from aiohttp.helpers import BasicAuth
 import json
 import re
 import time
+import random
 import base64
+import datetime
+import codecs
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
 
 from .tool import xml, jsonxml, htmlparse, jsonparse, fetch
+from .util import cmdsub
 
 
 @asyncio.coroutine
@@ -425,6 +431,7 @@ def couplet(arg, lines, send):
     #if len(shanglian) > 10:
     #    send('最多十个汉字喔')
     #    return
+    shanglian = yield from cmdsub(arg, shanglian)
 
     arg.update({
         'n': arg['n'] or '1',
@@ -721,6 +728,129 @@ def speak(arg, send):
     return (yield from jsonxml(arg, [], send, params=params))
 
 
+# see core.js window.asrsea funtion, AES CBC
+def music163encrypt(string):
+    def ran(n):
+        b = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        c = ''
+        for i in range(0, n):
+            c = c + random.choice(b)
+        return c
+    def aes(a, b):
+        key = b
+        iv = b'0102030405060708'
+        # pkcs7 padding
+        pad = len(key) - len(a) % len(key)
+        text = a + (pad * chr(pad)).encode()
+
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        return base64.b64encode(cipher.encrypt(text))
+    def rsa(a, b, c):
+        # from https://github.com/darknessomi/musicbox
+        text = a
+        pubKey = b
+        modulus = c
+        text = text[::-1]
+        rs = int(codecs.encode(text, 'hex_codec'), 16) ** int(pubKey, 16) % int(modulus, 16)
+        return format(rs, 'x').zfill(256).encode()
+
+    # e f g are constants
+    d = string.encode()
+    e = b'010001'
+    f = b'00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
+    g = b'0CoJUm6Qyw8W8jud'
+    i = ran(16).encode()
+
+    encText = aes(d, g)
+    encText = aes(encText, i)
+    encSecKey = rsa(i, e, f)
+
+    data = {
+        'params': encText.decode(),
+        'encSecKey': encSecKey.decode(),
+    }
+
+    return data
+
+
+@asyncio.coroutine
+def music163(arg, send):
+    print('music163')
+
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': 'http://music.163.com/api/search/get',
+        #'url': 'http://music.163.com/weapi/cloudsearch/get/web',
+        'xpath': '//result/songs/item',
+    })
+    params = {'csrf_token': ''}
+    field = [
+        ('./name', '', '{}'),
+        ('./id', '', '[\\x0302 http://music.163.com/#/song?id={} \\x0f]'),
+        ('./artists//name', '', 'by {}'),
+        ('./album/name', '', 'in {}'),
+        ('./duration', '', '{}'),
+    ]
+    data = {
+        'limit': '30',
+        'offset': '0',
+        's': arg['query'],
+        'total': 'true',
+        'type': '1',
+    }
+    #data = {
+    #    'csrf_token': '',
+    #    'hlposttag': '</span>',
+    #    'hlpretag': '<span class="s-fc7">',
+    #    'limit': '30',
+    #    'offset': '0',
+    #    's': arg['query'],
+    #    'total': 'true',
+    #    'type': '1',
+    #}
+    #data = music163encrypt(json.dumps(data))
+    # from https://github.com/darknessomi/musicbox
+    headers = {
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip,deflate,sdch',
+        'Accept-Language': 'zh-CN,zh;q=0.8,gl;q=0.6,zh-TW;q=0.4',
+        'Connection': 'keep-alive',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Host': 'music.163.com',
+        'Referer': 'http://music.163.com/search/',
+        'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.152 Safari/537.36',
+    }
+    def format(l):
+        def formatter(e):
+            name = e[0]
+            url = e[1]
+            artist = e[2]
+            album = e[3]
+            duration = datetime.timedelta(seconds=int(e[4]) // 1000)
+            return '{} {} {} / {} / {}'.format(name, url, artist, album, duration)
+        return map(formatter, l)
+
+    return (yield from jsonxml(arg, [], send, method='POST', headers=headers, data=data, field=field, format=format))
+    #return (yield from jsonxml(arg, [], send, method='POST', params=params, headers=headers, data=data, field=field, format=format))
+
+
+# TODO
+@asyncio.coroutine
+def leet(arg, send):
+    print('leet')
+
+    arg.update({
+        'n': '1',
+        'url': 'http://www.robertecker.com/hp/research/leet-converter.php',
+        'xpath': '//*[@id="comic"]//img',
+    })
+    field = [
+        ('.', 'alt', '{}'),
+    ]
+
+    return (yield from html(arg, [], send, field=field))
+
+
 @asyncio.coroutine
 def watson(arg, send):
     pass
@@ -735,14 +865,15 @@ help = [
     #('xiaodu'       , 'xiaodu <query>'),
     #('bing'         , 'bing (query) [#max number][+offset]'),
     #('bing'         , 'bing [#max number][+offset] (query)'),
-    ('mtran'        , 'mtran [source lang:target lang] (text)'),
+    #('mtran'        , 'mtran [source lang:target lang] (text)'),
     ('couplet'      , 'couplet (shanglian) [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
     ('google'       , 'google (query) [#max number][+offset]'),
     #('google'       , 'google [#max number][+offset] (query)'),
     ('gtran'        , 'gtran [source lang:target lang] (text)'),
     ('urban'        , 'urban <text> [#max number][+offset]'),
-    ('speak'        , 'speak <text>'),
+    #('speak'        , 'speak <text>'),
     ('wolfram'      , 'wolfram <query> [#max number][+offset] -- woof~'),
+    ('163'          , '163 <query> [#max number][+offset]'),
 ]
 
 func = [
@@ -761,8 +892,9 @@ func = [
     #(bing           , r"bing(\s+type:(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bing           , r"bing(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(bing           , r"bing(\s+type:(?P<type>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
-    (mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
-    (couplet        , r"couplet(?:\s+(?P<shanglian>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
+    #(couplet        , r"couplet(?:\s+(?P<shanglian>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (couplet        , r"couplet(?:\s+(?P<shanglian>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(mice           , r"mice\s+(?P<input>.+)"),
     #(google         , r"google(\s+type:(?P<type>(web|image)))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
@@ -772,9 +904,10 @@ func = [
     (dictg          , r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (cdict          , r"collins(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (breezo         , r"breezo\s+(?P<city>.+)"),
-    (speak          , r"speak\s+(?P<text>.+)"),
+    #(speak          , r"speak\s+(?P<text>.+)"),
     (urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (urban          , r"rural\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(arxiv          , r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (wolfram        , r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (music163       , r"163\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]
