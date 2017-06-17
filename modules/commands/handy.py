@@ -1,5 +1,6 @@
 import asyncio
 from urllib.parse  import quote_plus
+import re
 
 from .common import Get
 from .tool import html, xml, addstyle, htmlparse
@@ -46,7 +47,7 @@ def zhihu(arg, send):
 
     arg.update({
         'n': '1',
-        'xpath': '//*[@id="zh-question-answer-wrap"]//div[contains(@class, "zm-editable-content")]',
+        'xpath': '//*[@id="root"]//div[@class="QuestionAnswer-content"]//span[contains(@class, "RichText")]',
     })
     preget = lambda e: image(e)
 
@@ -71,18 +72,23 @@ def bihu(arg, send):
         return e
 
     arg.update({
-        'xpath': '//*[@id="zh-question-answer-wrap"]/div',
+        #'xpath': '//*[@id="zh-question-answer-wrap"]/div',
+        'xpath': '//*[@id="root"]//div[@class="ContentItem"]',
     })
     field = [
-        #('./div[1]/button[1]/span[2]', 'text', '{}'),
-        ('./div[1]/button[1]/span[1]', 'text', '{}'),
-        #('./div[2]/div[1]/h3', '', '{}'),
-        #('./div[2]/div[1]/*[contains(@class, "author-link") or contains(@class, "name")]', '', '{}'),
-        ('.//span[contains(@class, "author-link-line")]/*[contains(@class, "author-link") or contains(@class, "name")]', '', '{}'),
-        #('./div[3]/div', '', '{}'),
-        ('./div[3]/div[contains(@class, "zm-editable-content")]', '', '{}'),
-        ('./div[4]/div/span[1]/a', 'href', '{}'),
-        ('./a[1]', 'name', '{}'),
+        ##('./div[1]/button[1]/span[2]', 'text', '{}'),
+        #('./div[1]/button[1]/span[1]', 'text', '{}'),
+        ##('./div[2]/div[1]/h3', '', '{}'),
+        ##('./div[2]/div[1]/*[contains(@class, "author-link") or contains(@class, "name")]', '', '{}'),
+        #('.//span[contains(@class, "author-link-line")]/*[contains(@class, "author-link") or contains(@class, "name")]', '', '{}'),
+        ##('./div[3]/div', '', '{}'),
+        #('./div[3]/div[contains(@class, "zm-editable-content")]', '', '{}'),
+        #('./div[4]/div/span[1]/a', 'href', '{}'),
+        #('./a[1]', 'name', '{}'),
+        ('.//button[contains(@class, "VoteButton--up")]', '', '{}'),
+        ('.//div[contains(@class, "AuthorInfo-content")]//span[contains(@class, "UserLink")]', '', '{}'),
+        ('.//span[contains(@class, "RichText")]', '', '{}'),
+        ('.//div[contains(@class, "ContentItem-time")]/a', 'href', '{}'),
     ]
     preget = lambda e: image(bio(e))
     def format(l):
@@ -91,12 +97,13 @@ def bihu(arg, send):
            name = e[1].strip().strip('，')
            digest = e[2].strip()
            length = 70
-           #if len(digest) > length:
-           #    digest = digest[:length] + '...'
-           digest = digest[:length] + '\\x0f...'
+           if len(digest) > length:
+               digest = digest[:length] + '\\x0f...'
+           #digest = digest[:length] + '\\x0f...'
            digest = digest.replace('\n', ' ')
            link = '/' + e[3].split('/', 3)[-1]
-           anchor = '#' + e[4]
+           #anchor = '#' + e[4]
+           anchor = '#'
            #yield '[\\x0304{0}\\x0f] \\x0300{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
            yield '[\\x0304{0}\\x0f] \\x16{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
 
@@ -335,15 +342,18 @@ def xkcd(arg, send):
     arg.update({
         'n': '1',
         'url': url,
-        'xpath': '//*[@id="comic"]//img',
+        'xpath': '//*[@id="middleContainer"]',
     })
     field = [
-        ('.', 'alt', '{}'),
-        ('.', 'src', '[\\x0302 http:{} \\x0f]'),
-        ('.', 'title', '{}'),
+        ('./br[1]', 'tail', '{}'),
+        ('.//*[@id="comic"]//img', 'alt', '{}'),
+        ('.//*[@id="comic"]//img', 'src', '[\\x0302 http:{} \\x0f]'),
+        ('.//*[@id="comic"]//img', 'title', '{}'),
     ]
+    def format(l):
+        return map(lambda e: '[\\x0304{0}\\x0f] {1} {2} {3}'.format(re.search(r"[0-9]+", e[0]).group(), e[1], e[2], e[3]), l)
 
-    return (yield from html(arg, [], send, field=field))
+    return (yield from html(arg, [], send, field=field, format=format))
 
 
 @asyncio.coroutine
