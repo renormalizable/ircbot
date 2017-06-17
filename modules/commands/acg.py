@@ -12,6 +12,8 @@ from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse
 def moegirl(arg, send):
     print('moegirl')
 
+    class Redirection(Exception):
+        pass
     def clean(e):
         for s in e.xpath('.//script | .//style'):
             #s.getparent().remove(s)
@@ -61,38 +63,52 @@ def moegirl(arg, send):
     # div and table          -> box, table and navbox
     # h2                     -> section title
     # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
+    xpath = ('/*['
+        # filter script, style and section title
+        #'not(self::script or self::style or self::h2)'
+        #'not(self::div or self::table)'
+        # or just select p and ul ?
+        '(self::p or self::ul)'
+        ' and '
+        # select main part
+        'not('
+        'following-sibling::div[@class="infotemplatebox"]'
+        ' or '
+        'preceding-sibling::div[@class="MOEAttribute"]'
+        ' or '
+        'preceding-sibling::table[@class="navbox"]'
+        ')'
+        ']')
     def transform(l):
         if l:
-            node = htmlparse(l[0].xpath('//rev')[0].text).xpath('//body/*['
-                # filter script, style and section title
-                #'not(self::script or self::style or self::h2)'
-                #'not(self::div or self::table)'
-                # or just select p and ul ?
-                '(self::p or self::ul)'
-                ' and '
-                # select main part
-                'not('
-                'following-sibling::div[@class="infotemplatebox"]'
-                ' or '
-                'preceding-sibling::div[@class="MOEAttribute"]'
-                ' or '
-                'preceding-sibling::table[@class="navbox"]'
-                ')'
-                ']')
-            if node and arg['withurl']:
-                send('[\\x0302 {0} \\x0f]'.format(unquote(l[0].xpath('./@fullurl')[0])))
-            return node
+            node = htmlparse(l[0].xpath('//rev')[0].text).xpath('//body' + xpath)
+
+            if node:
+                if arg['withurl']:
+                    send('[\\x0302 {0} \\x0f]'.format(unquote(l[0].xpath('./@fullurl')[0])))
+                return node
+            else:
+                raise Redirection(l[0].xpath('./@fullurl')[0])
         else:
             raise Exception("maybe it's not moe enough?")
 
     get = lambda e, f: addstyle(ruby(hidden(clean(e)))).xpath('string()')
 
     #return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
+    #try:
+    #    yield from xml(arg, [], send, params=params, transform=transform, get=get)
+    #except:
+    #    params['gsrwhat'] = 'text'
+    #    yield from xml(arg, [], send, params=params, transform=transform, get=get)
     try:
         yield from xml(arg, [], send, params=params, transform=transform, get=get)
-    except:
-        params['gsrwhat'] = 'text'
-        yield from xml(arg, [], send, params=params, transform=transform, get=get)
+    except Redirection as e:
+        print('redirect to {}'.format(str(e)))
+        arg.update({
+            'url': str(e),
+            'xpath': '//*[@id="mw-content-text"]' + xpath,
+        })
+        yield from html(arg, [], send, get=get)
 
     #arg.update({
     #    'url': 'http://zh.moegirl.org/api.php',
