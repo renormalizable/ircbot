@@ -1,5 +1,6 @@
 import re
 
+# send to pastebin when message is too long?
 
 class dePrefix:
 
@@ -7,9 +8,11 @@ class dePrefix:
         #self.r = re.compile(r'(?:(\[)?(?P<nick>.+?)(?(1)\]|:) )?(?P<message>.*)')
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)')
-        self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
+        #self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
+        self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"].*?)[:,] )?(?P<message>.*)', re.DOTALL)
         self.esc = re.compile(r'(\x03\d{1,2}(,\d{1,2})?|\x02|\x03|\x04|\x06|\x07|\x0f|\x16|\x1b|\x1d|\x1f)')
-        self.orz = re.compile(r'((?:(?P<s>\[))(?P<nick>[\x00-\x1f].+?[\x00-\x1f])(?(s)\]) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
+        #self.orz = re.compile(r'((?:(?P<s>\[))(?P<nick>[\x00-\x1f].+?[\x00-\x1f])(?(s)\]) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
+        self.orz = re.compile(r'((?:(?P<s>\[))(?P<nick>[\x00-\x1f].+?[\x00-\x1f])(?(s)\]) )?((?P<to>[^\'"].*?)[:,] )?(?P<message>.*)', re.DOTALL)
 
     def __call__(self, n, m):
         # orizon
@@ -101,13 +104,20 @@ def splitmessage(s, n):
     starting += '｝〕〉》」』】〙〗〟｠' + 'ヽヾーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎゕゖㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ々〻' + '゠〜・、。'
     ending += '｛〔〈《「『【〘〖〝｟'
 
+    # en
+    ending += 'abcdefghijklmnopqrstuvwxyz'
+    ending += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    # num
+    ending += '0123456789'
+
     if n < 4:
         return
 
     bs = s.encode('utf-8')
 
     # need splitting
-    # n should large enough for a single character
+    # n should be large enough for a single character
     while len(bs) > n:
         i = n + 1
 
@@ -118,21 +128,18 @@ def splitmessage(s, n):
         # result candidate
         str = bs[:i].decode('utf-8')
 
-        j = len(str) - 1
-
-        print('j = {}'.format(j))
+        i = len(str)
+        j = i - 1
 
         # check first character in next line and last character in this line
         while (0 <= j and str[j] in starting) or (1 <= j and str[j - 1] in ending):
+            # if too short or cannot find good line
+            # according to arXiv:1208.6109, average word length is about 5
+            if j <= 0 or 25 <= (i - 1) - j:
+                j = i - 1
+                break
+            # otherwise
             j = j - 1
-
-        # if too short
-        if j <= 0:
-            return
-
-        ## if cannot find good line
-        #if j <= 0:
-        #    j = len(str) - 1
 
         str = str[:j]
 
