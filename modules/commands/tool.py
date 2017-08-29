@@ -13,6 +13,7 @@ import itertools
 
 demjson.undefined = None
 
+
 def drop(l, offset):
     return itertools.islice(l, offset, None)
 
@@ -62,12 +63,12 @@ async def fetch(method, url, content='text', **kw):
         if content == 'raw':
             return r
         elif content == 'byte':
-            return ((await r.read()), charset(r))
+            return ((await asyncio.wait_for(r.read(), timeout)), charset(r))
         elif content == 'text':
             # we skip chardet in r.text()
             # as sometimes it yields wrong result
             encoding = charset(r) or 'utf-8'
-            text = (await r.read()).decode(encoding, 'replace')
+            text = (await asyncio.wait_for(r.read(), timeout)).decode(encoding, 'replace')
             #try:
             #    text = yield from r.text()
             #except:
