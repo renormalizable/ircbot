@@ -5,6 +5,8 @@ from aiohttp import FormData
 
 from .tool import fetch, htmlparse, jsonparse
 
+# ruby repl
+
 
 def unsafesend(m, send, *, raw=False):
     if raw:
@@ -73,7 +75,8 @@ def bpaste(arg, lines, send):
 def rust(arg, lines, send):
     print('rust')
 
-    url = 'https://play.rust-lang.org/evaluate.json'
+    #url = 'https://play.rust-lang.org/evaluate.json'
+    url = 'https://play.rust-lang.org/execute'
     code = '\n'.join(lines) or arg['code'] or ''
     version = arg['version'] or 'stable'
     raw = arg['raw']
@@ -81,23 +84,43 @@ def rust(arg, lines, send):
     if not code:
         raise Exception()
 
+    #data = json.dumps({
+    #    'backtrace': '0',
+    #    'code': code,
+    #    'color': False,
+    #    'optimize': '0',
+    #    'separate_output': True,
+    #    'test': False,
+    #    'version': version,
+    #})
+    #headers = {'Content-Type': 'application/json'}
+    #byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
+
+    #j = jsonparse(byte)
+    #error = j.get('rustc').split('\n', 1)[1]
+    #result = j.get('program')
+    #if error:
+    #    unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
+    #else:
+    #    if result:
+    #        unsafesend(result, send, raw=raw)
+    #    else:
+    #        unsafesend('no output', send, raw=raw)
     data = json.dumps({
-        'backtrace': '0',
+        'channel': version,
         'code': code,
-        'color': False,
-        'optimize': '3',
-        'separate_output': True,
-        'test': False,
-        'version': version,
+        'crateType': 'bin',
+        'mode': 'debug',
+        'tests': False,
     })
     headers = {'Content-Type': 'application/json'}
-    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
-    byte = yield from r.read()
+    byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
 
     j = jsonparse(byte)
-    error = j.get('rustc').split('\n', 1)[1]
-    result = j.get('program')
-    if error:
+    success = j.get('success')
+    error = j.get('stderr').split('\n', 1)[1]
+    result = j.get('stdout')
+    if not success:
         unsafesend('\\x0304error:\\x0f {0}'.format(error), send)
     else:
         if result:
@@ -126,8 +149,7 @@ def rusti32(arg, lines, send):
         'tests': False,
     })
     headers = {'Content-Type': 'application/json'}
-    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
-    byte = yield from r.read()
+    byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
 
     j = jsonparse(byte)
     success = j.get('success')
@@ -158,10 +180,9 @@ def go(arg, lines, send):
         'body': code,
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
-    byte = yield from r.read()
-
+    byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
     print(byte)
+
     j = jsonparse(byte)
     error = j.get('Errors')
     result = j.get('Events')
@@ -251,8 +272,7 @@ def hackerearth(arg, lines, send):
         'input': '',
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
-    byte = yield from r.read()
+    byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
     print(byte)
 
     j = jsonparse(byte)
@@ -284,8 +304,7 @@ def hylang(arg, lines, send):
         'env': [],
     })
     headers = {'Content-Type': 'application/json'}
-    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
-    byte = yield from r.read()
+    byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
     print(byte)
 
     j = jsonparse(byte)
@@ -358,6 +377,7 @@ def rextester(arg, lines, send):
         'c++':              'c++(gcc)',
         # rename
         'python2':          'python',
+        'shell':            'bash',
         # abbreviation
         'objc':             'objective-c',
         'asm':              'nasm',
@@ -402,8 +422,7 @@ def rextester(arg, lines, send):
         'ShowWarnings': True,
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
-    byte = yield from r.read()
+    byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
 
     j = jsonparse(byte)
     warnings = j.get('Warnings')
@@ -505,10 +524,9 @@ def haskell(arg, lines, send):
 #        'data': code,
 #    }
 #    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-#    r = yield from fetch('POST', url, data=data, headers=headers, content='raw')
-#    byte = yield from r.read()
-#
+#    byte = (yield from fetch('POST', url, data=data, headers=headers, content='byte'))[0]
 #    print(byte)
+#
 #    j = jsonparse(byte)
 #    type = j.get('type')
 #    result = j.get('msg')
@@ -546,7 +564,7 @@ def rustmain(arg, lines, send):
     #    '}',
     #]
     line = [
-        '#![allow(bad_style, unused)]',
+        '#![allow(warnings)]',
         '#![feature(non_ascii_idents, stmt_expr_attributes)]',
         'fn main() {',
         '    println!("{:?}", {',
@@ -568,7 +586,7 @@ def rusti32main(arg, lines, send):
     })
     code = '\n'.join(lines) or arg['code'] or ''
     line = [
-        '#![allow(bad_style, unused)]',
+        '#![allow(warnings)]',
         '#![feature(non_ascii_idents, stmt_expr_attributes)]',
         'fn main() {',
         '    println!("{:?}", {',
@@ -583,8 +601,10 @@ def rusti32main(arg, lines, send):
 @asyncio.coroutine
 def geordi(arg, lines, send):
 
+    compiler = arg['compiler'] or 'gcc'
+
     arg.update({
-        'lang': 'c++(gcc)',
+        'lang': 'c++({})'.format(compiler),
         'args': arg['args'] or '-std=c++1z',
         'raw': None,
     })
@@ -675,5 +695,5 @@ func = [
     (haskell        , r"\\\\ (?P<code>.+)"),
     (rustmain       , r"rs (?P<code>.+)"),
     (rusti32main    , r"rsi32 (?P<code>.+)"),
-    (geordi         , r"geordi(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
+    (geordi         , r"geordi(?::(?P<compiler>gcc|clang))?(?:\s+(?P<args>.+?)\s+--)?(?:\s+(?P<code>.+))?"),
 ]
