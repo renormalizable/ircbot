@@ -94,12 +94,6 @@ def moegirl(arg, send):
 
     get = lambda e, f: addstyle(ruby(hidden(clean(e)))).xpath('string()')
 
-    #return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
-    #try:
-    #    yield from xml(arg, [], send, params=params, transform=transform, get=get)
-    #except:
-    #    params['gsrwhat'] = 'text'
-    #    yield from xml(arg, [], send, params=params, transform=transform, get=get)
     try:
         yield from xml(arg, [], send, params=params, transform=transform, get=get)
     except Redirection as e:
@@ -109,53 +103,10 @@ def moegirl(arg, send):
             'xpath': '//*[@id="mw-content-text"]' + xpath,
         })
         yield from html(arg, [], send, get=get)
-
-    #arg.update({
-    #    'url': 'http://zh.moegirl.org/api.php',
-    #    'xpath': '//ns:Url',
-    #})
-    #params = {
-    #    'format': 'xml',
-    #    'action': 'opensearch',
-    #    'limit': '1',
-    #    'search': arg['query'],
-    #}
-    #geturl = Get()
-    #yield from xml(arg, [], geturl, params=params)
-    #if geturl.line:
-    #    url = geturl.line[0]
-    #else:
-    #    raise Exception("maybe it's not moe enough?")
-
-    ## don't select following nodes
-    ## script                 -> js
-    ## div and table          -> box, table and navbox
-    ## h2                     -> section title
-    ## preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
-    #arg.update({
-    #    'url': url,
-    #    'xpath': (
-    #        '//*[@id="mw-content-text"]/*['
-    #        # filter script, style and section title
-    #        #'not(self::script or self::style or self::h2)'
-    #        #'not(self::div or self::table)'
-    #        # or just select p and ul ?
-    #        '(self::p or self::ul)'
-    #        ' and '
-    #        # select main part
-    #        'not('
-    #        'following-sibling::div[@class="infotemplatebox"]'
-    #        ' or '
-    #        'preceding-sibling::div[@class="MOEAttribute"]'
-    #        ' or '
-    #        'preceding-sibling::table[@class="navbox"]'
-    #        ')'
-    #        ']'
-    #    ),
-    #})
-    #get = lambda e, f: addstyle(hidden(clean(e))).xpath('string()')
-
-    #return (yield from html(arg, [], send, get=get))
+    except:
+        print('retry full text search')
+        params['gsrwhat'] = 'text'
+        yield from xml(arg, [], send, params=params, transform=transform, get=get)
 
 
 @asyncio.coroutine
@@ -163,7 +114,8 @@ def nmb(arg, send):
     print('nmb')
     #url = 'http://h.koukuko.com/'
     #url = 'http://kukuku.cc/'
-    url = 'http://h.nimingban.com/'
+    #url = 'http://h.nimingban.com/'
+    url = 'https://tnmb.org/'
     #url = 'http://hacfun.tv/'
 
     if arg['id']:
@@ -175,7 +127,8 @@ def nmb(arg, send):
             send('[\\x0302 {} \\x0f]'.format(arg['url']))
     else:
         arg.update({
-            'url': url + 'f/{0}'.format(arg['forum'] or '综合版1'),
+            #'url': url + 'f/{0}'.format(arg['forum'] or '综合版1'),
+            'url': url + 'f/{0}'.format(arg['forum'] or '综合'),
             'xpath': '//div[@id="h-content"]/div[1]/div[3]/div',
         })
     field = [
