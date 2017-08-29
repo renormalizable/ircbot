@@ -498,7 +498,6 @@ def google(arg, lines, send):
 
     return (yield from jsonxml(arg, [], lambda m, **kw: send(m, newline=' ', **kw), params=params, field=field))
 
-# '\U00020002' is causing problem
 def gtrantoken(source, target, query):
     def rshift(v, n):
         if v > 0:
@@ -516,37 +515,45 @@ def gtrantoken(source, target, query):
                 d = a << d & (2 ** 32 - 1)
                 if d & 0x80000000:
                    d = d - 2 ** 32
-            #print(a, d)
             a = a + d & 4294967295 if b[c] == '+' else a ^ d
         return a
 
     a = query
-    # any better way to do this?
-    #t = "{:.10f}".format(time.time() / 3600).split('.')
-    #b = int(t[0])
-    #c = int(t[1])
-    b = 406446
-    c = 626866870
+    b = 417661
+    c = 1724234313
 
+    # js charCodeAt
+    l = []
+    for i in a:
+        if ord(i) <= 0xffff:
+            l.append(ord(i))
+        else:
+            encode = i.encode('utf-16-le')
+            l.append(int.from_bytes(encode[:2], 'little'))
+            l.append(int.from_bytes(encode[2:], 'little'))
+
+    # generate d
     d = []
-    for f in range(len(a)):
-        g = ord(a[f]);
+    f = 0
+    while f < len(l):
+        g = l[f]
 
         if 128 > g:
             d.append(g)
-            continue
-
-        if 2048 > g:
-            d.append(g >> 6 | 192)
-        elif 55296 == (g & 64512) and f + 1 < len(a) and 56320 == (ord(a[f + 1]) & 64512):
-            g = 65536 + ((g & 1023) << 10) + (ord(a[f + 1]) & 1023)
-            d.append(g >> 18 | 240)
-            d.append(g >> 12 & 63 | 128)
         else:
-            d.append(g >> 12 | 224)
-            d.append(g >> 6 & 63 | 128)
-
-        d.append(g & 63 | 128)
+            if 2048 > g:
+                d.append(g >> 6 | 192)
+            else:
+                if 55296 == (g & 64512) and f + 1 < len(l) and 56320 == (l[f + 1] & 64512):
+                    g = 65536 + ((g & 1023) << 10) + (l[f + 1] & 1023)
+                    f = f + 1
+                    d.append(g >> 18 | 240)
+                    d.append(g >> 12 & 63 | 128)
+                else:
+                    d.append(g >> 12 | 224)
+                d.append(g >> 6 & 63 | 128)
+            d.append(g & 63 | 128)
+        f = f + 1
 
     a = b
     for e in range(len(d)):
@@ -557,25 +564,33 @@ def gtrantoken(source, target, query):
     if 0 > a:
         a = (a & 2147483647) + 2147483648
     a = int(a % 1E6)
-    #print(b)
-    #print(d)
-    #print(str(a) + '.' + str(a ^ b))
+
     return str(a) + '.' + str(a ^ b)
 
 @asyncio.coroutine
 def gtran(arg, lines, send):
     print('google')
 
-    if arg.get('to') and arg.get('to').startswith('audio'):
-        if arg['from'] == None:
+    alias = {
+        'jp': 'ja',
+    }
+
+    lang_from = arg.get('from')
+    lang_to = arg.get('to')
+    # alias
+    lang_from = alias.get(lang_from, lang_from)
+    lang_to = alias.get(lang_to, lang_to)
+
+    if lang_to and lang_to.startswith('audio'):
+        if lang_from == None:
             raise Exception('please specify input language')
 
-        speed = re.fullmatch(r'audio:([0-9.]+)', arg.get('to'))
+        speed = re.fullmatch(r'audio:([0-9.]+)', lang_to)
 
         url = 'https://translate.google.com/translate_tts?client=t&prev=input&total=1&idx=0'
         params = {
             'ie': 'UTF-8',
-            'tl': arg['from'],
+            'tl': lang_from,
             'q': ' '.join(lines) or arg['text'] or '',
             'textlen': '',
             'ttsspeed': speed.group(1) if speed else '1.0',
@@ -605,26 +620,26 @@ def gtran(arg, lines, send):
 
         return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers, field=field))
 
-    if arg.get('to') == 'speak':
+    if lang_to == 'speak':
         xpath = '/root/item[1]/item/item[4]'
-    elif arg.get('to') == 'lang':
+    elif lang_to == 'lang':
         xpath = '/root/item[3]'
     else:
         xpath = '/root/item[1]/item/item[1]'
 
     arg.update({
         'n': '1',
-        'url': 'https://translate.google.com/translate_a/single?client=t&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at&otf=1&ssel=0&tsel=0&kc=0',
+        'url': 'https://translate.google.com/translate_a/single?client=t&dt=at&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&otf=1&ssel=0&tsel=0&kc=0',
         #'xpath': '/root/item/item/item',
         #'xpath': '/root/item[1]',
-        #'xpath': '/root/item[1]/item' + ('/item[4]' if arg.get('to') == 'speak' else if '/item[1]'),
+        #'xpath': '/root/item[1]/item' + ('/item[4]' if lang_to == 'speak' else if '/item[1]'),
         'xpath': xpath,
     })
     params = {
         'ie': 'UTF-8',
         'oe': 'UTF-8',
-        'sl': arg['from'] or 'auto',
-        'tl': arg['to'] or 'zh-CN',
+        'sl': lang_from or 'auto',
+        'tl': lang_to or 'zh-CN',
         'hl': 'en',
         'q': ' '.join(lines) or arg['text'] or '',
         'tk': '',
@@ -777,6 +792,7 @@ def music163encrypt(string):
 def music163(arg, send):
     print('music163')
 
+    query = yield from cmdsub(arg, arg['query'])
     arg.update({
         'n': arg['n'] or '1',
         'url': 'http://music.163.com/api/search/get',
@@ -786,7 +802,8 @@ def music163(arg, send):
     params = {'csrf_token': ''}
     field = [
         ('./name', '', '{}'),
-        ('./id', '', '[\\x0302 http://music.163.com/#/song?id={} \\x0f]'),
+        #('./id', '', '[\\x0302 http://music.163.com/#/song?id={} \\x0f]'),
+        ('./id', '', '[\\x0302 http://music.163.com/song?id={} \\x0f]'),
         ('./artists//name', '', 'by {}'),
         ('./album/name', '', 'in {}'),
         ('./duration', '', '{}'),
@@ -794,7 +811,7 @@ def music163(arg, send):
     data = {
         'limit': '30',
         'offset': '0',
-        's': arg['query'],
+        's': query,
         'total': 'true',
         'type': '1',
     }
@@ -804,7 +821,7 @@ def music163(arg, send):
     #    'hlpretag': '<span class="s-fc7">',
     #    'limit': '30',
     #    'offset': '0',
-    #    's': arg['query'],
+    #    's': query,
     #    'total': 'true',
     #    'type': '1',
     #}
