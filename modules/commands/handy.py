@@ -5,6 +5,9 @@ import re
 from .common import Get
 from .tool import html, xml, addstyle, htmlparse
 #from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse
+from .api import google
+
+# github search?
 
 # html parse
 
@@ -27,6 +30,17 @@ def arxiv(arg, send):
         return map(lambda e: '[\\x0302{0}\\x0f] {1}'.format(e[0][6:], e[1]), l)
 
     return (yield from html(arg, [], send, params=params, field=field, format=format))
+
+
+@asyncio.coroutine
+def vixra(arg, send):
+    print('vixra')
+
+    arg.update({
+        'query': 'site:vixra.org/abs {}'.format(arg['query'])
+    })
+
+    return (yield from google(arg, [], send))
 
 
 @asyncio.coroutine
@@ -183,7 +197,6 @@ def man(arg, send):
             'url': url + '{0}.html'.format(name[0] if 'a' <= name[0] and name[0] <= 'z' else 'other'),
             'xpath': '//*[@id="content"]/dl/dt/a[starts-with(text(), "{0}")]'.format(name),
         }
-        print(a)
         f = [('.', 'href', '{}')]
         get = Get()
         yield from html(a, [], get, field=f)
@@ -203,6 +216,34 @@ def man(arg, send):
     ]
 
     return (yield from html(arg, [], send, field=field))
+
+
+@asyncio.coroutine
+def manfreebsd(arg, send):
+    print('manfreebsd')
+
+    arg.update({
+        'n': '1',
+        'url': 'https://www.freebsd.org/cgi/man.cgi',
+        'xpath': '//*[@id="content"]',
+    })
+    params = {
+        'query': arg['query'].lower(),
+        'apropos': 0,
+        'sektion': 0,
+        'manpath': 'FreeBSD 11.1-RELEASE and Ports',
+        'arch': 'default',
+        'format': 'html',
+    }
+    field = [
+        ('./pre/*[@name="NAME"]/following-sibling::b[1]', '', '{}'),
+        ('./pre/*[@name="NAME"]/following-sibling::b[1]', 'tail', '{}'),
+        ('./p/a', 'href', '[\\x0302 {} \\x0f]'),
+    ]
+    def format(l):
+        return map(lambda e: '{0} {1} {2}'.format(e[0], e[1].strip(), e[2]), l)
+
+    return (yield from html(arg, [], send, params=params, field=field, format=format))
 
 
 @asyncio.coroutine
@@ -257,15 +298,15 @@ def wiki(arg, send):
 
     site = {
         # linux
-        'arch': 'https://wiki.archlinux.org/',
-        'gentoo': 'https://wiki.gentoo.org/',
+        #'arch': 'https://wiki.archlinux.org/',
+        #'gentoo': 'https://wiki.gentoo.org/',
         # wikipedia
         'zh': 'https://zh.wikipedia.org/w/',
         'classical': 'https://zh-classical.wikipedia.org/w/',
         'en': 'https://en.wikipedia.org/w/',
         'ja': 'https://ja.wikipedia.org/w/',
         # misc
-        'poke': 'https://wiki.52poke.com/',
+        #'poke': 'https://wiki.52poke.com/',
         #'pokemon': 'http://www.pokemon.name/w/',
     }
 
@@ -295,25 +336,26 @@ def wiki(arg, send):
     # div and table          -> box, table and navbox
     # h2                     -> section title
     # preceding-sibling      -> nodes after navbox or MOEAttribute, usually external links
+    xpath = ('/*['
+        # filter script, style and section title
+        #'not(self::script or self::style or self::h2)'
+        #'not(self::div or self::table)'
+        # or just select p and ul ?
+        '(self::p or self::ul)'
+        ' and '
+        # select main part
+        'not('
+        'following-sibling::div[@class="infotemplatebox"]'
+        ' or '
+        'preceding-sibling::div[@class="MOEAttribute"]'
+        ' or '
+        'preceding-sibling::table[@class="navbox"]'
+        ')'
+        ']')
     def transform(l):
         if l:
             #pageid = l[0].get('pageid')
-            return htmlparse(l[0].xpath('//rev')[0].text).xpath('//body/*['
-                # filter script, style and section title
-                #'not(self::script or self::style or self::h2)'
-                #'not(self::div or self::table)'
-                # or just select p and ul ?
-                '(self::p or self::ul)'
-                ' and '
-                # select main part
-                'not('
-                'following-sibling::div[@class="infotemplatebox"]'
-                ' or '
-                'preceding-sibling::div[@class="MOEAttribute"]'
-                ' or '
-                'preceding-sibling::table[@class="navbox"]'
-                ')'
-                ']')
+            return htmlparse(l[0].xpath('//rev')[0].text).xpath('//*[@class="mw-parser-output"]' + xpath)
         else:
             raise Exception("oops...")
 
@@ -357,6 +399,40 @@ def xkcd(arg, send):
 
 
 @asyncio.coroutine
+def etymology(arg, send):
+    print('etymology')
+
+    def foreign(e):
+        for span in e.xpath('.//span[@class="foreign"]'):
+            span.text = '\\x02' + (span.text or '')
+            span.tail = '\\x0f' + (span.tail or '')
+        return e
+
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': 'http://www.etymonline.com/index.php',
+        'xpath': '//*[@id="dictionary"]/dl/dt',
+    })
+    params = {
+        'term': arg['query'],
+    }
+    field = [
+        ('./a', '', '{}'),
+        ('./following-sibling::dd[1]', '', '{}'),
+    ]
+    get = lambda e, f: addstyle(foreign(e)).xpath('string()')
+
+    return (yield from html(arg, [], send, params=params, field=field, get=get))
+
+
+@asyncio.coroutine
+def lmgtfy(arg, send):
+    print('lmgtfy')
+
+    return send('[\\x0302 https://lmgtfy.com/?q={} \\x0f]'.format(quote_plus(arg['query'])))
+
+
+@asyncio.coroutine
 def killteleboto(arg, send):
     print('killteleboto')
 
@@ -369,11 +445,16 @@ func = [
     (pm25           , r"pm2.5\s+(?P<city>.+)"),
     #(btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (man            , r"man(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
+    (manfreebsd     , r"man:freebsd\s+(?P<query>.+)"),
     (man            , r"woman(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
+    (manfreebsd     , r"woman:freebsd\s+(?P<query>.+)"),
     (gauss          , r"gauss(\s+#(?P<n>\d+))?"),
     (foldoc         , r"foldoc\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (arxiv          , r"arxiv\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (vixra          , r"vixra\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (wiki           , r"wiki(?::(?P<site>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (xkcd           , r"xkcd(\s+(?P<number>(\d+)|(random)))?"),
+    (etymology      , r"etymology\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (lmgtfy         , r"lmgtfy\s+(?P<query>.+?)"),
     (killteleboto   , r"killteleboto"),
 ]
