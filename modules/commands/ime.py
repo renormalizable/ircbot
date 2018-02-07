@@ -1,41 +1,42 @@
 import asyncio
-from urllib.parse import quote
-from aiohttp.client import ClientRequest
 import re
+from urllib.parse   import quote
 
 # no kwa wha etc.
 # find an alternative?
 import romkan
+from aiohttp.client import ClientRequest
 
 from .tool import jsonxml
 
+# add fcitx? fim
 
-@asyncio.coroutine
-def kana(arg, send):
+
+async def kana(arg, send):
     send(romkan.to_hiragana(arg['romaji']))
 
 
-@asyncio.coroutine
-def romaji(arg, send):
+async def romaji(arg, send):
     send(romkan.to_roma(arg['kana']))
 
 
+class IMGetter:
+
+    def __init__(self):
+        self.l = ''
+        self.len = 0
+
+    def __call__(self, l, n=-1, **kw):
+        if n < 0:
+            self.l += list(l)
+        else:
+            l = list(list(l)[0])
+            print('IMGetter: {}'.format(repr(l)))
+            self.l += l[0]
+            self.len = int(l[1] or 0)
+
+
 class IM:
-
-    class Getter:
-
-        def __init__(self):
-            self.l = ''
-            self.len = 0
-
-        def __call__(self, l, n=-1, **kw):
-            if n < 0:
-                self.l += l
-            else:
-                l = list(l)[0]
-                print(l)
-                self.l += l[0]
-                self.len = int(l[1] or 0)
 
     def __init__(self, Getter=None):
         self.prefix = "'"
@@ -43,39 +44,35 @@ class IM:
         self.valid = re.compile(r"[a-z']")
         self.letter = re.compile(r"[^']")
         self.comment = re.compile(r"(?:(?<=[^a-z'])|^)''(.*?)''(?:(?=[^a-z'])|$)")
-        self.Get = Getter or IM.Getter
+        self.Get = Getter or IMGetter
 
     def special(self, e):
         return e[1:]
 
-    @asyncio.coroutine
-    def request(self, e, get):
+    async def request(self, e, get):
         pass
 
     def getpos(self, e, l):
         pass
 
-    @asyncio.coroutine
-    def process(self, e):
+    async def process(self, e):
         get = self.Get()
         while len(e) > 0:
             #print(e)
-            yield from self.request(e, get)
+            await self.request(e, get)
             pos = self.getpos(e, get.len)
             e = e[pos:]
         return get.l
 
-    @asyncio.coroutine
-    def getitem(self, e):
+    async def getitem(self, e):
         if not self.valid.match(e):
             return e
         if e[0] == self.prefix:
             return self.special(e)
 
-        return (yield from self.process(e))
+        return (await self.process(e))
 
-    @asyncio.coroutine
-    def __call__(self, input, send):
+    async def __call__(self, input, send):
         print('im')
 
         l = []
@@ -90,7 +87,7 @@ class IM:
         print(l)
 
         coros = [self.getitem(e) for e in l]
-        lines = yield from asyncio.gather(*coros)
+        lines = await asyncio.gather(*coros)
         line = ''.join(lines) if lines else 'Σ(っ °Д °;)っ 怎么什么都没有呀'
 
         return send(line)
@@ -116,14 +113,15 @@ class BIM(IM):
             'version': '1',
             'input': '',
         }
-        self.field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
-        self.format = lambda x: x
+        self.format = lambda s, es: ([s.get_fields(s.get, e, [
+            ('./item[1]', 'text', s.iter_first),
+            ('./item[2]', 'text', s.iter_first),
+        ])] for e in es)
 
-    @asyncio.coroutine
-    def request(self, e, get):
+    async def request(self, e, get):
         params = self.params.copy()
         params['input'] = e
-        yield from jsonxml(self.arg, [], get, params=params, field=self.field, format=self.format)
+        await jsonxml(self.arg, [], get, params=params, format_new=self.format)
 
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
@@ -133,63 +131,43 @@ class BIM(IM):
                 return c.start()
         return len(e)
 
-    @asyncio.coroutine
-    def __call__(self, arg, send):
-        yield from IM.__call__(self, arg['pinyin'], send)
+    async def __call__(self, arg, send):
+        await IM.__call__(self, arg['pinyin'], send)
 
 bim = BIM()
 
 
 class IMNEW:
 
-    class Getter:
-
-        def __init__(self):
-            self.l = ''
-            self.len = 0
-
-        def __call__(self, l, n=-1, **kw):
-            if n < 0:
-                self.l += l
-            else:
-                l = list(l)[0]
-                print(l)
-                self.l += l[0]
-                self.len = int(l[1] or 0)
-
     def __init__(self, Getter=None):
-        self.Get = Getter or IMNEW.Getter
+        self.Get = Getter or IMGetter
 
-    @asyncio.coroutine
-    def request(self, e, get):
+    async def request(self, e, get):
         pass
 
     def getpos(self, e, l):
         pass
 
-    @asyncio.coroutine
-    def process(self, e):
+    async def process(self, e):
         get = self.Get()
         while len(e) > 0:
             #print(e)
-            yield from self.request(e, get)
+            await self.request(e, get)
             pos = self.getpos(e, get.len)
             e = e[pos:]
         return get.l
 
-    @asyncio.coroutine
-    def getitem(self, e):
+    async def getitem(self, e):
         if e[0]:
-            return (yield from self.process(e[1]))
+            return (await self.process(e[1]))
         else:
             return e[1]
 
-    @asyncio.coroutine
-    def __call__(self, input, send):
+    async def __call__(self, input, send):
         print('im')
 
         coros = [self.getitem(e) for e in input]
-        lines = yield from asyncio.gather(*coros)
+        lines = await asyncio.gather(*coros)
         line = ''.join(lines) if lines else 'Σ(っ °Д °;)っ 怎么什么都没有呀'
         print(line)
 
@@ -228,32 +206,26 @@ class GIMNEW(IMNEW):
             'app': 'demopage',
             'text': '',
         }
-        self.field = [
-            ('./item[2]/item[1]', 'text', '{}'),
-            ('./item[3]/item[1]', 'text', '{}'),
-        ]
-        self.format = lambda x: x
+        self.format = lambda s, es: ([s.get_fields(s.get, e, [
+            ('./item[2]/item[1]', 'text', s.iter_first),
+            ('./item[3]/item[1]', 'text', s.iter_first),
+        ])] for e in es)
 
-    @asyncio.coroutine
-    def request(self, e, get):
+    async def request(self, e, get):
         params = self.params.copy()
         params['text'] = e
-        yield from jsonxml(self.arg, [], get, method='POST', params=params, request_class=GIMNEW.RequestGoogle, field=self.field, format=self.format)
+        await jsonxml(self.arg, [], get, method='POST', params=params, request_class=GIMNEW.RequestGoogle, format_new=self.format)
 
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
             return len(e)
         return l
 
-    @asyncio.coroutine
-    def __call__(self, input, send):
-        yield from IMNEW.__call__(self, input, send)
+    async def __call__(self, input, send):
+        await IMNEW.__call__(self, input, send)
 
 
-@asyncio.coroutine
-def gimnew(arg, send):
-    print('gimnew')
-
+async def gimnew(arg, send):
     table = {
         # pinyin
         'pinyins':          'zh-t-i0-pinyin',
@@ -296,12 +268,15 @@ def gimnew(arg, send):
         'rhnyoo$':          'zhuyinbb',
         'oiargrmbc':        'cangjie',
         'yut':              'yue',
+        # alt
+        'jp':               'ja',
     }
 
     def parse(reg, text, f, g):
         line = []
         pos = 0
         for m in reg.finditer(text):
+            #print('parse: {}'.format(repr(text[pos:m.start()])))
             line.extend(f(text[pos:m.start()]))
             line.extend(g(m.group()))
             pos = m.end()
@@ -412,7 +387,7 @@ def gimnew(arg, send):
     print(line)
 
     im = GIMNEW(itc)
-    yield from im(line, send)
+    await im(line, send)
 
 
 class BIMNEW(IMNEW):
@@ -436,14 +411,15 @@ class BIMNEW(IMNEW):
             'input': '',
         }
         self.letter = re.compile(r"[^']")
-        self.field = [('./item[1]', 'text', '{}'), ('./item[2]', 'text', '{}')]
-        self.format = lambda x: x
+        self.format = lambda s, es: ([s.get_fields(s.get, e, [
+            ('./item[1]', 'text', s.iter_first),
+            ('./item[2]', 'text', s.iter_first),
+        ])] for e in es)
 
-    @asyncio.coroutine
-    def request(self, e, get):
+    async def request(self, e, get):
         params = self.params.copy()
         params['input'] = e
-        yield from jsonxml(self.arg, [], get, params=params, field=self.field, format=self.format)
+        await jsonxml(self.arg, [], get, params=params, format_new=self.format)
 
     def getpos(self, e, l):
         if not (0 < l and l < len(e)):
@@ -453,15 +429,11 @@ class BIMNEW(IMNEW):
                 return c.start()
         return len(e)
 
-    @asyncio.coroutine
-    def __call__(self, input, send):
-        yield from IMNEW.__call__(self, input, send)
+    async def __call__(self, input, send):
+        await IMNEW.__call__(self, input, send)
 
 
-@asyncio.coroutine
-def bimnew(arg, send):
-    print('bimnew')
-
+async def bimnew(arg, send):
     def parse(reg, text, f, g):
         line = []
         pos = 0
@@ -495,7 +467,7 @@ def bimnew(arg, send):
     print(line)
 
     im = BIMNEW()
-    yield from im(line, send)
+    await im(line, send)
 
 
 help = [
