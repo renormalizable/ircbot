@@ -4,6 +4,7 @@ import random
 import math
 import unicodedata
 import re
+import datetime
 
 
 @asyncio.coroutine
@@ -234,6 +235,7 @@ def color(arg, send):
         send(' '.join(map(lambda x: '\\x03{0}{0} {1}\\x0f'.format(*x), c[8:])))
 
 
+# provide a search?
 @asyncio.coroutine
 def mode(arg, send):
     u = [
@@ -351,6 +353,13 @@ def down(arg, send):
 
 
 @asyncio.coroutine
+def utc(arg, send):
+
+    tz = arg['zone'] or '0'
+    send(datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=int(tz)))))
+
+
+@asyncio.coroutine
 def latex(arg, send):
     symbol = [
         (r'\alpha',       '\U0001d6fc'),
@@ -420,6 +429,7 @@ help = [
     ('mode'         , 'mode -- \\x0300free\\x0f\\x0303node\\x0f is awesome!'),
     ('up'           , 'up [show] -- nice boat!'),
     ('down'         , 'down [show]'),
+    ('utc'          , 'utc [+/- zone offset]'),
 ]
 
 func = [
@@ -435,5 +445,6 @@ func = [
     (mua            , r"mua( (?P<content>.+))?"),
     (hug            , r"hug( (?P<content>.+))?"),
     (prpr           , r"prpr( (?P<content>.+))?"),
+    (utc            , r"utc(?:\s(?P<zone>([-+])?[0-9]+))?"),
     (latex          , r"latex\s+(?P<content>.+)"),
 ]
