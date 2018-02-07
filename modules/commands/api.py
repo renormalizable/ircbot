@@ -1,5 +1,5 @@
 import asyncio
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote, quote_plus, urlencode
 from aiohttp.helpers import BasicAuth
 import json
 import re
@@ -7,12 +7,12 @@ import time
 import random
 import base64
 import datetime
+import socket
 import codecs
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 
 from .tool import xml, jsonxml, htmlparse, jsonparse, fetch
-from .util import cmdsub
 
 
 @asyncio.coroutine
@@ -75,9 +75,19 @@ def wolfram(arg, send):
 def ip(arg, send):
     print('ip')
 
+    try:
+        #addr = socket.inet_ntop(socket.AF_INET, socket.inet_pton(socket.AF_INET, arg['addr']))
+        addr = socket.inet_ntoa(socket.inet_aton(arg['addr']))
+    except:
+        try:
+            addr = socket.inet_ntop(socket.AF_INET6, socket.inet_pton(socket.AF_INET6, arg['addr']))
+        except:
+            #raise Exception('illegal IP address')
+            addr = arg['addr']
+
     arg.update({
         'n': '1',
-        'url': 'http://ip-api.com/json/' + arg['addr'],
+        'url': 'http://ip-api.com/json/' + addr,
         'xpath': '/root',
     })
     field = [('./' + x, 'text', '{}') for x in ['country', 'regionName', 'city', 'isp']]
@@ -323,6 +333,7 @@ def bocr(arg, send):
 
 
 # microsoft
+# azure portal needs phone number
 
 class Microsoft:
     class Get:
@@ -427,11 +438,13 @@ def couplet(arg, lines, send):
     print('couplet')
 
     #shanglian = arg['shanglian']
-    shanglian = ' '.join(lines) or arg['shanglian'] or ''
+    shanglian = ''.join(lines) or arg['shanglian'] or ''
     #if len(shanglian) > 10:
     #    send('最多十个汉字喔')
     #    return
-    shanglian = yield from cmdsub(arg, shanglian)
+
+    if re.search(r"[\x00-\xFF、。，．：；？！]", shanglian) is not None:
+        raise Exception('only chinese characters are allowed')
 
     arg.update({
         'n': arg['n'] or '1',
@@ -585,7 +598,7 @@ def gtran(arg, lines, send):
         if lang_from == None:
             raise Exception('please specify input language')
 
-        speed = re.fullmatch(r'audio:([0-9.]+)', lang_to)
+        speed = re.fullmatch(r"audio:([0-9.]+)", lang_to)
 
         url = 'https://translate.google.com/translate_tts?client=t&prev=input&total=1&idx=0'
         params = {
@@ -645,6 +658,8 @@ def gtran(arg, lines, send):
         'tk': '',
     }
     params['tk'] = gtrantoken(params['sl'], params['tl'], params['q'])
+    # workaround https://github.com/aio-libs/aiohttp/issues/1901
+    params['q'] = params['q'].replace(';', quote(quote(';')))
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.125 Safari/537.36',
     }
@@ -792,7 +807,7 @@ def music163encrypt(string):
 def music163(arg, send):
     print('music163')
 
-    query = yield from cmdsub(arg, arg['query'])
+    query = arg['query']
     arg.update({
         'n': arg['n'] or '1',
         'url': 'http://music.163.com/api/search/get',
@@ -920,7 +935,8 @@ func = [
     (gtran          , r"gtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (dictg          , r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (cdict          , r"collins(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (breezo         , r"breezo\s+(?P<city>.+)"),
+    # TODO fix api
+    #(breezo         , r"breezo\s+(?P<city>.+)"),
     #(speak          , r"speak\s+(?P<text>.+)"),
     (urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (urban          , r"rural\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
