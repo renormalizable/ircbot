@@ -11,35 +11,76 @@ def lsend(l, send, **kw):
 
 
 @asyncio.coroutine
-def cmdsub(arg, string):
+def cmdsub(cmd, string):
+    print('cmdsub')
+
     @asyncio.coroutine
-    def id(x):
+    def identity(x):
         return x
 
+    # how about normalizing the message?
     @asyncio.coroutine
     def command(x):
         get = Get()
-        yield from arg['meta']['command'](x, [], get)
-        return get.str()
+        status = yield from cmd(x, [], get)
+        if status:
+            return get.str(sep=' ')
+        else:
+            return '({0})'.format(x)
+
+    def splitter(s):
+        i = 0
+        j = 0
+        n = 0
+        while i < len(s):
+            if s[i] == '(':
+                n = n + 1
+                if n == 1:
+                    yield s[j:i]
+                    j = i + 1
+            elif s[i] == ')':
+                n = n - 1
+                if n == 0:
+                    yield s[j:i]
+                    j = i + 1
+            i = i + 1
+        if n != 0:
+            raise Exception()
+        else:
+            yield s[j:i]
+
 
     #reg = re.compile(r"''(.*?)''")
-    reg = re.compile(r"\((.*?)\)")
-    s = reg.split(string)
+    #reg = re.compile(r"\((.*?)\)")
+    #s = reg.split(string)
+    try:
+        s = list(splitter(string))
+    except:
+        print('unmatched parentheses: {0}'.format(repr(string)))
+        return string
 
-    coros = [command(x) if i % 2 == 1 else id(x) for (i, x) in enumerate(s)]
+    coros = [command(x) if i % 2 == 1 else identity(x) for (i, x) in enumerate(s)]
     s = yield from asyncio.gather(*coros)
-    print(s)
+    print('cmdsub: {0}'.format(s))
 
     return ''.join(s)
+
+
+@asyncio.coroutine
+def lower(arg, send):
+    send(arg['content'].lower())
+
+
+@asyncio.coroutine
+def upper(arg, send):
+    send(arg['content'].upper())
 
 # coreutils
 
 
 @asyncio.coroutine
 def echo(arg, send):
-    #send(arg['content'], raw=True)
-    content = yield from cmdsub(arg, arg['content'])
-    send(content, raw=True)
+    send(arg['content'], raw=True)
 
 
 @asyncio.coroutine
@@ -284,4 +325,6 @@ func = [
     (shuf           , r"shuf"),
     (nl             , r"nl"),
     (paste          , r"paste(?:\s+(?P<quote>['\"])(?P<delimiter>.+)(?P=quote))?"),
+    (lower          , r"lower (?P<content>.+)"),
+    (upper          , r"upper (?P<content>.+)"),
 ]
