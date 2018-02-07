@@ -33,7 +33,8 @@ def event(arg, send):
         def future(e):
             t = parsedate(e.xpath('./dtstart')[0].xpath('string()'))
             t = t.replace(tzinfo=timezone(timedelta(hours=8)))
-            return datetime.now(timezone(timedelta(hours=8))) < t
+            # being late by one hour is ok
+            return datetime.now(timezone(timedelta(hours=8))) < t + timedelta(hours=1)
         def key(e):
             return parsedate(e.xpath('./dtstart')[0].xpath('string()'))
         # workaround for dtstart format
