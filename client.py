@@ -46,7 +46,7 @@ class Client(bottom.Client):
     def sendm(self, target, message, *, command='PRIVMSG', to='', raw=False, mlimit=0, color=None, **kw):
         prefix = (to + ': ') if to else ''
         message = ('' if raw else prefix) + self.normalize(message, **kw)
-        print(message)
+        print('send: {}'.format(repr(message)))
         for (i, m) in enumerate(splitmessage(message, self.msglimit)):
             if mlimit > 0 and i >= mlimit:
                 self.send(command, target=target, message=prefix + '太多了啦...')

@@ -2,6 +2,7 @@ import re
 
 # send to pastebin when message is too long?
 
+
 class dePrefix:
 
     def __init__(self):
@@ -107,9 +108,14 @@ def splitmessage(s, n):
     # en
     ending += 'abcdefghijklmnopqrstuvwxyz'
     ending += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    starting += ')]}>'
+    ending += '([{<'
 
     # num
     ending += '0123456789'
+
+    # esc
+    esc = ['\x02', '\x03', '\x04', '\x06', '\x07', '\x0f', '\x16', '\x1b', '\x1d', '\x1f']
 
     if n < 4:
         return
@@ -122,7 +128,7 @@ def splitmessage(s, n):
         i = n + 1
 
         # find good ending with one extra character
-        while 0 <= i and (bs[i] & 0xc0) == 0x80:
+        while i < len(bs) and (bs[i] & 0xc0) == 0x80:
             i = i + 1
 
         # result candidate
@@ -131,11 +137,20 @@ def splitmessage(s, n):
         i = len(str)
         j = i - 1
 
+        # naive coloring
+        # too naive, assuming following operations don't violate coloring
+        if sum((1 if x in esc else 0) for x in str[:j] if x in esc) % 2 != 0:
+            while str[j - 1] not in esc:
+                j = j - 1
+            j = j - 1
+            i = j + 1
+
         # check first character in next line and last character in this line
         while (0 <= j and str[j] in starting) or (1 <= j and str[j - 1] in ending):
             # if too short or cannot find good line
             # according to arXiv:1208.6109, average word length is about 5
-            if j <= 0 or 25 <= (i - 1) - j:
+            # for poisson distribution, 5 \sigma is [0, 30]
+            if j <= 0 or 30 <= (i - 1) - j:
                 j = i - 1
                 break
             # otherwise
