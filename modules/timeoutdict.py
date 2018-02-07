@@ -14,12 +14,10 @@ class TimeoutDict(MutableMapping):
 
     def __setitem__(self, key, value):
         try:
-            item = self.d.__getitem__(key)
-            item[0] = value
-            item[1].cancel()
-            item[1] = self.__timeout__(key)
+            self.d.pop(key)[1].cancel()
         except KeyError:
-            self.d.__setitem__(key, [value, self.__timeout__(key)])
+            pass
+        self.d.__setitem__(key, [value, self.__timeout__(key)])
 
     def __delitem__(self, key):
         self.d.pop(key)[1].cancel()
@@ -35,7 +33,6 @@ class TimeoutDict(MutableMapping):
 
     def __cleanup__(self, key):
         pass
-        #self.pop(key, None)
 
 
 #class TimeoutDict(MutableMapping):
