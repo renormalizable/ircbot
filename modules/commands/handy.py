@@ -8,6 +8,8 @@ from .tool import html, xml, addstyle, htmlparse
 from .api import google
 
 # github search?
+# plato.stanford.edu
+# oeis.org
 
 # html parse
 
@@ -22,14 +24,14 @@ def arxiv(arg, send):
         'xpath': '//*[@id="dlpage"]/dl/dt',
     })
     params = {'query': arg['query'], 'searchtype': 'all'}
-    field = [
-        ('./span/a[1]', 'text', '{}'),
-        ('./following-sibling::dd[1]/div/div[1]/span', 'tail', '{}'),
-    ]
-    def format(l):
-        return map(lambda e: '[\\x0302{0}\\x0f] {1}'.format(e[0][6:], e[1]), l)
+    def format(self, es):
+        field = [
+            ('./span/a[1]', 'text', lambda x: self.iter_first(x)[6:]),
+            ('./following-sibling::dd[1]/div/div[1]/span', 'tail', self.iter_first),
+        ]
+        return (['[\\x0302{0}\\x0f] {1}'.format(*self.get_fields(self.get, e, field))] for e in es)
 
-    return (yield from html(arg, [], send, params=params, field=field, format=format))
+    return (yield from html(arg, [], send, params=params, format_new=format))
 
 
 @asyncio.coroutine
@@ -83,11 +85,14 @@ def bihu(arg, send):
             t.text = ''
         for t in e.xpath('.//*[@class="zm-item-link-avatar"]/*'):
             t.getparent().remove(t)
+        for t in e.xpath('.//*[@class="UserLink-badge"]/*'):
+            t.getparent().remove(t)
         return e
 
     arg.update({
         #'xpath': '//*[@id="zh-question-answer-wrap"]/div',
-        'xpath': '//*[@id="root"]//div[@class="ContentItem"]',
+        #'xpath': '//*[@id="root"]//div[@class="ContentItem"]',
+        'xpath': '//*[@id="root"]//div[@class="ContentItem AnswerItem"]',
     })
     field = [
         ##('./div[1]/button[1]/span[2]', 'text', '{}'),
@@ -110,16 +115,18 @@ def bihu(arg, send):
            vote = e[0]
            name = e[1].strip().strip('，')
            digest = e[2].strip()
-           length = 70
+           length = 120
            if len(digest) > length:
                digest = digest[:length] + '\\x0f...'
            #digest = digest[:length] + '\\x0f...'
            digest = digest.replace('\n', ' ')
-           link = '/' + e[3].split('/', 3)[-1]
+           #link = '/' + e[3].split('/', 3)[-1]
            #anchor = '#' + e[4]
-           anchor = '#'
+           #anchor = '#'
            #yield '[\\x0304{0}\\x0f] \\x0300{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
-           yield '[\\x0304{0}\\x0f] \\x16{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
+           #yield '[\\x0304{0}\\x0f] \\x16{1}:\\x0f {2} \\x0302{3}\\x0f \\x0302{4}\\x0f'.format(vote, name, digest, link, anchor)
+           #yield '[\\x0304{0}\\x0f] \\x16{1}:\\x0f {2} \\x0302{3}\\x0f'.format(vote, name, digest, link)
+           yield '[\\x0304{0}\\x0f] \\x02{1}:\\x0f {2}'.format(vote, name, digest)
 
     return (yield from html(arg, [], send, field=field, preget=preget, format=format))
 
@@ -287,6 +294,27 @@ def foldoc(arg, send):
 def wiki(arg, send):
     print('wiki')
 
+    if arg['site'] == 'cpp':
+        arg.update({
+            'n': arg['n'] or '1',
+            'url': 'https://en.cppreference.com/mwiki/api.php',
+            'xpath': '//page/@title',
+        })
+        params = {
+            'format': 'xml',
+            'action': 'query',
+            'generator': 'search',
+            'gsrlimit': '1',
+            'gsrwhat': 'text',
+            'gsrsearch': arg['query'],
+            'prop': 'revisions',
+            'rvprop': 'content',
+            'rvparse': '',
+        }
+        def format(l):
+            return map(lambda e: '[\\x0302 http://en.cppreference.com/w/{0} \\x0f]'.format(e[0].replace(' ', '_')), l)
+        return (yield from xml(arg, [], send, params=params, format=format))
+
     def clean(e):
         for s in e.xpath('.//script | .//style'):
             #s.getparent().remove(s)
@@ -410,15 +438,15 @@ def etymology(arg, send):
 
     arg.update({
         'n': arg['n'] or '1',
-        'url': 'http://www.etymonline.com/index.php',
-        'xpath': '//*[@id="dictionary"]/dl/dt',
+        'url': 'http://www.etymonline.com/search',
+        'xpath': '//a[contains(@class, "word")]',
     })
     params = {
-        'term': arg['query'],
+        'q': arg['query'],
     }
     field = [
-        ('./a', '', '{}'),
-        ('./following-sibling::dd[1]', '', '{}'),
+        ('.//h1', '', '\\x02{}\\x0f'),
+        ('.//object', '', '{}'),
     ]
     get = lambda e, f: addstyle(foreign(e)).xpath('string()')
 
@@ -433,6 +461,39 @@ def lmgtfy(arg, send):
 
 
 @asyncio.coroutine
+def commit(arg, send):
+    print('commit')
+
+    arg.update({
+        'n': '1',
+        'url': 'http://whatthecommit.com/index.txt',
+        'xpath': '.',
+    })
+
+    return (yield from html(arg, [], send))
+
+
+@asyncio.coroutine
+def ipip(arg, send):
+    print('ipip')
+
+    arg.update({
+        'n': '1',
+        'url': 'http://www.ipip.net/ip.html',
+        'xpath': '//*[@id="myself"]',
+    })
+    field = [
+        ('.', '', '{}'),
+    ]
+    data = {
+        'ip': arg['addr'],
+    }
+
+    #return (yield from html(arg, [], send, method='POST', data=data, field=field))
+    return (yield from html(arg, [], send, method='POST', data=data))
+
+
+@asyncio.coroutine
 def killteleboto(arg, send):
     print('killteleboto')
 
@@ -441,7 +502,8 @@ def killteleboto(arg, send):
 
 func = [
     (zhihu          , r"zhihu\s+(?P<url>http\S+)"),
-    (bihu           , r"bihu\s+(?P<url>http\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(bihu           , r"bihu\s+(?P<url>http\S+)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (bihu           , r"bihu\s+(?P<url>http\S+)"),
     (pm25           , r"pm2.5\s+(?P<city>.+)"),
     #(btdigg         , r"btdigg\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (man            , r"man(\s+(?P<section>[1-8ln]))?\s+(?P<name>.+)"),
@@ -456,5 +518,7 @@ func = [
     (xkcd           , r"xkcd(\s+(?P<number>(\d+)|(random)))?"),
     (etymology      , r"etymology\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (lmgtfy         , r"lmgtfy\s+(?P<query>.+?)"),
+    (commit         , r"commit"),
+    (ipip           , r"ipip\s+(?P<addr>.+)"),
     (killteleboto   , r"killteleboto"),
 ]
