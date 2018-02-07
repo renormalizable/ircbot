@@ -605,7 +605,7 @@ def geordi(arg, lines, send):
 
     arg.update({
         'lang': 'c++({})'.format(compiler),
-        'args': arg['args'] or '-std=c++1z',
+        'args': '-std=c++1z {}'.format(arg['args'] or ''),
         'raw': None,
     })
  
@@ -614,26 +614,181 @@ def geordi(arg, lines, send):
         '#include <cxxabi.h>',
         'using namespace std;',
         # comma in ostream
-        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator,(std::basic_ostream<Ch, Tr> & o, T const & t) { return o << ", " << t; }',
-        'template <typename Ch, typename Tr> std::basic_ostream<Ch, Tr> &operator,(std::basic_ostream<Ch, Tr> & o, std::basic_ostream<Ch, Tr> & (* const f) (std::basic_ostream<Ch, Tr> &)) { return o << f; }',
+'''
+template <typename Ch, typename Tr, typename T>
+std::basic_ostream<Ch, Tr> &operator,(std::basic_ostream<Ch, Tr> & o, T const & t) {
+    return o << ", " << t;
+}
+template <typename Ch, typename Tr>
+std::basic_ostream<Ch, Tr> &operator,(std::basic_ostream<Ch, Tr> & o, std::basic_ostream<Ch, Tr> & (* const f) (std::basic_ostream<Ch, Tr> &)) {
+    return o << f;
+}
+''',
         # bark
-        '#define BARK (::std::printf(" %s ", __PRETTY_FUNCTION__), ::std::fflush(stdout))',
+'''
+#define BARK (::std::printf(" %s ", __PRETTY_FUNCTION__), ::std::fflush(stdout))
+''',
         # type
-        'namespace type_strings_detail {',
-        'template <typename T> std::string type_string() { std::string s = std::type_index(typeid(T)).name(); int status = -1; return abi::__cxa_demangle(s.c_str(), 0, 0, &status); }',
-        'template <typename> struct type_tag {};',
         #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<T>()) { return o << type_string<T>(); }',
         #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<const T>()) { return o << type_string<T>() << " const"; }',
         #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<volatile T>()) { return o << type_string<T>() << " volatile"; }',
         #'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, type_tag<const volatile T>()) { return o << type_string<T>() << " const volatile"; }',
-        'struct adl_hint {};',
-        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<T>)) { return o << type_string<T>(); }',
-        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<const T>)) { return o << type_string<T>() << " const"; }',
-        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<volatile T>)) { return o << type_string<T>() << " volatile"; }',
-        'template <typename Ch, typename Tr, typename T> std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<const volatile T>)) { return o << type_string<T>() << " const volatile"; }',
-        '}',
         #'template <typename T> type_strings_detail::type_tag<T> TYPE() { return type_strings_detail::type_tag<T>(); }',
-        'template <typename T> type_strings_detail::adl_hint TYPE(type_strings_detail::type_tag<T>) { return type_strings_detail::adl_hint(); }',
+'''
+namespace type_strings_detail {
+
+template <typename T>
+std::string type_string() {
+    std::string s = std::type_index(typeid(T)).name();
+    int status = -1;
+    return abi::__cxa_demangle(s.c_str(), 0, 0, &status);
+}
+
+template <typename>
+struct type_tag {};
+
+struct adl_hint {};
+
+template <typename Ch, typename Tr, typename T>
+std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<T>)) {
+    return o << type_string<T>();
+}
+template <typename Ch, typename Tr, typename T>
+std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<const T>)) {
+    return o << type_string<T>() << " const";
+}
+template <typename Ch, typename Tr, typename T>
+std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<volatile T>)) {
+    return o << type_string<T>() << " volatile";
+}
+template <typename Ch, typename Tr, typename T>
+std::basic_ostream<Ch, Tr> &operator<<(std::basic_ostream<Ch, Tr> & o, adl_hint(type_tag<const volatile T>)) {
+    return o << type_string<T>() << " const volatile";
+}
+
+}
+
+template <typename T>
+type_strings_detail::adl_hint TYPE(type_strings_detail::type_tag<T>) {
+    return type_strings_detail::adl_hint();
+}
+''',
+        # type desc
+#template <typename>
+#struct type_desc;
+#
+##define BUILTIN_TYPE_DESC(type, desc)              \
+#    template <> struct type_desc<type> {           \
+#        static std::string str() { return desc; }  \
+#    }
+#
+#BUILTIN_TYPE_DESC(void, "void");
+#BUILTIN_TYPE_DESC(bool, "boolean");
+#BUILTIN_TYPE_DESC(char, "character");
+#BUILTIN_TYPE_DESC(signed char, "singed character");
+#BUILTIN_TYPE_DESC(unsigned char, "unsigned character");
+#BUILTIN_TYPE_DESC(short, "short integer");
+#BUILTIN_TYPE_DESC(unsigned short, "unsigned short integer");
+#BUILTIN_TYPE_DESC(int, "integer");
+#BUILTIN_TYPE_DESC(unsigned int, "unsigned integer");
+#BUILTIN_TYPE_DESC(long, "long integer");
+#BUILTIN_TYPE_DESC(unsigned long, "unsigned long integer");
+'''
+namespace type_desc_detail {
+
+template <typename T>
+struct type_desc {
+    static std::string str() {
+        std::string s = std::type_index(typeid(T)).name();
+        int status = -1;
+        return abi::__cxa_demangle(s.c_str(), 0, 0, &status);
+    }
+};
+
+template <typename T>
+struct type_desc<const T> {
+    static std::string str() {
+        return "constant " + type_desc<T>::str();
+    }
+};
+
+template <typename T>
+struct type_desc<volatile T> {
+    static std::string str() {
+        return "volatile " + type_desc<T>::str();
+    }
+};
+
+template <typename T>
+struct type_desc<const volatile T> {
+    static std::string str() {
+        return "constant volatile " + type_desc<T>::str();
+    }
+};
+
+template <typename T>
+struct type_desc<T*> {
+    static std::string str() {
+        return "pointer to " + type_desc<T>::str();
+    }
+};
+
+template <typename T>
+struct type_desc<T&> {
+    static std::string str() {
+        return "lvalue reference to " + type_desc<T>::str();
+    }
+};
+
+template <typename T>
+struct type_desc<T&&> {
+    static std::string str() {
+        return "rvalue reference to " + type_desc<T>::str();
+    }
+};
+
+
+template <typename R>
+struct type_desc<R()> {
+    static std::string str() {
+        return "function taking void returning " + type_desc<R>::str();
+    }
+};
+
+template <typename R, typename... Ts>
+struct type_desc<R(Ts...)> {
+    static std::string str() {
+        std::vector<std::string> svec = {type_desc<Ts>::str()...};
+
+        std::string flat;
+        bool first = true;
+        for (const auto& s : svec) {
+            if (first) {
+                first = false;
+                flat += s;
+            } else {
+                flat += ", " + s;
+            }
+        }
+
+        return "function taking " + flat + " returning " + type_desc<R>::str();
+    }
+};
+
+}
+
+
+template <typename T>
+type_desc_detail::type_desc<T> TYPE_DESC() {
+    return {};
+}
+
+
+template <typename Ch, typename Tr, typename T>
+std::basic_ostream<Ch, Tr>& operator<<(std::basic_ostream<Ch, Tr>& os, type_desc_detail::type_desc<T>()) {
+    return os << type_desc_detail::type_desc<T>::str();
+}
+''',
     ]
     # not correct but maybe enough?
     if '++14' in arg['args'] or '++1y' in arg['args']:
