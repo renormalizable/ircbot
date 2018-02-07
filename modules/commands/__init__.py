@@ -1,12 +1,13 @@
 import asyncio
-import re
-import time
-import os
 import importlib
 import inspect
+import os
+import re
+import time
 import traceback
 
 from ..timeoutdict import TimeoutDict
+
 
 path = 'modules.commands.'
 files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'ime', 'acg', 'handy', 'multiline', 'blug']
@@ -15,12 +16,12 @@ table = dict(zip(files, modules))
 
 Get = table['common'].Get
 fetcher = table['multiline'].fetcher
+cmdsub = table['util'].cmdsub
 
 help = dict(sum((getattr(m, 'help', []) for m in modules), []))
 
 
-@asyncio.coroutine
-def helper(arg, send):
+async def helper(arg, send):
     c = arg['command']
     if c:
         h = help[c]
@@ -39,17 +40,20 @@ def command(f, r):
     func = f if inspect.signature(f).parameters.get('lines') else (lambda arg, lines, send: f(arg, send))
     reg = re.compile(r, re.IGNORECASE)
 
-    @asyncio.coroutine
-    def wrap(message, lines, send, meta):
+    async def wrap(message, lines, send, meta):
         arg = reg.fullmatch(message)
         if arg:
-            print(arg.groupdict())
+            try:
+                name = f.__qualname__
+            except AttributeError:
+                name = f.__class__.__qualname__
+            print('{0}: {1}'.format(name, arg.groupdict()))
             try:
                 t = time.time()
                 d = arg.groupdict()
                 d.update(meta)
-                yield from func(d, lines, send)
-                print(time.time() - t)
+                await func(d, lines, send)
+                print('time: {} s'.format(time.time() - t))
             except Exception as e:
                 err = ' sad story... ' + str(e) if str(e) else ''
                 send('╮(￣▽￣)╭' + err)
@@ -57,6 +61,7 @@ def command(f, r):
                 return False
             return True
         return False
+
     return wrap
 
 func = [command(f[0], f[1]) for f in sum((getattr(m, 'func', []) for m in modules), [(helper, r"help(\s+(?P<command>\S+))?")])]
@@ -73,53 +78,47 @@ class Line(TimeoutDict):
 line = Line()
 
 
+# queue will wait self.timeout starting from the last put before calling __cleanup__
 class Queue(TimeoutDict):
 
-    @asyncio.coroutine
-    def put(self, key, value, func):
+    async def put(self, key, value, func):
         try:
             queue = self.__getitem__(key)
-            yield from queue[0].put(value)
-            self.__setitem__(key, queue)
         except KeyError:
-            queue = [asyncio.Queue(), asyncio.async(func(key))]
-            yield from queue[0].put(value)
-            self.__setitem__(key, queue)
+            queue = [asyncio.Queue(), asyncio.ensure_future(func(key))]
+        await queue[0].put(value)
+        self.__setitem__(key, queue)
 
-    @asyncio.coroutine
-    def get(self, key, default=None):
+    async def get(self, key, default=None):
         try:
-            return (yield from self.__getitem__(key)[0].get())
+            return (await self.__getitem__(key)[0].get())
         except KeyError:
             return default
 
     def __delitem__(self, key):
-        print('__delitem__')
         item = self.d.pop(key)
         item[0][1].cancel()
         item[1].cancel()
-        #print(item)
 
     # not safe to cleanup
     # if some command runs longer than timeout
     def __cleanup__(self, key):
-        print('__clean__', key, self.d)
         self.pop(key, None)
-        print('__clean__', key, self.d)
+        print('queue clean up: {}'.format(key))
 
 queue = Queue()
 
 
-@asyncio.coroutine
-def execute(msg, lines, send, meta):
+async def execute(msg, lines, send, meta):
+    msg = await cmdsub(meta['meta']['command'], msg)
+    print('execute: {}'.format(repr(msg)))
     coros = [f(msg, lines, send, meta) for f in func]
 
-    status = yield from asyncio.gather(*coros)
+    status = await asyncio.gather(*coros)
     return any(status)
 
 
-@asyncio.coroutine
-def reply(bot, nick, message, send):
+async def reply(bot, nick, message, send):
     # prefix
     if message[0] == "'":
         if message[:3] in ["'..", "'::"]:
@@ -132,9 +131,6 @@ def reply(bot, nick, message, send):
 
     msg = message[1:].rstrip()
     lines = line.pop(nick, [])
-    #send(repr(lines))
-    #print(nick, msg, lines)
-    print(nick, msg)
     meta = {'meta': {
         'bot': bot,
         'nick': nick,
@@ -142,60 +138,56 @@ def reply(bot, nick, message, send):
         'save': Get(lambda l: line.append(nick, l)),
         'command': lambda msg, lines, send: execute(msg, lines, send, meta),
     }}
+    print('reply: {} {}'.format(nick, repr(msg)))
 
-    #yield from asyncio.sleep(1)
-    success = yield from execute(msg, lines, sender, meta)
+    success = await execute(msg, lines, sender, meta)
     print('success?', success)
 
     if not success and lines:
         line.append(nick, lines)
 
 
-@asyncio.coroutine
-def multiline(bot, nick, message, send):
+async def multiline(bot, nick, message, send):
     if message[:4] == "'.. " or message == "'..":
-        print('multiline')
-        l = [message[4:].rstrip()]
+        msg = message[4:].rstrip()
+        print('multiline: {}'.format(repr(msg)))
+        l = [msg]
         line.append(nick, l)
 
 
-@asyncio.coroutine
-def fetchline(bot, nick, message, send):
+async def fetchline(bot, nick, message, send):
     if message[:4] == "':: ":
-        print('fetchline')
+        msg = message[4:].rstrip()
+        print('fetchline: {}'.format(repr(msg)))
         try:
-            l = yield from fetcher(message[4:].rstrip())
+            l = await fetcher(msg)
             line.append(nick, l)
         except:
             send('出错了啦...')
             traceback.print_exc()
 
 
-@asyncio.coroutine
-def process(nick):
+async def process(nick):
     while True:
-        item = yield from queue.get(nick)
+        item = await queue.get(nick)
 
         if item == None:
-            print('process break')
-            break
-
-        #print(nick, item)
+            print('process return')
+            return
 
         coros = [f(item[0], nick, item[1], item[2]) for f in [reply, multiline, fetchline]]
         # gather() cancels coros when process() is cancelled
-        yield from asyncio.gather(*coros)
-
-        #print('process')
-        #yield from asyncio.sleep(1)
+        await asyncio.gather(*coros)
 
 
-@asyncio.coroutine
-def dispatch(bot, nick, message, send):
+async def dispatch(bot, nick, message, send):
     if message[:1] not in ["'", '"']:
         return
+    if message[:2] == "'!":
+        return
 
-    yield from queue.put(nick, (bot, message, send), process)
+    await queue.put(nick, (bot, message, send), process)
+
 
 privmsg = [
     #reply,
