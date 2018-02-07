@@ -4,16 +4,56 @@ import time
 from urllib.parse  import quote_plus, urlsplit, unquote
 from colorsys      import rgb_to_hsv
 
-from .common import Get
-from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse
+from .common import Get, GetRaw
+from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse, htmlget
 
-
+# more filter, for query = 傻二
+# try action=opensearch ?
 @asyncio.coroutine
 def moegirl(arg, send):
     print('moegirl')
 
-    class Redirection(Exception):
-        pass
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': 'https://zh.moegirl.org/api.php',
+        'xpath': '//page',
+    })
+    params = {
+        'format': 'xml',
+        'action': 'query',
+        'generator': 'search',
+        'gsrlimit': '1',
+        'gsrwhat': 'nearmatch',
+        'gsrsearch': arg['query'],
+        'redirects': '',
+        'prop': 'info',
+        'inprop': 'url',
+    }
+    field = [
+        ('.', 'pageid', '{}'),
+        ('.', 'fullurl', '{}'),
+    ]
+    def format(l):
+        return l
+
+    result = GetRaw()
+
+    try:
+        yield from xml(arg, [], result, params=params, field=field, format=format)
+    except:
+        print('retry full text search')
+        params['gsrwhat'] = 'text'
+
+        try:
+            yield from xml(arg, [], result, params=params, field=field, format=format)
+        except:
+            raise Exception("maybe it's not moe enough?")
+
+    pageid = result.result[0][0]
+    if arg['withurl']:
+        send('[\\x0302 {0} \\x0f]'.format(unquote(result.result[0][1])))
+
+
     def clean(e):
         for s in e.xpath('.//script | .//style'):
             #s.getparent().remove(s)
@@ -42,21 +82,12 @@ def moegirl(arg, send):
         return e
 
     arg.update({
-        'n': arg['n'] or '1',
-        'url': 'https://zh.moegirl.org/api.php',
-        'xpath': '//page',
+        'xpath': '//text',
     })
     params = {
         'format': 'xml',
-        'action': 'query',
-        'generator': 'search',
-        'gsrlimit': '1',
-        'gsrwhat': 'nearmatch',
-        'gsrsearch': arg['query'],
-        'prop': 'info|revisions',
-        'inprop': 'url',
-        'rvprop': 'content',
-        'rvparse': '',
+        'action': 'parse',
+        'pageid': pageid,
     }
     # don't select following nodes
     # script                 -> js
@@ -81,32 +112,13 @@ def moegirl(arg, send):
         ']')
     def transform(l):
         if l:
-            node = htmlparse(l[0].xpath('//rev')[0].text).xpath('//body' + xpath)
-
-            if node:
-                if arg['withurl']:
-                    send('[\\x0302 {0} \\x0f]'.format(unquote(l[0].xpath('./@fullurl')[0])))
-                return node
-            else:
-                raise Redirection(l[0].xpath('./@fullurl')[0])
+            return htmlparse(l[0].text).xpath('//*[@class="mw-parser-output"]' + xpath)
         else:
-            raise Exception("maybe it's not moe enough?")
+            raise Exception('oops...')
 
     get = lambda e, f: addstyle(ruby(hidden(clean(e)))).xpath('string()')
 
-    try:
-        yield from xml(arg, [], send, params=params, transform=transform, get=get)
-    except Redirection as e:
-        print('redirect to {}'.format(str(e)))
-        arg.update({
-            'url': str(e),
-            'xpath': '//*[@id="mw-content-text"]' + xpath,
-        })
-        yield from html(arg, [], send, get=get)
-    except:
-        print('retry full text search')
-        params['gsrwhat'] = 'text'
-        yield from xml(arg, [], send, params=params, transform=transform, get=get)
+    yield from xml(arg, [], send, params=params, transform=transform, get=get)
 
 
 @asyncio.coroutine
@@ -115,21 +127,29 @@ def nmb(arg, send):
     #url = 'http://h.koukuko.com/'
     #url = 'http://kukuku.cc/'
     #url = 'http://h.nimingban.com/'
-    url = 'https://tnmb.org/'
+    #url = 'https://tnmb.org/'
     #url = 'http://hacfun.tv/'
+    url = 'http://adnmb.com/'
 
     if arg['id']:
+        if arg['post']:
+            xpath = '//*[@data-threads-id="{}"]'.format(arg['post'])
+        else:
+            xpath = '//*[@data-threads-id]'
         arg.update({
+            'n': arg['n'] or '1',
             'url': url + 't/{0}'.format(arg['id']),
-            'xpath': '//div[@id="h-content"]/div[1]/div[3]/div[1] | //div[@id="h-content"]/div[1]/div[3]/div[1]/div[2]/div',
+            #'xpath': '//div[@id="h-content"]/div[1]/div[3]/div[1] | //div[@id="h-content"]/div[1]/div[3]/div[1]/div[2]/div',
+            'xpath': xpath,
         })
         if arg['show']:
             send('[\\x0302 {} \\x0f]'.format(arg['url']))
     else:
         arg.update({
-            #'url': url + 'f/{0}'.format(arg['forum'] or '综合版1'),
-            'url': url + 'f/{0}'.format(arg['forum'] or '综合'),
-            'xpath': '//div[@id="h-content"]/div[1]/div[3]/div',
+            'url': url + 'f/{0}'.format(arg['forum'] or '综合版1'),
+            #'url': url + 'f/{0}'.format(arg['forum'] or '综合'),
+            #'xpath': '//div[@id="h-content"]/div[1]/div[3]/div',
+            'xpath': '//*[@class="h-threads-list"]/*[@data-threads-id]',
         })
     field = [
         ('.', 'data-threads-id', '[\\x0304{}\\x0f]'),
@@ -355,7 +375,8 @@ acfun = Acfun()
 
 help = [
     ('moegirl'      , 'moegirl[:url] <title> [#max number][+offset] -- \\x0301,01你知道得太多了\\x0f'),
-    ('nmb'          , 'nmb [:forum] [thread id] [#max number][+offset] -- 丧失你好'),
+    #('nmb'          , 'nmb [:forum] [thread id] [#max number][+offset] -- 丧失你好'),
+    ('nmb'          , 'nmb [:forum] [thread [No.post]] [#max number][+offset] -- 丧失你好'),
     #('adnmb'        , 'adnmb [:forum id] [rthread id] [#max number][+offset] -- 丧失你好'),
     ('acfun'        , 'acfun <url> <#comment number>'),
 ]
@@ -363,7 +384,8 @@ help = [
 func = [
     (moegirl        , r"moegirl(?P<withurl>:url)?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (moegirl        , r"moeboy(?P<withurl>:url)?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (nmb            , r"nmb(\s+:(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
-    (adnmb          , r"adnmb(\s+:(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
+    #(nmb            , r"nmb(\s+:(?P<forum>\S+))?(\s+(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
+    (nmb            , r"nmb(\s+:(?P<forum>\S+))?(\s+(?P<id>[^\s#+]+)(\s+No\.(?P<post>\d+))?)?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
+    #(adnmb          , r"adnmb(\s+:(?P<forum>\d+))?(\s+r(?P<id>\d+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<show>show))?"),
     (acfun          , r"acfun\s+(?P<url>http\S+)\s+#(?P<count>\d+)"),
 ]
