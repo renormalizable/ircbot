@@ -258,7 +258,7 @@ async def gimnew(arg, send):
         'shuangpin':        'shuangpinflypy',
         'udpn':             'shuangpinziranma',
         # less is more
-        'py':               'pinytins',
+        'py':               'pinyins',
         'wb':               'wubi',
         'sp':               'shuangpinflypy',
         'zrm':              'shuangpinziranma',
