@@ -7,7 +7,7 @@ from urllib.parse   import quote
 import romkan
 from aiohttp.client import ClientRequest
 
-from .tool import jsonxml
+from .tool          import jsonxml
 
 # add fcitx? fim
 
@@ -256,10 +256,18 @@ async def gimnew(arg, send):
         'cht':              'pinyint',
         'pinyin':           'pinyins',
         'shuangpin':        'shuangpinflypy',
+        'udpn':             'shuangpinziranma',
+        # less is more
+        'py':               'pinytins',
+        'wb':               'wubi',
+        'sp':               'shuangpinflypy',
+        'zrm':              'shuangpinziranma',
+        'zy':               'zhuyin',
+        'cj':               'cangjie',
         # alias
         'ggtt':             'wubi',
         'vtpc':             'shuangpinabc',
-        'udpn':             'shuangpinms',
+        'udpnms':           'shuangpinms',
         'ulpb':             'shuangpinflypy',
         'ihpl':             'shuangpinjiajia',
         'igpy':             'shuangpinziguang',
