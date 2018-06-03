@@ -360,6 +360,37 @@ def utc(arg, send):
 
 
 @asyncio.coroutine
+def bidi(arg, send):
+    if arg['content']:
+        return send(arg['content'] + ' bidi')
+
+    l = [
+        'bi',
+        'bi' + '!' * random.randint(1, 5),
+        'bi' + '?' * random.randint(1, 5),
+        'di',
+        'di' + '!' * random.randint(1, 5),
+        'di' + '?' * random.randint(1, 5),
+        'bidi',
+        'bidi' + '!' * random.randint(1, 5),
+        'bidi' + '?' * random.randint(1, 5),
+        'bidibidibi!',
+        'bidi' * random.randint(1, 15),
+        'bidi' * random.randint(1, 15) + '!' * random.randint(1, 10),
+        'bidi' * random.randint(1, 15) + '?' * random.randint(1, 10),
+        'bidi' * random.randint(1, 30),
+    ]
+
+    line = random.choice(l)
+
+    if random.randint(1, 100) <= 10:
+        lang = random.choice(['en', 'zh', 'ja', 'eo', 'id', 'la', 'no', 'vi'])
+        yield from arg['meta']['command']('gtran {}:audio {}'.format(lang, line), [], send)
+    else:
+        send(random.choice(l))
+
+
+@asyncio.coroutine
 def latex(arg, send):
     symbol = [
         (r'\alpha',       '\U0001d6fc'),
@@ -430,6 +461,7 @@ help = [
     ('up'           , 'up [show] -- nice boat!'),
     ('down'         , 'down [show]'),
     ('utc'          , 'utc [+/- zone offset]'),
+    ('bidi'         , 'bidi [content] -- bidibidibi!'),
 ]
 
 func = [
@@ -446,5 +478,6 @@ func = [
     (hug            , r"hug( (?P<content>.+))?"),
     (prpr           , r"prpr( (?P<content>.+))?"),
     (utc            , r"utc(?:\s(?P<zone>([-+])?[0-9]+))?"),
+    (bidi           , r"bidi( (?P<content>.+))?"),
     (latex          , r"latex\s+(?P<content>.+)"),
 ]
