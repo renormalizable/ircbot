@@ -364,16 +364,20 @@ def bidi(arg, send):
     if arg['content']:
         return send(arg['content'] + ' bidi')
 
-    l = [
+    normal = [
+        'bidi',
+        'bidi' + '!' * random.randint(1, 5),
+        'bidi' + '?' * random.randint(1, 5),
+    ]
+    short = [
         'bi',
         'bi' + '!' * random.randint(1, 5),
         'bi' + '?' * random.randint(1, 5),
         'di',
         'di' + '!' * random.randint(1, 5),
         'di' + '?' * random.randint(1, 5),
-        'bidi',
-        'bidi' + '!' * random.randint(1, 5),
-        'bidi' + '?' * random.randint(1, 5),
+    ]
+    audio = [
         'bidibidibi!',
         'bidi' * random.randint(1, 15),
         'bidi' * random.randint(1, 15) + '!' * random.randint(1, 10),
@@ -381,13 +385,12 @@ def bidi(arg, send):
         'bidi' * random.randint(1, 30),
     ]
 
-    line = random.choice(l)
-
     if random.randint(1, 100) <= 10:
         lang = random.choice(['en', 'zh', 'ja', 'eo', 'id', 'la', 'no', 'vi'])
+        line = random.choice(audio)
         yield from arg['meta']['command']('gtran {}:audio {}'.format(lang, line), [], send)
     else:
-        send(random.choice(l))
+        send(random.choice(random.choice([normal, normal, normal, normal, short, audio])))
 
 
 @asyncio.coroutine
@@ -478,6 +481,6 @@ func = [
     (hug            , r"hug( (?P<content>.+))?"),
     (prpr           , r"prpr( (?P<content>.+))?"),
     (utc            , r"utc(?:\s(?P<zone>([-+])?[0-9]+))?"),
-    (bidi           , r"bidi( (?P<content>.+))?"),
+    (bidi           , r"bidi(?:bidi)*( (?P<content>.+))?"),
     (latex          , r"latex\s+(?P<content>.+)"),
 ]
