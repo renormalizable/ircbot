@@ -1,0 +1,8 @@
+// command substitution
+
+input = _{ SOI ~ subs ~ EOI }
+
+// quasiquote is probably useless
+subs = { text? ~ (("'" ~ quot | "(" ~ subs ~ ")") ~ text?)* }
+text = { (!("'(" | "(" | ")") ~ ANY)+ }
+quot = { "(" ~ subs ~ ")" }

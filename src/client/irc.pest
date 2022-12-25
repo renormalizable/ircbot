@@ -1,0 +1,18 @@
+WHITESPACE = _{
+    "\x02" | "\x04" | "\x06" | "\x07 "| "\x0f" | "\x16" | "\x1b" | "\x1d"| "\x1f" |
+    "\x03" ~ (ASCII_DIGIT{1, 2} ~ ("," ~ ASCII_DIGIT{1, 2})?)?
+}
+
+illegal = _{ ("]" | ")" | ":" | ",") ~ " " | "さ" ~ "ん" ~ "、" | "'" }
+
+input = _{
+    SOI ~
+    (("[" ~ source ~ "]" | "(" ~ source ~ ")") ~ " ")? ~
+    (target ~ ((":" | ",") ~ " " | "さ" ~ "ん" ~ "、"))? ~
+    message ~
+    EOI
+}
+
+source = { (!illegal ~ ANY)* }
+target = { (!illegal ~ ANY)* }
+message = { ANY* }

@@ -1,3 +1,17 @@
+# python
+
 __pycache__/
 
 config.py
+
+
+# rust
+
+debug/
+target/
+
+Cargo.lock
+
+config.yaml
+irc.yaml
+matrix.yaml

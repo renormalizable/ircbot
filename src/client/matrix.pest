@@ -1,0 +1,19 @@
+illegal = _{ ("]" | ")" | ":" | ",") ~ " " | "さ" ~ "ん" ~ "、" | "'" }
+
+input = _{
+    SOI ~
+    ("> " ~ reply ~ "\n\n")? ~
+    line ~
+    ("\n" ~ line)* ~
+    EOI
+}
+line = {
+    (("[" ~ source ~ "]" | "(" ~ source ~ ")") ~ " ")? ~
+    (target ~ ((":" | ",") ~ " " | "さ" ~ "ん" ~ "、"))? ~
+    message
+}
+
+reply = { (!"\n\n" ~ ANY)* }
+source = { (!illegal ~ ANY)* }
+target = { (!illegal ~ ANY)* }
+message = { (!"\n" ~ ANY)* }
