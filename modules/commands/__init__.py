@@ -10,7 +10,7 @@ from ..timeoutdict import TimeoutDict
 
 
 path = 'modules.commands.'
-files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'ime', 'acg', 'handy', 'multiline', 'blug']
+files = ['common', 'simple', 'util', 'tool', 'lang', 'api', 'ime', 'acg', 'handy', 'multiline', 'blug', 'arch']
 modules = [importlib.reload(importlib.import_module(path + f)) for f in files]
 table = dict(zip(files, modules))
 
@@ -38,7 +38,7 @@ async def helper(arg, send):
 
 def command(f, r):
     func = f if inspect.signature(f).parameters.get('lines') else (lambda arg, lines, send: f(arg, send))
-    reg = re.compile(r, re.IGNORECASE)
+    reg = re.compile(r, re.IGNORECASE | re.DOTALL)
 
     async def wrap(message, lines, send, meta):
         arg = reg.fullmatch(message)

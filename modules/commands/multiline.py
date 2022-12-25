@@ -41,6 +41,8 @@ def getcode(url):
         'paste.pound-python.org':      '//*[@id="paste"]/div/ol/li/span',
         'justpaste.it':                '//*[@id="articleContent"]/div/p',
         #'thepasteb.in'
+        # what is this? it should be raw
+        #'ptpb.pw':                     '/html/body/div/table/tbody/tr/td[2]/div/pre',
         'dpaste.de':                   '/html/body/div/div[3]/ol/li',
         #'paste.wentropy.com'
         'paste.codedump.ch':           '/html/body/div[1]/section[2]/div/div/blockquote/div/ol/li',
@@ -60,6 +62,7 @@ def getcode(url):
         #'www.irccloud.com':            '/html/body/div/div[2]/div/div/div[2]/div[2]/div/div[3]/div',
         #'zerobin.net'?
         #'0bin.net':                    '//*[@id="paste-content"]',
+        # https://paste.metalgamer.eu/
     }
 
     get = Get()

@@ -15,6 +15,10 @@ from Crypto.PublicKey import RSA
 from .tool import xml, jsonxml, htmlparse, jsonparse, fetch
 
 
+# TODO https://dictionaryapi.com/
+# TODO https://pokeapi.co/
+
+
 @asyncio.coroutine
 def arxiv(arg, send):
     print('arxiv')
@@ -114,6 +118,7 @@ def whois(arg, send):
     return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
 
 
+# see also http://www.cnemc.cn/sssj/ and http://www.cnemc.cn/getIndexData.do
 @asyncio.coroutine
 def aqi(arg, send):
     print('aqi')
@@ -433,6 +438,7 @@ class Mtran(Microsoft):
 mtran = Mtran()
 
 
+# not working as of 20190611
 @asyncio.coroutine
 def couplet(arg, lines, send):
     print('couplet')
@@ -448,6 +454,7 @@ def couplet(arg, lines, send):
 
     arg.update({
         'n': arg['n'] or '1',
+        #'url': 'https://couplet.msra.cn/app/CoupletsWS_V2.asmx/GetXiaLian',
         'url': 'http://couplet.msra.cn/app/CoupletsWS_V2.asmx/GetXiaLian',
         'xpath': '//d/XialianSystemGeneratedSets/item/XialianCandidates/item',
     })
@@ -586,6 +593,9 @@ def gtran(arg, lines, send):
 
     alias = {
         'jp': 'ja',
+        'zh': 'zh-CN',
+        'zhs': 'zh-CN',
+        'zht': 'zh-TW',
     }
 
     lang_from = arg.get('from')
@@ -600,7 +610,8 @@ def gtran(arg, lines, send):
 
         speed = re.fullmatch(r"audio:([0-9.]+)", lang_to)
 
-        url = 'https://translate.google.com/translate_tts?client=t&prev=input&total=1&idx=0'
+        #url = 'https://translate.google.com/translate_tts?client=t&prev=input&total=1&idx=0'
+        url = 'https://translate.google.com/translate_tts?total=1&idx=0&client=webapp'
         params = {
             'ie': 'UTF-8',
             'tl': lang_from,
@@ -618,20 +629,21 @@ def gtran(arg, lines, send):
         if params['textlen'] > 200:
             raise Exception('input is toooooooooo long')
 
-        arg.update({
-            'n': '1',
-            'url': 'https://www.googleapis.com/urlshortener/v1/url?key=' + arg['meta']['bot'].key['google'],
-            'xpath': '/root/id',
-        })
-        data = json.dumps({
-            'longUrl': url,
-        })
-        headers = {'Content-Type': 'application/json'}
-        field = [
-            ('.', '', '[\\x0302 {} \\x0f] (-lisa)'),
-        ]
+        #arg.update({
+        #    'n': '1',
+        #    'url': 'https://www.googleapis.com/urlshortener/v1/url?key=' + arg['meta']['bot'].key['google'],
+        #    'xpath': '/root/id',
+        #})
+        #data = json.dumps({
+        #    'longUrl': url,
+        #})
+        #headers = {'Content-Type': 'application/json'}
+        #field = [
+        #    ('.', '', '[\\x0302 {} \\x0f] (-lisa)'),
+        #]
 
-        return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers, field=field))
+        #return (yield from jsonxml(arg, [], send, method='POST', data=data, headers=headers, field=field))
+        return send('[\\x0302 {} \\x0f]'.format(url))
 
     if lang_to == 'speak':
         xpath = '/root/item[1]/item/item[4]'
@@ -642,7 +654,8 @@ def gtran(arg, lines, send):
 
     arg.update({
         'n': '1',
-        'url': 'https://translate.google.com/translate_a/single?client=t&dt=at&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&otf=1&ssel=0&tsel=0&kc=0',
+        #'url': 'https://translate.google.com/translate_a/single?client=t&dt=at&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&otf=1&ssel=0&tsel=0&kc=0',
+        'url': 'https://translate.google.com/translate_a/single?client=webapp&dt=at&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=sos&dt=ss&dt=t&dt=gt&source=bh&ssel=0&tsel=0&kc=1',
         #'xpath': '/root/item/item/item',
         #'xpath': '/root/item[1]',
         #'xpath': '/root/item[1]/item' + ('/item[4]' if lang_to == 'speak' else if '/item[1]'),
@@ -710,19 +723,22 @@ def urban(arg, send):
     print('urban')
 
     # unofficial
+    # see https://github.com/NightfallAlicorn/urban-dictionary
     arg.update({
         'n': arg['n'] or '1',
-        'url': 'https://mashape-community-urban-dictionary.p.mashape.com/define',
+        #'url': 'https://mashape-community-urban-dictionary.p.mashape.com/define',
+        'url': 'https://api.urbandictionary.com/v0/define',
         'xpath': '//list/item',
     })
     params = {'term': arg['text']}
-    headers = {'X-Mashape-Key': arg['meta']['bot'].key['mashape']}
+    #headers = {'X-Mashape-Key': arg['meta']['bot'].key['mashape']}
     field = [
         ('./definition', 'text', '{}'),
         #('./permalink', 'text', '[\\x0302 {} \\x0f]'),
     ]
 
-    return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+    #return (yield from jsonxml(arg, [], send, params=params, field=field, headers=headers))
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 
 @asyncio.coroutine
@@ -790,6 +806,7 @@ def music163encrypt(string):
     f = b'00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
     g = b'0CoJUm6Qyw8W8jud'
     i = ran(16).encode()
+    i = b'0000000000000000'
 
     encText = aes(d, g)
     encText = aes(encText, i)
@@ -808,27 +825,88 @@ def music163(arg, send):
     print('music163')
 
     query = arg['query']
+
+    if arg['type'] == 'song' or arg['type'] == None:
+        ty = '1'
+        xpath = '//result/songs/item'
+        field = [
+            ('./name', '', '{}'),
+            ('./id', '', '[\\x0302 https://music.163.com/song?id={} \\x0f]'),
+            ('./artists//name', '', 'by {}'),
+            ('./album/name', '', 'in {}'),
+            ('./duration', '', '{}'),
+        ]
+        def formatter(e):
+            name = e[0]
+            url = e[1]
+            artist = e[2]
+            album = e[3]
+            duration = datetime.timedelta(seconds=int(e[4]) // 1000)
+            return '{} {} {} / {} / {}'.format(name, url, artist, album, duration)
+    elif arg['type'] == 'album':
+        ty = '10'
+        xpath = '//result/albums/item'
+        field = [
+            ('./name', '', '{}'),
+            ('./id', '', '[\\x0302 https://music.163.com/album?id={} \\x0f]'),
+            ('./artists//name', '', 'by {}'),
+            ('./company', '', 'via {}'),
+            ('./size', '', '{} tracks'),
+        ]
+        def formatter(e):
+            name = e[0]
+            url = e[1]
+            artist = e[2]
+            company = e[3]
+            track = e[4]
+            return '{} {} {} / {} / {}'.format(name, url, artist, company, track)
+    elif arg['type'] == 'artist':
+        ty = '100'
+        xpath = '//result/artists/item'
+        field = [
+            ('./name', '', '{}'),
+            ('./id', '', '[\\x0302 https://music.163.com/artist?id={} \\x0f]'),
+            ('./albumSize', '', '{} albums'),
+        ]
+        def formatter(e):
+            name = e[0]
+            url = e[1]
+            album = e[2]
+            return '{} {} {}'.format(name, url, album)
+    elif arg['type'] == 'playlist':
+        ty = '1000'
+        xpath = '//result/playlists/item'
+        field = [
+            ('./name', '', '{}'),
+            ('./id', '', '[\\x0302 https://music.163.com/playlist?id={} \\x0f]'),
+            ('./creator//nickname', '', 'by {}'),
+            ('./trackCount', '', '{} tracks'),
+        ]
+        def formatter(e):
+            name = e[0]
+            url = e[1]
+            creator = e[2]
+            track = e[3]
+            return '{} {} {} / {}'.format(name, url, creator, track)
+    #elif arg['type'] == 'user':
+    #    ty = '1002'
+    else:
+        raise Exception('type check failed')
+
     arg.update({
         'n': arg['n'] or '1',
-        'url': 'http://music.163.com/api/search/get',
-        #'url': 'http://music.163.com/weapi/cloudsearch/get/web',
-        'xpath': '//result/songs/item',
+        #'url': 'https://music.163.com/api/search/get',
+        'url': 'https://music.163.com/weapi/search/get',
+        #'url': 'https://music.163.com/weapi/cloudsearch/get/web',
+        'xpath': xpath,
     })
     params = {'csrf_token': ''}
-    field = [
-        ('./name', '', '{}'),
-        #('./id', '', '[\\x0302 http://music.163.com/#/song?id={} \\x0f]'),
-        ('./id', '', '[\\x0302 http://music.163.com/song?id={} \\x0f]'),
-        ('./artists//name', '', 'by {}'),
-        ('./album/name', '', 'in {}'),
-        ('./duration', '', '{}'),
-    ]
     data = {
         'limit': '30',
         'offset': '0',
         's': query,
         'total': 'true',
-        'type': '1',
+        'type': ty,
     }
     #data = {
     #    'csrf_token': '',
@@ -840,7 +918,8 @@ def music163(arg, send):
     #    'total': 'true',
     #    'type': '1',
     #}
-    #data = music163encrypt(json.dumps(data))
+    data = music163encrypt(json.dumps(data))
+    print(repr(data))
     # from https://github.com/darknessomi/musicbox
     headers = {
         'Accept': '*/*',
@@ -849,21 +928,42 @@ def music163(arg, send):
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Host': 'music.163.com',
-        'Referer': 'http://music.163.com/search/',
+        'Referer': 'https://music.163.com/search/',
         'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.152 Safari/537.36',
     }
     def format(l):
-        def formatter(e):
-            name = e[0]
-            url = e[1]
-            artist = e[2]
-            album = e[3]
-            duration = datetime.timedelta(seconds=int(e[4]) // 1000)
-            return '{} {} {} / {} / {}'.format(name, url, artist, album, duration)
         return map(formatter, l)
 
     return (yield from jsonxml(arg, [], send, method='POST', headers=headers, data=data, field=field, format=format))
     #return (yield from jsonxml(arg, [], send, method='POST', params=params, headers=headers, data=data, field=field, format=format))
+
+
+# zhihu header authorization: oauth c3cef7c66a1843f8b3a9e6a1e3160e20
+
+
+@asyncio.coroutine
+def crate(arg, send):
+    print('crate')
+
+    arg.update({
+        'n': arg['n'] or '3',
+        'url': 'https://crates.io/api/v1/crates',
+        'xpath': '//crates/item',
+    })
+    params = {
+        'page': 1,
+        'per_page': arg['n'],
+        'q': arg['query'],
+    }
+    field = [
+        ('./name', '', '{}'),
+        ('./max_version', '', '/ {}'),
+        ('./id', '', '[\\x0302 https://crates.io/crates/{} \\x0f]'),
+        ('./description', '', '{}'),
+        #('./repository', '', '{}'),
+    ]
+
+    return (yield from jsonxml(arg, [], send, params=params, field=field))
 
 
 # TODO
@@ -898,20 +998,20 @@ help = [
     #('bing'         , 'bing (query) [#max number][+offset]'),
     #('bing'         , 'bing [#max number][+offset] (query)'),
     #('mtran'        , 'mtran [source lang:target lang] (text)'),
-    ('couplet'      , 'couplet (shanglian) [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
+    #('couplet'      , 'couplet (shanglian) [#max number][+offset] -- 公门桃李争荣日 法国荷兰比利时'),
     ('google'       , 'google (query) [#max number][+offset]'),
     #('google'       , 'google [#max number][+offset] (query)'),
     ('gtran'        , 'gtran [source lang:target lang] (text)'),
     ('urban'        , 'urban <text> [#max number][+offset]'),
     #('speak'        , 'speak <text>'),
     ('wolfram'      , 'wolfram <query> [#max number][+offset] -- woof~'),
-    ('163'          , '163 <query> [#max number][+offset]'),
+    ('163'          , '163[:type] <query> [#max number][+offset]'),
 ]
 
 func = [
-    (ip             , r"ip\s+(?P<addr>.+)"),
-    (whois          , r"whois\s+(?P<domain>.+)"),
-    (aqi            , r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
+    #(ip             , r"ip\s+(?P<addr>.+)"),
+    #(whois          , r"whois\s+(?P<domain>.+)"),
+    #(aqi            , r"aqi\s+(?P<city>.+?)(\s+(?P<all>all))?"),
     #(bip            , r"bip\s+(?P<addr>.+)"),
     #(bid            , r"bid\s+(?P<id>.+)"),
     #(bphone         , r"bphone\s+(?P<tel>.+)"),
@@ -926,21 +1026,22 @@ func = [
     #(bing           , r"bing(\s+type:(?P<type>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
     #(mtran          , r"mtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     #(couplet        , r"couplet(?:\s+(?P<shanglian>\S+))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (couplet        , r"couplet(?:\s+(?P<shanglian>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(couplet        , r"couplet(?:\s+(?P<shanglian>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(mice           , r"mice\s+(?P<input>.+)"),
     #(google         , r"google(\s+type:(?P<type>(web|image)))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (google         , r"google(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(google         , r"google(?:\s+(?![#\+])(?P<query>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(google         , r"google(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?(\s+(?P<query>.+))?"),
-    (gtran          , r"gtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
+    #(gtran          , r"gtran(\s+(?!:\s)(?P<from>\S+?)?:(?P<to>\S+)?)?(\s+(?P<text>.+))?"),
     (dictg          , r"dict\s+(?P<from>\S+):(?P<to>\S+)\s+(?P<text>.+?)(\s+#(?P<n>\d+))?"),
     (cdict          , r"collins(\s+d:(?P<dict>\S+))?\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     # TODO fix api
     #(breezo         , r"breezo\s+(?P<city>.+)"),
     #(speak          , r"speak\s+(?P<text>.+)"),
-    (urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (urban          , r"rural\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(urban          , r"urban\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(urban          , r"rural\s+(?P<text>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     #(arxiv          , r"arxiv\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (wolfram        , r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
-    (music163       , r"163\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(wolfram        , r"wolfram\s+(?P<query>.+?)(\s+xpath:(?P<xpath>.+?))?(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(music163       , r"163(?::(?P<type>\S+))?\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(crate          , r"crate\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
 ]

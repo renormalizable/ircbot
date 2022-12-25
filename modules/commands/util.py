@@ -14,6 +14,24 @@ def lsend(l, send, **kw):
 def cmdsub(cmd, string):
     print('cmdsub')
 
+    #esc = [
+    #    # irssi
+    #    # https://github.com/irssi/irssi/blob/master/src/fe-common/core/formats.c#L1086
+    #    # IS_COLOR_CODE(...)
+    #    # https://github.com/irssi/irssi/blob/master/src/fe-common/core/formats.c#L1254
+    #    # format_send_to_gui(...)
+    #    (r'\x02', '\x02'),
+    #    (r'\x03', '\x03'),
+    #    (r'\x04', '\x04'),
+    #    (r'\x06', '\x06'),
+    #    (r'\x07', '\x07'),
+    #    (r'\x0f', '\x0f'),
+    #    (r'\x16', '\x16'),
+    #    (r'\x1b', '\x1b'),
+    #    (r'\x1d', '\x1d'),
+    #    (r'\x1f', '\x1f'),
+    #]
+
     @asyncio.coroutine
     def identity(x):
         return x
@@ -24,7 +42,12 @@ def cmdsub(cmd, string):
         get = Get()
         status = yield from cmd(x, [], get)
         if status:
-            return get.str(sep=' ')
+            #msg = get.str(sep=' ')
+            #for (s, e) in esc:
+            #    msg = msg.replace(s, e)
+            #return msg
+            #return get.str(sep=' ')
+            return get.str()
         else:
             return '({0})'.format(x)
 
@@ -74,6 +97,12 @@ def lower(arg, send):
 @asyncio.coroutine
 def upper(arg, send):
     send(arg['content'].upper())
+
+
+@asyncio.coroutine
+def newline(arg, send):
+    send('\n\n')
+
 
 # coreutils
 
@@ -175,6 +204,12 @@ def nl(arg, lines, send):
 @asyncio.coroutine
 def paste(arg, lines, send):
     lsend([(arg['delimiter'] or '\n').join(lines)], send)
+
+
+@asyncio.coroutine
+def tr(arg, lines, send):
+    line = [arg['content']] if arg['content'] else lines
+    lsend([l.replace(arg['old'], arg['new']) for l in line], send)
 
 # other
 
@@ -309,7 +344,7 @@ help = [
 ]
 
 func = [
-    (echo           , r"echo (?P<content>.+)"),
+    #(echo           , r"echo (?P<content>.+)"),
     (cat            , r"cat(?:\s+(?P<raw>raw))?"),
     (tac            , r"tac"),
     (tee            , r"tee(?:\s+(?P<output>['\"])(?P<command>.+))?"),
@@ -325,6 +360,9 @@ func = [
     (shuf           , r"shuf"),
     (nl             , r"nl"),
     (paste          , r"paste(?:\s+(?P<quote>['\"])(?P<delimiter>.+)(?P=quote))?"),
-    (lower          , r"lower (?P<content>.+)"),
-    (upper          , r"upper (?P<content>.+)"),
+    (tr             , r"tr\s+(?P<quote1>['\"])(?P<old>.+)(?P=quote1)\s+(?P<quote2>['\"])(?P<new>.*)(?P=quote2)(?:\s(?P<content>.+))?"),
+    #(lower          , r"lower (?P<content>.+)"),
+    #(upper          , r"upper (?P<content>.+)"),
+    #(newline        , r"newline"),
+    #(newline        , r"lf"),
 ]

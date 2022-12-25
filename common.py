@@ -1,5 +1,6 @@
 import re
 
+# use tex line breaking algorithm?
 # send to pastebin when message is too long?
 
 
@@ -10,7 +11,8 @@ class dePrefix:
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\s\']+?): )?(?P<message>.*)')
         #self.r = re.compile(r'(\[(?P<nick>.+?)\] )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)')
         #self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
-        self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"].*?)[:,] )?(?P<message>.*)', re.DOTALL)
+        #self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"].*?)[:,] )?(?P<message>.*)', re.DOTALL)
+        self.r = re.compile(r'((?:(?P<s>\[)|(?P<r>\())(?P<nick>.+?)(?(s)\])(?(r)\)) )?((?P<to>[^\'"].*?)(?:[:,] | さん、))?(?P<message>.*)', re.DOTALL)
         self.esc = re.compile(r'(\x03\d{1,2}(,\d{1,2})?|\x02|\x03|\x04|\x06|\x07|\x0f|\x16|\x1b|\x1d|\x1f)')
         #self.orz = re.compile(r'((?:(?P<s>\[))(?P<nick>[\x00-\x1f].+?[\x00-\x1f])(?(s)\]) )?((?P<to>[^\'"]+?)[:,] )?(?P<message>.*)', re.DOTALL)
         self.orz = re.compile(r'((?:(?P<s>\[))(?P<nick>[\x00-\x1f].+?[\x00-\x1f])(?(s)\]) )?((?P<to>[^\'"].*?)[:,] )?(?P<message>.*)', re.DOTALL)
@@ -93,6 +95,7 @@ class Normalize:
 
 
 def splitmessage(s, n):
+    print('split message: {} {}'.format(n, repr(s)))
     # rules
     starting = ''
     ending = ''
@@ -136,6 +139,10 @@ def splitmessage(s, n):
 
         i = len(str)
         j = i - 1
+        j0 = j
+
+        #print('bs = {}'.format(repr(bs)))
+        #print('j = {}'.format(j))
 
         # naive coloring
         # too naive, assuming following operations don't violate coloring
@@ -144,6 +151,7 @@ def splitmessage(s, n):
                 j = j - 1
             j = j - 1
             i = j + 1
+        j1 = j
 
         # check first character in next line and last character in this line
         while (0 <= j and str[j] in starting) or (1 <= j and str[j - 1] in ending):
@@ -155,6 +163,14 @@ def splitmessage(s, n):
                 break
             # otherwise
             j = j - 1
+
+        #print('j = {}'.format(j))
+
+        if j == 0:
+            if j1 == 0:
+                j = j0
+            else:
+                j = j1
 
         str = str[:j]
 

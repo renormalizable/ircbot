@@ -8,7 +8,7 @@ bot = toxclient.ToxClient(loop, 'config.json', 'config')
 
 
 @bot.on('tox.init')
-def init(this ,arguments):
+def init(this, arguments):
     print("ID: {}".format(this.core.self_get_address()))
 
 @bot.on('tox.connect')
@@ -76,7 +76,14 @@ def group_message(this, arguments):
 tasks = [bot.run()]
 
 if __name__ == '__main__':
-    try:
-        loop.run_until_complete(asyncio.wait(tasks))
-    except KeyboardInterrupt:
-        bot.save()
+    #try:
+    #    loop.run_until_complete(asyncio.wait(tasks))
+    #except KeyboardInterrupt:
+    #    bot.save()
+    while True:
+        try:
+            loop.run_until_complete(asyncio.wait(tasks))
+        except KeyboardInterrupt:
+            bot.save()
+        except:
+            pass

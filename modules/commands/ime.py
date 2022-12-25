@@ -217,6 +217,7 @@ class GIMNEW(IMNEW):
         await jsonxml(self.arg, [], get, method='POST', params=params, request_class=GIMNEW.RequestGoogle, format_new=self.format)
 
     def getpos(self, e, l):
+        print('getpos: {0} {1}'.format(e, l))
         if not (0 < l and l < len(e)):
             return len(e)
         return l
@@ -233,6 +234,7 @@ async def gimnew(arg, send):
         # wubi
         'wubi':             'zh-t-i0-wubi-1986',
         # shuangpin
+        # TODO emacs ZIRANMA.el where ' is used
         'shuangpinabc':     'zh-t-i0-pinyin-x0-shuangpin-abc',
         'shuangpinms':      'zh-t-i0-pinyin-x0-shuangpin-ms',
         'shuangpinflypy':   'zh-t-i0-pinyin-x0-shuangpin-flypy',
@@ -316,6 +318,9 @@ async def gimnew(arg, send):
     elif lang == 'ja':
         sep = re.compile(r"([^a-z'\-]+)")
         comment = re.compile(r"(?:(?<=[^a-z'\-])|^)''(.*?)''(?:(?=[^a-z'\-])|$)")
+    elif lang == 'shuangpinabc' or lang == 'shuangpinms' or lang == 'shuangpinflypy' or lang == 'shuangpinjiajia' or lang == 'shuangpinziguang' or lang == 'shuangpinziranma':
+        sep = re.compile(r"([^a-z;]+)")
+        comment = re.compile(r"(?:(?<=[^a-z;])|^)''(.*?)''(?:(?=[^a-z;])|$)")
     else:
         sep = re.compile(r"([^a-z']+)")
         comment = re.compile(r"(?:(?<=[^a-z'])|^)''(.*?)''(?:(?=[^a-z'])|$)")
@@ -487,8 +492,8 @@ help = [
 
 func = [
     #(bim            , r"bim\s+(?P<pinyin>.+)"),
-    (bimnew         , r"bim\s+(?P<text>.+)"),
-    (gimnew         , r"gim(?::(?P<lang>\S+))?\s+(?P<text>.+)"),
-    (kana           , r"kana\s+(?P<romaji>.+)"),
-    (romaji         , r"romaji\s+(?P<kana>.+)"),
+    #(bimnew         , r"bim\s+(?P<text>.+)"),
+    #(gimnew         , r"gim(?::(?P<lang>\S+))?\s+(?P<text>.+)"),
+    #(kana           , r"kana\s+(?P<romaji>.+)"),
+    #(romaji         , r"romaji\s+(?P<kana>.+)"),
 ]

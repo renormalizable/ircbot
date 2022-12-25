@@ -2,7 +2,7 @@ import asyncio
 import itertools
 import json
 import re
-from urllib.parse    import quote_plus, quote, urldefrag
+from urllib.parse    import urldefrag
 
 import demjson
 import html5lib
@@ -24,8 +24,9 @@ def drop(l, offset):
 
 def charset(r):
     ctype = r.headers.get('content-type', '').lower()
-    _, _, _, params = parse_mimetype(ctype)
-    return params.get('charset')
+    #_, _, _, params = parse_mimetype(ctype)
+    #return params.get('charset')
+    return  parse_mimetype(ctype).parameters.get('chardet')
 
 
 # here we handle timeout differently
@@ -139,12 +140,14 @@ class Request:
         return element.xpath(xpath, namespaces=self.ns)
 
     def get_field(self, get, element, field):
+        #print(field)
         fs = self.get_xpath(element, field[0])
         fs = (get(f, field[1]) for f in fs)
         fs = (f for f in fs if f.strip())
         return field[2](fs)
 
     def get_fields(self, get, element, fields):
+        #print(fields)
         return (self.get_field(get, element, field) for field in fields)
 
     async def fetch(self, method, url, **kw):
@@ -205,6 +208,7 @@ class Request:
         # format lines
         # elements -> lines
         lines = formatter(elements)
+        #print('hello', [list(line) for line in formatter(elements)])
         lines = itertools.chain.from_iterable(itertools.islice(lines, offset, None))
         # send lines
         send(lines, n=n, llimit=10)
@@ -316,8 +320,11 @@ def jsonparse(t, encoding=None):
 class JSONRequest(Request):
 
     def parse(self, text, encoding):
+        #print(text)
         j = jsonparse(text, encoding=encoding)
         b = dicttoxml(j, attr_type=False)
+        #print(j)
+        #print(b)
         return xmlparse(b)
 
     def get(self, e, f):

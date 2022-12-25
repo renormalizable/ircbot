@@ -25,8 +25,12 @@ async def keepalive(message, **kwargs):
 
 @bot.on('PRIVMSG')
 async def privmsg_commands(nick, target, message, **kwargs):
-    if nick == bot.nick:
-        return
+    #if nick == bot.nick:
+    #    return
+    #if 'condy' in nick.lower() or 'flandre' in nick.lower() or 'youmu' in nick.lower():
+    #    return
+    #if '#linux-cn' == target:
+    #    return
     if any(n in nick.lower() for n in ['labots']):
         return
 
@@ -38,7 +42,7 @@ async def privmsg_commands(nick, target, message, **kwargs):
 
     coros = [f(bot, nick, message, sender) for f in bot.modules.commands.privmsg]
 
-    await asyncio.wait(coros)
+    await asyncio.wait([asyncio.create_task(c) for c in coros])
 
 
 @bot.on('PRIVMSG')
@@ -50,7 +54,7 @@ async def privmsg_admin(nick, target, message, **kwargs):
 
     coros = [f(bot, nick, message, sender) for f in bot.modules.admin.privmsg]
 
-    await asyncio.wait(coros)
+    await asyncio.wait([asyncio.create_task(c) for c in coros])
 
 
 bot.loop.create_task(bot.connect())

@@ -1,5 +1,5 @@
 import asyncio
-from urllib.parse  import quote_plus
+from urllib.parse  import parse_qs, quote_plus, urlparse
 import re
 
 from .common import Get
@@ -8,8 +8,8 @@ from .tool import html, xml, addstyle, htmlparse
 from .api import google
 
 # github search?
-# plato.stanford.edu
 # oeis.org
+# reddit comment like zhihu
 
 # html parse
 
@@ -19,15 +19,18 @@ def arxiv(arg, send):
     print('arxiv')
 
     arg.update({
-        'n': arg['n'] or '5',
-        'url': 'http://arxiv.org/search',
-        'xpath': '//*[@id="dlpage"]/dl/dt',
+        'n': arg['n'] or '3',
+        'url': 'https://arxiv.org/search',
+        #'xpath': '//*[@id="dlpage"]/dl/dt',
+        'xpath': '//*[@class="arxiv-result"]',
     })
     params = {'query': arg['query'], 'searchtype': 'all'}
     def format(self, es):
         field = [
-            ('./span/a[1]', 'text', lambda x: self.iter_first(x)[6:]),
-            ('./following-sibling::dd[1]/div/div[1]/span', 'tail', self.iter_first),
+            #('./span/a[1]', 'text', lambda x: self.iter_first(x)[6:]),
+            #('./following-sibling::dd[1]/div/div[1]/span', 'tail', self.iter_first),
+            ('./div/p/a', 'text', lambda x: self.iter_first(x)[6:]),
+            ('./p[1]', '', lambda x: self.iter_first(x).strip()),
         ]
         return (['[\\x0302{0}\\x0f] {1}'.format(*self.get_fields(self.get, e, field))] for e in es)
 
@@ -238,7 +241,7 @@ def manfreebsd(arg, send):
         'query': arg['query'].lower(),
         'apropos': 0,
         'sektion': 0,
-        'manpath': 'FreeBSD 11.1-RELEASE and Ports',
+        'manpath': 'FreeBSD 13.0-RELEASE and Ports',
         'arch': 'default',
         'format': 'html',
     }
@@ -334,7 +337,7 @@ def wiki(arg, send):
         'en': 'https://en.wikipedia.org/w/',
         'ja': 'https://ja.wikipedia.org/w/',
         # misc
-        #'poke': 'https://wiki.52poke.com/',
+        'poke': 'https://wiki.52poke.com/',
         #'pokemon': 'http://www.pokemon.name/w/',
     }
 
@@ -403,11 +406,11 @@ def xkcd(arg, send):
 
     # latest by default
     if arg['number'] == None:
-        url = 'http://xkcd.com/'
+        url = 'https://xkcd.com/'
     elif arg['number'] == 'random':
-        url = 'http://c.xkcd.com/random/comic/'
+        url = 'https://c.xkcd.com/random/comic/'
     else:
-        url = 'http://xkcd.com/{0}/'.format(arg['number'])
+        url = 'https://xkcd.com/{0}/'.format(arg['number'])
 
     arg.update({
         'n': '1',
@@ -415,7 +418,8 @@ def xkcd(arg, send):
         'xpath': '//*[@id="middleContainer"]',
     })
     field = [
-        ('./br[1]', 'tail', '{}'),
+        #('./br[1]', 'tail', '{}'),
+        ('./a[1]', 'href', '{}'),
         ('.//*[@id="comic"]//img', 'alt', '{}'),
         ('.//*[@id="comic"]//img', 'src', '[\\x0302 http:{} \\x0f]'),
         ('.//*[@id="comic"]//img', 'title', '{}'),
@@ -493,6 +497,92 @@ def ipip(arg, send):
     return (yield from html(arg, [], send, method='POST', data=data))
 
 
+# TODO pronunciation
+@asyncio.coroutine
+def kotobank(arg, send):
+    print('kotobank')
+
+    def clean(e):
+        for span in e.xpath('.//span[@class="hinshi"]'):
+            span.text = ''
+        return e
+
+    arg.update({
+        'n': '1',
+        'url': 'https://kotobank.jp/word/{0}'.format(arg['query']),
+        'xpath': '//article[contains(@class, "daijisen")]//section[@class="description"]',
+    })
+    preget = lambda e: clean(e)
+
+    return (yield from html(arg, [], send, preget=preget))
+
+
+@asyncio.coroutine
+def plato(arg, send):
+    print('plato')
+
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': 'https://plato.stanford.edu/search/searcher.py',
+        'xpath': '//div[contains(@class, "result_listing")]',
+    })
+    params = {'query': arg['query']}
+    field = [
+        ('./div[contains(@class, "result_title")]/a', '', '{}'),
+        ('./div[contains(@class, "result_url")]/a', '', '[\\x0302 {} \\x0f]'),
+        ('./div[contains(@class, "result_snippet")]', '', '{}'),
+    ]
+    def format(l):
+        return map(lambda e: '{0} {1} {2}'.format(e[0].strip(), e[1], e[2].strip().replace('\n', ' ')), l)
+
+    return (yield from html(arg, [], send, params=params, field=field, format=format))
+
+
+# TODO ugly
+@asyncio.coroutine
+def bangumi(arg, send):
+    print('bangumi')
+
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': 'https://bangumi.tv/subject_search/{}'.format(arg['query']),
+        'xpath': '//ul[contains(@class, "browserFull")]/li/div',
+    })
+    field = [
+        ('.//a[contains(@class, "l")]', '', '{}'),
+        ('.//small', '', '({})'),
+        ('.//a[contains(@class, "l")]', 'href', '[\\x0302 https://bangumi.tv{} \\x0f]'),
+        ('.//p[contains(@class, "info")]', '', '{}'),
+    ]
+    def format(l):
+        return map(lambda e: '{0} {1} {2} {3}'.format(e[0], e[1], e[2], e[3].strip().replace('\n', ' ')), l)
+
+    return (yield from html(arg, [], send, field=field, format=format))
+
+
+# TODO ugly
+@asyncio.coroutine
+def douban(arg, send):
+    print('douban')
+
+    arg.update({
+        'n': arg['n'] or '1',
+        'url': 'https://www.douban.com/search',
+        'xpath': '//div[contains(@class, "result")]//div[contains(@class, "title")]',
+    })
+    params = {'q': arg['query']}
+    field = [
+        ('./h3/span[1]', '', '{}'),
+        ('./h3/a', '', '{}'),
+        ('./h3/a', 'href', '{}'),
+        ('./div[contains(@class, "rating-info")]', '', '{}'),
+    ]
+    def format(l):
+        return map(lambda e: '{0} {1} [\\x0302 {2} \\x0f] {3}'.format(e[0], e[1], parse_qs(urlparse(e[2]).query)['url'][0], e[3].strip().replace('\n', ' ')), l)
+
+    return (yield from html(arg, [], send, params=params, field=field, format=format))
+
+
 @asyncio.coroutine
 def killteleboto(arg, send):
     print('killteleboto')
@@ -520,5 +610,9 @@ func = [
     (lmgtfy         , r"lmgtfy\s+(?P<query>.+?)"),
     (commit         , r"commit"),
     (ipip           , r"ipip\s+(?P<addr>.+)"),
+    (kotobank       , r"kotobank\s+(?P<query>.+)"),
+    (plato          , r"plato\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    #(bangumi        , r"bangumi\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
+    (douban         , r"douban\s+(?P<query>.+?)(\s+(#(?P<n>\d+))?(\+(?P<offset>\d+))?)?"),
     (killteleboto   , r"killteleboto"),
 ]

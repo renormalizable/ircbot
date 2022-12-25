@@ -15,7 +15,8 @@ RUN set -ex && \
                                 ca-certificates \
                                 libxml2 \
                                 libxslt \
-                                python3 && \
+                                python3 \
+                                py3-pip && \
     update-ca-certificates && \
     pip3 install aiohttp \
                  bottom \
@@ -35,5 +36,4 @@ USER nobody
 
 VOLUME /data
 
-CMD python3 -u /data/ircbot/main.py \
-            >>/data/log 2>&1
+CMD python3 -u /data/ircbot/main.py
