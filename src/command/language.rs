@@ -946,6 +946,61 @@ void atexit() {
   }
 }
 } // namespace tracked
+
+namespace type_strings_detail {
+using std::basic_ostream;
+
+template <typename T> const char *helper() {
+  const char str[] =
+#ifdef __clang__
+      "const char* type_strings_detail::helper() [T = ";
+#else
+      "const char* type_strings_detail::helper() [with T = ";
+#endif
+  return __PRETTY_FUNCTION__ + sizeof(str) - 1;
+}
+
+template <typename T> std::string type() {
+  const char *p = helper<T>();
+  return std::string(p, std::strlen(p) - 1);
+}
+
+template <typename T> std::string expression_category() {
+  if (std::is_lvalue_reference_v<T>) {
+    return "lvalue";
+  } else if (std::is_rvalue_reference_v<T>) {
+    return "rvalue";
+  }
+  return "prvalue";
+}
+
+template <typename> struct type_tag {};
+template <typename> struct etype_tag {};
+
+struct adl_hint {};
+
+template <typename Ch, typename Tr, typename T>
+basic_ostream<Ch, Tr> &operator<<(basic_ostream<Ch, Tr> &os,
+                                  adl_hint (*)(type_tag<T>)) {
+  return os << type<T>();
+}
+
+template <typename Ch, typename Tr, typename T>
+basic_ostream<Ch, Tr> &operator<<(basic_ostream<Ch, Tr> &os, etype_tag<T>) {
+  return os << expression_category<T>() << ' '
+            << type<std::remove_reference_t<T>>();
+}
+} // namespace type_strings_detail
+
+template <typename T>
+type_strings_detail::adl_hint TYPE(type_strings_detail::type_tag<T>) {
+  return type_strings_detail::adl_hint{};
+}
+
+#define TYPE(x)                                                                \
+  type_strings_detail::etype_tag<decltype(void(), (x))> {}
+
+#define BARK std::cout << __PRETTY_FUNCTION__ << ' ';
 "#;
 }
 
