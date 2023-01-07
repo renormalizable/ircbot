@@ -12,13 +12,14 @@ use matrix_sdk::{
     },
     store, Client,
 };
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Read, path::Path, sync::Arc};
+use std::{collections::HashMap, fs::File, io::Read, path::Path, sync::Arc};
 use tracing::*;
 use tracing_subscriber::prelude::*;
 
 use ircbot::{
-    base::{BoxCommandObject, Interpreter},
+    base::{BoxCommandObject, Context as _, Interpreter},
     client::matrix::MessageContext,
     command::{api, input, language, music, random, scheme, utility, Config as CommandConfig},
 };
@@ -102,12 +103,68 @@ async fn main() -> anyhow::Result<()> {
         Box::new(music::MusicQQ),
     ];
 
-    let bot = Arc::new(Interpreter::new(command));
+    let command_test: Vec<BoxCommandObject> = vec![
+        Box::new(input::Kana),
+        Box::new(input::Romaji),
+        Box::new(input::Bim),
+        Box::new(utility::Lower),
+        Box::new(utility::Upper),
+        Box::new(utility::Utc),
+        Box::new(scheme::Newline),
+        Box::new(scheme::Include),
+        Box::new(scheme::Display),
+        Box::new(language::Wandbox),
+        Box::new(language::Geordi),
+        Box::new(language::Rust),
+        Box::new(language::Go),
+        Box::new(language::ReplPython),
+        Box::new(language::ReplRust),
+        Box::new(random::Leetcode),
+        Box::new(api::Urban),
+        Box::new(api::Ipapi),
+        Box::new(api::Poke),
+        Box::new(api::CratesIo),
+        Box::new(api::Btran::new(&config.command.baidu_translate)),
+        Box::new(api::Bangumi),
+        Box::new(api::Speedrun),
+        Box::new(api::Movie),
+        Box::new(music::Music),
+        Box::new(music::Music163),
+        Box::new(music::MusicQQ),
+    ];
+
+    let interpreter = {
+        let mut map = HashMap::new();
+
+        map.insert("disable", Interpreter::new(Vec::new()));
+        map.insert("default", Interpreter::new(command));
+        map.insert("test_matrix", Interpreter::new(command_test));
+
+        Arc::new(map)
+    };
+
+    let router = Arc::new(
+        config
+            .router
+            .raw
+            .get("matrix")
+            .context("router error")?
+            .iter()
+            .map(|(source, target, key)| -> anyhow::Result<_> {
+                Ok((
+                    Regex::new(source).context("regex error")?,
+                    Regex::new(target).context("regex error")?,
+                    key.clone(),
+                ))
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+    );
 
     client.sync_once(config::SyncSettings::default()).await?;
     client.add_event_handler(
         move |event: SyncRoomMessageEvent, room: Room, client: Client| {
-            let bot = Arc::clone(&bot);
+            let interpreter = Arc::clone(&interpreter);
+            let router = Arc::clone(&router);
 
             async move {
                 let room = match room {
@@ -163,11 +220,21 @@ async fn main() -> anyhow::Result<()> {
 
                 stream::iter(MessageContext::new(event, reply, members, room, client))
                     .for_each(|context| {
-                        let bot = Arc::clone(&bot);
+                        let interpreter = Arc::clone(&interpreter);
+                        let router = Arc::clone(&router);
 
                         async move {
                             if let Some(text) = context.message().strip_prefix("'") {
-                                bot.evaluate(&context, text).await
+                                for (source, target, key) in router.iter() {
+                                    if source.is_match(context.source())
+                                        && target.is_match(context.target())
+                                    {
+                                        if let Some(int) = interpreter.get(key.as_str()) {
+                                            int.evaluate(&context, text).await;
+                                            break;
+                                        }
+                                    }
+                                }
                             }
                         }
                     })

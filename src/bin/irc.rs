@@ -1,10 +1,13 @@
+use anyhow::Context as _;
 use futures::prelude::*;
 use irc::client::prelude::*;
+use regex::Regex;
+use std::collections::HashMap;
 use tracing::*;
 use tracing_subscriber::prelude::*;
 
 use ircbot::{
-    base::{BoxCommandObject, Interpreter},
+    base::{BoxCommandObject, Context as _, Interpreter},
     client::irc::MessageContext,
     command::{api, input, language, music, random, scheme, utility, Config as CommandConfig},
 };
@@ -69,7 +72,38 @@ async fn main() -> anyhow::Result<()> {
         Box::new(music::MusicQQ),
     ];
 
-    let bot = Interpreter::new(command);
+    let command_test: Vec<BoxCommandObject> = vec![
+        Box::new(input::Gim),
+        Box::new(utility::Echo),
+        Box::new(api::Wolfram::new(&config.command.wolfram)),
+        Box::new(api::Google::new(&config.command.google)),
+        Box::new(api::Gtran::new(&config.command.google_translate)),
+    ];
+
+    let interpreter = {
+        let mut map = HashMap::new();
+
+        map.insert("disable", Interpreter::new(Vec::new()));
+        map.insert("default", Interpreter::new(command));
+        map.insert("test_irc", Interpreter::new(command_test));
+
+        map
+    };
+
+    let router = config
+        .router
+        .raw
+        .get("irc")
+        .context("router error")?
+        .iter()
+        .map(|(source, target, key)| -> anyhow::Result<_> {
+            Ok((
+                Regex::new(source).context("regex error")?,
+                Regex::new(target).context("regex error")?,
+                key.clone(),
+            ))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     let mut client = Client::from_config(irc).await?;
     client.identify()?;
@@ -99,7 +133,14 @@ async fn main() -> anyhow::Result<()> {
             );
 
             if let Some(text) = context.message().strip_prefix("'") {
-                bot.evaluate(&context, text).await
+                for (source, target, key) in &router {
+                    if source.is_match(context.source()) && target.is_match(context.target()) {
+                        if let Some(int) = interpreter.get(key.as_str()) {
+                            int.evaluate(&context, text).await;
+                            break;
+                        }
+                    }
+                }
             }
 
             Ok(())

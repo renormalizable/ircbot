@@ -5,7 +5,8 @@ use std::{collections::HashMap, fs::File, io::Read, path::Path};
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub command: Command,
-    pub test: Option<Test>,
+    pub interpreter: Interpreter,
+    pub router: Router,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -19,8 +20,15 @@ pub struct Command {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Test {
-    test: Vec<Vec<u64>>,
+pub struct Interpreter {
+    #[serde(flatten)]
+    pub raw: HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Router {
+    #[serde(flatten)]
+    pub raw: HashMap<String, Vec<(String, String, String)>>,
 }
 
 impl Config {
