@@ -51,7 +51,7 @@ def friend_message(this, arguments):
 
     coros = [f(bot, nick, message, sender) for f in bot.modules.table['commands'].privmsg]
 
-    return (yield from asyncio.wait(coros))
+    return (await asyncio.wait(coros))
 
 @bot.on('group.message.normal')
 def group_message(this, arguments):
@@ -71,7 +71,7 @@ def group_message(this, arguments):
 
     coros = [f(bot, nick, message, sender) for f in bot.modules.table['commands'].privmsg]
 
-    return (yield from asyncio.wait(coros))
+    return (await asyncio.wait(coros))
 
 tasks = [bot.run()]
 

@@ -10,8 +10,7 @@ def lsend(l, send, **kw):
     send(l, n=0, llimit=10, **kw)
 
 
-@asyncio.coroutine
-def cmdsub(cmd, string):
+async def cmdsub(cmd, string):
     print('cmdsub')
 
     #esc = [
@@ -32,15 +31,13 @@ def cmdsub(cmd, string):
     #    (r'\x1f', '\x1f'),
     #]
 
-    @asyncio.coroutine
-    def identity(x):
+    async def identity(x):
         return x
 
     # how about normalizing the message?
-    @asyncio.coroutine
-    def command(x):
+    async def command(x):
         get = Get()
-        status = yield from cmd(x, [], get)
+        status = await cmd(x, [], get)
         if status:
             #msg = get.str(sep=' ')
             #for (s, e) in esc:
@@ -83,74 +80,63 @@ def cmdsub(cmd, string):
         return string
 
     coros = [command(x) if i % 2 == 1 else identity(x) for (i, x) in enumerate(s)]
-    s = yield from asyncio.gather(*coros)
+    s = await asyncio.gather(*coros)
     print('cmdsub: {0}'.format(s))
 
     return ''.join(s)
 
 
-@asyncio.coroutine
-def lower(arg, send):
+async def lower(arg, send):
     send(arg['content'].lower())
 
 
-@asyncio.coroutine
-def upper(arg, send):
+async def upper(arg, send):
     send(arg['content'].upper())
 
 
-@asyncio.coroutine
-def newline(arg, send):
+async def newline(arg, send):
     send('\n\n')
 
 
 # coreutils
 
 
-@asyncio.coroutine
-def echo(arg, send):
+async def echo(arg, send):
     send(arg['content'], raw=True)
 
 
-@asyncio.coroutine
-def cat(arg, lines, send):
+async def cat(arg, lines, send):
     lsend(lines, send, raw=bool(arg['raw']))
 
 
-@asyncio.coroutine
-def tac(arg, lines, send):
+async def tac(arg, lines, send):
     lsend(list(reversed(lines)), send)
 
 
-@asyncio.coroutine
-def tee(arg, lines, send):
+async def tee(arg, lines, send):
     lsend(lines, send)
     # do not tee again?
     if arg['output'] == '\'':
-        yield from arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
+        await arg['meta']['command'](arg['command'], lines, arg['meta']['send'])
     if arg['output'] == '"':
-        yield from arg['meta']['command'](arg['command'], lines, arg['meta']['save'])
+        await arg['meta']['command'](arg['command'], lines, arg['meta']['save'])
 
 
-@asyncio.coroutine
-def head(arg, lines, send):
+async def head(arg, lines, send):
     l = int(arg['line'] or 10)
     lsend(lines[:l], send)
 
 
-@asyncio.coroutine
-def tail(arg, lines, send):
+async def tail(arg, lines, send):
     l = int(arg['line'] or 10)
     lsend(lines[(-l):], send)
 
 
-@asyncio.coroutine
-def sort(arg, lines, send):
+async def sort(arg, lines, send):
     lsend(sorted(lines), send)
 
 
-@asyncio.coroutine
-def uniq(arg, lines, send):
+async def uniq(arg, lines, send):
     l = lines[:1]
     for e in lines:
         if e != l[-1]:
@@ -158,8 +144,7 @@ def uniq(arg, lines, send):
     lsend(l, send)
 
 
-@asyncio.coroutine
-def b64(arg, lines, send):
+async def b64(arg, lines, send):
     decode = arg['decode']
     content = '\n'.join(lines) or arg['content'] or ''
 
@@ -172,14 +157,12 @@ def b64(arg, lines, send):
         send(base64.b64encode(content.encode('utf-8')).decode('utf-8', 'replace'))
 
 
-@asyncio.coroutine
-def sleep(arg, lines, send):
-    yield from asyncio.sleep(int(arg['time']))
+async def sleep(arg, lines, send):
+    await asyncio.sleep(int(arg['time']))
     send('wake up')
 
 
-@asyncio.coroutine
-def wc(arg, lines, send):
+async def wc(arg, lines, send):
     content = ('\n'.join(lines) or arg['content'] or '') + '\n'
 
     l = len(content.splitlines())
@@ -188,26 +171,22 @@ def wc(arg, lines, send):
     send('{0} {1} {2}'.format(l, w, b))
 
 
-@asyncio.coroutine
-def shuf(arg, lines, send):
+async def shuf(arg, lines, send):
     random.shuffle(lines)
     lsend(lines, send)
 
 
-@asyncio.coroutine
-def nl(arg, lines, send):
+async def nl(arg, lines, send):
     for i in range(len(lines)):
         lines[i] = '{0} {1}'.format(i + 1, lines[i])
     lsend(lines, send)
 
 
-@asyncio.coroutine
-def paste(arg, lines, send):
+async def paste(arg, lines, send):
     lsend([(arg['delimiter'] or '\n').join(lines)], send)
 
 
-@asyncio.coroutine
-def tr(arg, lines, send):
+async def tr(arg, lines, send):
     line = [arg['content']] if arg['content'] else lines
     lsend([l.replace(arg['old'], arg['new']) for l in line], send)
 
@@ -307,8 +286,7 @@ class Sed:
 
         return []
 
-    @asyncio.coroutine
-    def __call__(self, arg, lines, send):
+    async def __call__(self, arg, lines, send):
         if not lines:
             raise Exception()
 

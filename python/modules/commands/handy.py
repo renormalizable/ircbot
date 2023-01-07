@@ -1,4 +1,3 @@
-import asyncio
 from urllib.parse  import parse_qs, quote_plus, urlparse
 import re
 
@@ -14,8 +13,7 @@ from .api import google
 # html parse
 
 
-@asyncio.coroutine
-def arxiv(arg, send):
+async def arxiv(arg, send):
     print('arxiv')
 
     arg.update({
@@ -34,22 +32,20 @@ def arxiv(arg, send):
         ]
         return (['[\\x0302{0}\\x0f] {1}'.format(*self.get_fields(self.get, e, field))] for e in es)
 
-    return (yield from html(arg, [], send, params=params, format_new=format))
+    return (await html(arg, [], send, params=params, format_new=format))
 
 
-@asyncio.coroutine
-def vixra(arg, send):
+async def vixra(arg, send):
     print('vixra')
 
     arg.update({
         'query': 'site:vixra.org/abs {}'.format(arg['query'])
     })
 
-    return (yield from google(arg, [], send))
+    return (await google(arg, [], send))
 
 
-@asyncio.coroutine
-def zhihu(arg, send):
+async def zhihu(arg, send):
     print('zhihu')
 
     def image(e):
@@ -70,11 +66,10 @@ def zhihu(arg, send):
     })
     preget = lambda e: image(e)
 
-    return (yield from html(arg, [], send, preget=preget))
+    return (await html(arg, [], send, preget=preget))
 
 
-@asyncio.coroutine
-def bihu(arg, send):
+async def bihu(arg, send):
     print('bihu')
 
     def image(e):
@@ -131,11 +126,10 @@ def bihu(arg, send):
            #yield '[\\x0304{0}\\x0f] \\x16{1}:\\x0f {2} \\x0302{3}\\x0f'.format(vote, name, digest, link)
            yield '[\\x0304{0}\\x0f] \\x02{1}:\\x0f {2}'.format(vote, name, digest)
 
-    return (yield from html(arg, [], send, field=field, preget=preget, format=format))
+    return (await html(arg, [], send, field=field, preget=preget, format=format))
 
 
-@asyncio.coroutine
-def pm25(arg, send):
+async def pm25(arg, send):
     print('pm25')
 
     city = {
@@ -162,11 +156,10 @@ def pm25(arg, send):
         e = list(l)[0]
         return [', '.join(e).replace('\n', '')]
 
-    return (yield from html(arg, [], send, field=field, format=format))
+    return (await html(arg, [], send, field=field, format=format))
 
 
-@asyncio.coroutine
-def btdigg(arg, send):
+async def btdigg(arg, send):
     print('btdigg')
 
     arg.update({
@@ -190,11 +183,10 @@ def btdigg(arg, send):
             line.append(e[2])
         return line
 
-    return (yield from html(arg, [], send, params=params, field=field, format=format))
+    return (await html(arg, [], send, params=params, field=field, format=format))
 
 
-@asyncio.coroutine
-def man(arg, send):
+async def man(arg, send):
     print('man')
 
     section = arg['section'].lower() if arg['section'] else arg['section']
@@ -209,7 +201,7 @@ def man(arg, send):
         }
         f = [('.', 'href', '{}')]
         get = Get()
-        yield from html(a, [], get, field=f)
+        await html(a, [], get, field=f)
         path = get.line[0]
     else:
         path = '{0}/{1}'.format(section, name)
@@ -225,11 +217,10 @@ def man(arg, send):
         ('./meta[@name = "description"]', 'content', '{}'),
     ]
 
-    return (yield from html(arg, [], send, field=field))
+    return (await html(arg, [], send, field=field))
 
 
-@asyncio.coroutine
-def manfreebsd(arg, send):
+async def manfreebsd(arg, send):
     print('manfreebsd')
 
     arg.update({
@@ -253,11 +244,10 @@ def manfreebsd(arg, send):
     def format(l):
         return map(lambda e: '{0} {1} {2}'.format(e[0], e[1].strip(), e[2]), l)
 
-    return (yield from html(arg, [], send, params=params, field=field, format=format))
+    return (await html(arg, [], send, params=params, field=field, format=format))
 
 
-@asyncio.coroutine
-def gauss(arg, send):
+async def gauss(arg, send):
     print('gauss')
 
     arg.update({
@@ -266,11 +256,10 @@ def gauss(arg, send):
         'xpath': '//*[@id="wrapper"]/div/p/a[@class="oldlink"]',
     })
 
-    return (yield from html(arg, [], send))
+    return (await html(arg, [], send))
 
 
-@asyncio.coroutine
-def foldoc(arg, send):
+async def foldoc(arg, send):
     print('foldoc')
 
     def clean(e):
@@ -290,11 +279,10 @@ def foldoc(arg, send):
 
     get = lambda e, f: addstyle(clean(e)).xpath('string()')
 
-    return (yield from html(arg, [], send, get=get))
+    return (await html(arg, [], send, get=get))
 
 
-@asyncio.coroutine
-def wiki(arg, send):
+async def wiki(arg, send):
     print('wiki')
 
     if arg['site'] == 'cpp':
@@ -316,7 +304,7 @@ def wiki(arg, send):
         }
         def format(l):
             return map(lambda e: '[\\x0302 http://en.cppreference.com/w/{0} \\x0f]'.format(e[0].replace(' ', '_')), l)
-        return (yield from xml(arg, [], send, params=params, format=format))
+        return (await xml(arg, [], send, params=params, format=format))
 
     def clean(e):
         for s in e.xpath('.//script | .//style'):
@@ -392,16 +380,15 @@ def wiki(arg, send):
 
     get = lambda e, f: addstyle(clean(e)).xpath('string()')
 
-    #return (yield from xml(arg, [], send, params=params, transform=transform, get=get))
+    #return (await xml(arg, [], send, params=params, transform=transform, get=get))
     try:
-        yield from xml(arg, [], send, params=params, transform=transform, get=get)
+        await xml(arg, [], send, params=params, transform=transform, get=get)
     except:
         params['gsrwhat'] = 'text'
-        yield from xml(arg, [], send, params=params, transform=transform, get=get)
+        await xml(arg, [], send, params=params, transform=transform, get=get)
 
 
-@asyncio.coroutine
-def xkcd(arg, send):
+async def xkcd(arg, send):
     print('xkcd')
 
     # latest by default
@@ -427,11 +414,10 @@ def xkcd(arg, send):
     def format(l):
         return map(lambda e: '[\\x0304{0}\\x0f] {1} {2} {3}'.format(re.search(r"[0-9]+", e[0]).group(), e[1], e[2], e[3]), l)
 
-    return (yield from html(arg, [], send, field=field, format=format))
+    return (await html(arg, [], send, field=field, format=format))
 
 
-@asyncio.coroutine
-def etymology(arg, send):
+async def etymology(arg, send):
     print('etymology')
 
     def foreign(e):
@@ -454,18 +440,16 @@ def etymology(arg, send):
     ]
     get = lambda e, f: addstyle(foreign(e)).xpath('string()')
 
-    return (yield from html(arg, [], send, params=params, field=field, get=get))
+    return (await html(arg, [], send, params=params, field=field, get=get))
 
 
-@asyncio.coroutine
-def lmgtfy(arg, send):
+async def lmgtfy(arg, send):
     print('lmgtfy')
 
     return send('[\\x0302 https://lmgtfy.com/?q={} \\x0f]'.format(quote_plus(arg['query'])))
 
 
-@asyncio.coroutine
-def commit(arg, send):
+async def commit(arg, send):
     print('commit')
 
     arg.update({
@@ -474,11 +458,10 @@ def commit(arg, send):
         'xpath': '.',
     })
 
-    return (yield from html(arg, [], send))
+    return (await html(arg, [], send))
 
 
-@asyncio.coroutine
-def ipip(arg, send):
+async def ipip(arg, send):
     print('ipip')
 
     arg.update({
@@ -493,13 +476,12 @@ def ipip(arg, send):
         'ip': arg['addr'],
     }
 
-    #return (yield from html(arg, [], send, method='POST', data=data, field=field))
-    return (yield from html(arg, [], send, method='POST', data=data))
+    #return (await html(arg, [], send, method='POST', data=data, field=field))
+    return (await html(arg, [], send, method='POST', data=data))
 
 
 # TODO pronunciation
-@asyncio.coroutine
-def kotobank(arg, send):
+async def kotobank(arg, send):
     print('kotobank')
 
     def clean(e):
@@ -514,11 +496,10 @@ def kotobank(arg, send):
     })
     preget = lambda e: clean(e)
 
-    return (yield from html(arg, [], send, preget=preget))
+    return (await html(arg, [], send, preget=preget))
 
 
-@asyncio.coroutine
-def plato(arg, send):
+async def plato(arg, send):
     print('plato')
 
     arg.update({
@@ -535,12 +516,11 @@ def plato(arg, send):
     def format(l):
         return map(lambda e: '{0} {1} {2}'.format(e[0].strip(), e[1], e[2].strip().replace('\n', ' ')), l)
 
-    return (yield from html(arg, [], send, params=params, field=field, format=format))
+    return (await html(arg, [], send, params=params, field=field, format=format))
 
 
 # TODO ugly
-@asyncio.coroutine
-def bangumi(arg, send):
+async def bangumi(arg, send):
     print('bangumi')
 
     arg.update({
@@ -557,12 +537,11 @@ def bangumi(arg, send):
     def format(l):
         return map(lambda e: '{0} {1} {2} {3}'.format(e[0], e[1], e[2], e[3].strip().replace('\n', ' ')), l)
 
-    return (yield from html(arg, [], send, field=field, format=format))
+    return (await html(arg, [], send, field=field, format=format))
 
 
 # TODO ugly
-@asyncio.coroutine
-def douban(arg, send):
+async def douban(arg, send):
     print('douban')
 
     arg.update({
@@ -580,11 +559,10 @@ def douban(arg, send):
     def format(l):
         return map(lambda e: '{0} {1} [\\x0302 {2} \\x0f] {3}'.format(e[0], e[1], parse_qs(urlparse(e[2]).query)['url'][0], e[3].strip().replace('\n', ' ')), l)
 
-    return (yield from html(arg, [], send, params=params, field=field, format=format))
+    return (await html(arg, [], send, params=params, field=field, format=format))
 
 
-@asyncio.coroutine
-def killteleboto(arg, send):
+async def killteleboto(arg, send):
     print('killteleboto')
 
     return send('Avada Kedavra!\\x030', raw=True)

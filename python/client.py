@@ -32,8 +32,7 @@ class Client(bottom.Client):
         self.modules = importlib.import_module('modules')
 
     ## fully async
-    #@asyncio.coroutine
-    #def trigger(self, event, **kwargs):
+    #async def trigger(self, event, **kwargs):
     #    partials = self.__partials__[event]
     #    tasks = [func(**kwargs) for func in partials]
     #    if not tasks:

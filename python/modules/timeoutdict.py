@@ -123,20 +123,18 @@ class TimeoutDict(MutableMapping):
 #        self.queues = {}
 #        self.timeout = 60
 #
-#    @asyncio.coroutine
-#    def add(self, nick, msg, send, func):
+#    async def add(self, nick, msg, send, func):
 #        if nick not in self.queues:
 #             # no size limit for now
 #             self.queues[nick] = asyncio.Queue()
-#             yield from self.queues[nick].put((msg, send))
+#             await self.queues[nick].put((msg, send))
 #             asyncio.async(func(nick))
 #        else:
-#             yield from self.queues[nick].put((msg, send))
+#             await self.queues[nick].put((msg, send))
 #
-#    @asyncio.coroutine
-#    def get(self, nick):
+#    async def get(self, nick):
 #        if nick in self.queues:
-#            item = yield from self.queues[nick].get()
+#            item = await self.queues[nick].get()
 #            #if self.queues[nick].empty():
 #            #    self.queues.pop(nick, None)
 #            return item

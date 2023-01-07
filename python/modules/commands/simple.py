@@ -1,4 +1,3 @@
-import asyncio
 import time
 import random
 import math
@@ -7,20 +6,17 @@ import re
 import datetime
 
 
-@asyncio.coroutine
-def say(arg, send):
+async def say(arg, send):
     #send(arg['content'])
     send('[{0}] '.format(arg['meta']['nick']) + arg['content'], raw=True)
 
 
-@asyncio.coroutine
-def ping(arg, send):
+async def ping(arg, send):
     send("ping!")
     #send("\\x0305ping!\\x0f")
 
 
-@asyncio.coroutine
-def pong(arg, send):
+async def pong(arg, send):
     send("pong!")
 
 
@@ -30,8 +26,7 @@ class ping2c():
         self.i = 3
         self.tt = time.time()
 
-    @asyncio.coroutine
-    def __call__(self, arg, send):
+    async def __call__(self, arg, send):
         print(self.i)
         t = time.time()
         if t - self.tt > 20:
@@ -69,8 +64,7 @@ class unicodenormalize:
         return self.reg.sub('', unicodedata.normalize('NFKD', s.lower())).translate(self.trans)
 unormalize = unicodenormalize()
 
-@asyncio.coroutine
-def pia(arg, send):
+async def pia(arg, send):
     content = arg['content'] or ''
 
     fullface = [
@@ -149,8 +143,7 @@ def pia(arg, send):
         send(icon + content)
 
 
-@asyncio.coroutine
-def mua(arg, send):
+async def mua(arg, send):
     content = arg['content'] or ''
 
     #if arg['meta']['bot'].nick not in content:
@@ -163,8 +156,7 @@ def mua(arg, send):
         send('o(*￣3￣)o ' + content)
 
 
-@asyncio.coroutine
-def prpr(arg, send):
+async def prpr(arg, send):
     content = arg['content'] or ''
 
     if arg['meta']['bot'].nick.lower() in unormalize(content):
@@ -173,8 +165,7 @@ def prpr(arg, send):
         send('哧溜! ' + content)
 
 
-@asyncio.coroutine
-def hug(arg, send):
+async def hug(arg, send):
     content = arg['content'] or ''
 
     #if arg['meta']['bot'].nick not in content:
@@ -187,8 +178,7 @@ def hug(arg, send):
         send('(つ°ω°)つ ' + content)
 
 
-@asyncio.coroutine
-def color(arg, send):
+async def color(arg, send):
     #c = [
     #    ('00', 'white'),
     #    ('01', 'black'),
@@ -236,8 +226,7 @@ def color(arg, send):
 
 
 # provide a search?
-@asyncio.coroutine
-def mode(arg, send):
+async def mode(arg, send):
     u = [
         ('g', 'caller-id'),
         ('i', 'invisible'),
@@ -342,25 +331,21 @@ def getrandom(show):
     return get(random.choice(l))
 
 
-@asyncio.coroutine
-def up(arg, send):
+async def up(arg, send):
     send('+' + getrandom(arg['show']))
 
 
-@asyncio.coroutine
-def down(arg, send):
+async def down(arg, send):
     send('-' + getrandom(arg['show']))
 
 
-@asyncio.coroutine
-def utc(arg, send):
+async def utc(arg, send):
 
     tz = arg['zone'] or '0'
     send(datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=int(tz)))))
 
 
-@asyncio.coroutine
-def horo(arg, send):
+async def horo(arg, send):
     l = [
         '咱可是贤狼啊。起码还是知道这世界上有很多东西是咱所不了解的。',
         '人呐……在这种时候似乎会说『最近的年轻人……』呗。',
@@ -408,8 +393,7 @@ def horo(arg, send):
     send('「{}」'.format(random.choice(l)))
 
 
-@asyncio.coroutine
-def bidi(arg, send):
+async def bidi(arg, send):
     if arg['content']:
         return send(arg['content'] + ' bidi')
 
@@ -437,13 +421,12 @@ def bidi(arg, send):
     if random.randint(1, 100) <= 10:
         lang = random.choice(['en', 'zh', 'ja', 'eo', 'id', 'la', 'no', 'vi'])
         line = random.choice(audio)
-        yield from arg['meta']['command']('gtran {}:audio {}'.format(lang, line), [], send)
+        await arg['meta']['command']('gtran {}:audio {}'.format(lang, line), [], send)
     else:
         send(random.choice(random.choice([normal, normal, normal, normal, short, audio])))
 
 
-@asyncio.coroutine
-def latex(arg, send):
+async def latex(arg, send):
     symbol = [
         (r'\alpha',       '\U0001d6fc'),
         (r'\pi',          '\U0001d6d1'),

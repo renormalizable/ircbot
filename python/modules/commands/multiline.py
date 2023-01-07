@@ -1,4 +1,3 @@
-import asyncio
 import re
 import json
 from urllib.parse import urlsplit
@@ -7,8 +6,7 @@ from .common import Get
 from .tool import fetch, html, regex
 
 
-@asyncio.coroutine
-def getcode(url):
+async def getcode(url):
     site = {
         # raw
         'cfp.vim-cn.com':              '.',
@@ -70,16 +68,15 @@ def getcode(url):
     xpath = site[u[1]]
     if xpath == '.':
         arg = {'url': url, 'regex': r'(.*)(?:\n|$)', 'n': '0'}
-        yield from regex(arg, [], get)
+        await regex(arg, [], get)
     else:
         arg = {'url': url, 'xpath': xpath, 'n': '0'}
-        yield from html(arg, [], get)
+        await html(arg, [], get)
 
     return get.line
 
 
-@asyncio.coroutine
-def geturl(msg):
+async def geturl(msg):
     #reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>http\S+)(?:\s+(?P<params>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
     reg = re.compile(r"(?P<method>GET|POST)\s+(?P<url>http\S+)(?:\s+p(?P<params>\{.+?\}))?(?:\s+h(?P<headers>\{.+?\}))?(?:\s+:(?P<content>\w+))?", re.IGNORECASE)
     arg = reg.fullmatch(msg)
@@ -90,35 +87,32 @@ def geturl(msg):
         headers = json.loads(d.get('headers') or '{}')
         content = d.get('content')
         if content:
-            r = yield from fetch(d['method'], d['url'], params=params, headers=headers, content='raw')
+            r = await fetch(d['method'], d['url'], params=params, headers=headers, content='raw')
             #text = str(getattr(r, content.lower()) or '')
             text = str(getattr(r, content))
         else:
-            text = yield from fetch(d['method'], d['url'], params=params, headers=headers, content='text')
+            text = await fetch(d['method'], d['url'], params=params, headers=headers, content='text')
     else:
         raise Exception()
 
     return [text]
 
 
-@asyncio.coroutine
-def fetcher(msg):
+async def fetcher(msg):
     try:
-        return (yield from getcode(msg))
+        return (await getcode(msg))
     except:
         print('not paste bin')
-        return (yield from geturl(msg))
+        return (await geturl(msg))
 
 # util
 
 
-@asyncio.coroutine
-def clear(arg, lines, send):
+async def clear(arg, lines, send):
     print('clear')
 
 
-@asyncio.coroutine
-def undo(arg, lines, send):
+async def undo(arg, lines, send):
     print('undo')
 
     n = int(arg['n'] or 1)

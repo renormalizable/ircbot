@@ -1,4 +1,3 @@
-import asyncio
 import re
 import time
 from urllib.parse  import quote_plus, urlsplit, unquote
@@ -9,8 +8,7 @@ from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse, h
 
 # more filter, for query = 傻二
 # try action=opensearch ?
-#@asyncio.coroutine
-#def moegirl(arg, send):
+#async def moegirl(arg, send):
 #    print('moegirl')
 #
 #    arg.update({
@@ -39,13 +37,13 @@ from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse, h
 #    result = GetRaw()
 #
 #    try:
-#        yield from xml(arg, [], result, params=params, field=field, format=format)
+#        await xml(arg, [], result, params=params, field=field, format=format)
 #    except:
 #        print('retry full text search')
 #        params['gsrwhat'] = 'text'
 #
 #        try:
-#            yield from xml(arg, [], result, params=params, field=field, format=format)
+#            await xml(arg, [], result, params=params, field=field, format=format)
 #        except:
 #            raise Exception("maybe it's not moe enough?")
 #
@@ -118,11 +116,10 @@ from .tool import fetch, htmltostr, html, xml, addstyle, jsonparse, htmlparse, h
 #
 #    get = lambda e, f: addstyle(ruby(hidden(clean(e)))).xpath('string()')
 #
-#    yield from xml(arg, [], send, params=params, transform=transform, get=get)
+#    await xml(arg, [], send, params=params, transform=transform, get=get)
 
 
-@asyncio.coroutine
-def moegirl(arg, send):
+async def moegirl(arg, send):
     arg.update({
         'n': arg['n'] or '1',
         #'url': 'https://zh.moegirl.org/api.php',
@@ -150,13 +147,13 @@ def moegirl(arg, send):
     result = GetRaw()
 
     try:
-        yield from xml(arg, [], result, params=params, format_new=format)
+        await xml(arg, [], result, params=params, format_new=format)
     except:
         print('retry full text search')
         params['gsrwhat'] = 'text'
 
         try:
-            yield from xml(arg, [], result, params=params, format_new=format)
+            await xml(arg, [], result, params=params, format_new=format)
         except:
             raise Exception("maybe it's not moe enough?")
 
@@ -228,11 +225,10 @@ def moegirl(arg, send):
             lambda x: x
         ))]
 
-    yield from xml(arg, [], send, params=params, format_new=format2)
+    await xml(arg, [], send, params=params, format_new=format2)
 
 
-@asyncio.coroutine
-def nmb(arg, send):
+async def nmb(arg, send):
     print('nmb')
     #url = 'http://h.koukuko.com/'
     #url = 'http://kukuku.cc/'
@@ -271,11 +267,10 @@ def nmb(arg, send):
     def format(l):
         return map(lambda e: ' '.join((e[0], e[1].strip(), e[2])), l)
 
-    return (yield from html(arg, [], send, field=field, format=format))
+    return (await html(arg, [], send, field=field, format=format))
 
 
-@asyncio.coroutine
-def adnmb(arg, send):
+async def adnmb(arg, send):
     print('adnmb')
     url = 'http://h.adnmb.com/home/forum/'
 
@@ -298,11 +293,10 @@ def adnmb(arg, send):
         ('.//img', 'src', '[\\x0302 http://h.adnmb.com{} \\x0f]'),
     ]
 
-    return (yield from html(arg, [], send, field=field))
+    return (await html(arg, [], send, field=field))
 
 
-#@asyncio.coroutine
-#def acfun(arg, send):
+#async def acfun(arg, send):
 #    print('acfun')
 #    count = int(arg['count'])
 #    url = 'http://www.acfun.tv/comment_list_json.aspx?contentId={0}&currentPage='.format(quote_plus(arg['id']))
@@ -354,9 +348,8 @@ def adnmb(arg, send):
 #        s = colorreg.sub(color, s)
 #        return s
 #
-#    @asyncio.coroutine
-#    def func(num):
-#        text = yield from fetch('GET', url + str(num))
+#    async def func(num):
+#        text = await fetch('GET', url + str(num))
 #        j = jsonparse(text)
 #        # or branch is for older comment format
 #        d = j.get('commentContentArr') or j.get('data').get('commentContentArr')
@@ -371,9 +364,9 @@ def adnmb(arg, send):
 #            if i >= n:
 #                raise Exception()
 #            else:
-#                return (yield from func(i + 1))
+#                return (await func(i + 1))
 #
-#    line = yield from func(1)
+#    line = await func(1)
 #    return send(line, n=1)
 
 class Acfun:
@@ -446,13 +439,12 @@ class Acfun:
         print('ubb time:', time.time() - t)
         return s
 
-    @asyncio.coroutine
-    def func(self, url, num, count):
+    async def func(self, url, num, count):
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.125 Safari/537.36',
         }
 
-        text = yield from fetch('GET', url + str(num), headers=headers)
+        text = await fetch('GET', url + str(num), headers=headers)
         print(text)
         j = jsonparse(text)
         #d = j.get('commentContentArr')
@@ -473,7 +465,7 @@ class Acfun:
         #    if i >= n:
         #        raise Exception()
         #    else:
-        #        return (yield from self.func(url, i + 1, count))
+        #        return (await self.func(url, i + 1, count))
         #d = j.get('commentsMap')
         d = dict(enumerate(j.get('rootComments')))
         try:
@@ -488,10 +480,9 @@ class Acfun:
             if i >= n:
                 raise Exception()
             else:
-                return (yield from self.func(url, i + 1, count))
+                return (await self.func(url, i + 1, count))
 
-    @asyncio.coroutine
-    def __call__(self, arg, send):
+    async def __call__(self, arg, send):
         print('acfun')
         count = int(arg['count'])
         path = urlsplit(arg['url'])[2]
@@ -501,14 +492,13 @@ class Acfun:
         #url = 'https://www.acfun.cn/rest/pc-direct/comment/listByFloor?sourceId={0}&sourceType=1&page='.format(quote_plus(id))
         url = 'https://www.acfun.cn/rest/pc-direct/comment/list?sourceId={0}&sourceType=3&page='.format(quote_plus(id))
 
-        line = yield from self.func(url, 1, count)
+        line = await self.func(url, 1, count)
         return send(line, n=1)
 
 acfun = Acfun()
 
 
-@asyncio.coroutine
-def biu(arg, send):
+async def biu(arg, send):
     print('biu')
 
     arg.update({
@@ -541,7 +531,7 @@ def biu(arg, send):
     def format(l):
         return map(formatter, l)
 
-    return (yield from html(arg, [], send, params=params, field=field, preget=preget, format=format))
+    return (await html(arg, [], send, params=params, field=field, preget=preget, format=format))
 
 
 help = [

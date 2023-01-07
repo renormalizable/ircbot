@@ -38,17 +38,15 @@ class ToxClient(pytriam.Messager):
 
     def trigger(self, name, arguments):
         print('trigger', name, arguments)
-        @asyncio.coroutine
-        def task():
+        async def task():
             func = self.events.get(name)
             if func:
                 coros = [f(self, arguments) for f in func]
-                yield from asyncio.wait(coros)
+                await asyncio.wait(coros)
 
         self.loop.call_soon(asyncio.async, task())
 
-    @asyncio.coroutine
-    def run(self):
+    async def run(self):
         self.trigger('tox.init', {})
         checked = False
 
@@ -71,7 +69,7 @@ class ToxClient(pytriam.Messager):
                 self.core.iterate()
             except UnicodeDecodeError:
                 print('ignore unicode error')
-            yield from asyncio.sleep(0.01)
+            await asyncio.sleep(0.01)
 
     def send(self, command, *, target=0, message=''):
         if command == 'friend':
