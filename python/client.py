@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import importlib
 
 import bottom
@@ -8,10 +9,11 @@ from common import dePrefix, Normalize, splitmessage
 
 class Client(bottom.Client):
 
-    def __init__(self, loop, config):
+    def __init__(self, config):
         self.config = importlib.import_module(config)
         super().__init__(self.config.host, self.config.port, **self.config.option)
-        #self.loop = loop
+        # https://github.com/numberoverzero/bottom/issues/60
+        self._events = collections.defaultdict(lambda: asyncio.Event())
 
         self.admin = self.config.admin
         self.nick = self.config.nick

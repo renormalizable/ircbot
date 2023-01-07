@@ -4,7 +4,7 @@ import json
 import re
 from urllib.parse    import urldefrag
 
-import demjson
+import demjson3 as demjson
 import html5lib
 import lxml.html
 from aiohttp         import ClientSession, ClientRequest

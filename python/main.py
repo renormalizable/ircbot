@@ -6,9 +6,7 @@ import client
 
 tracemalloc.start()
 
-loop = asyncio.get_event_loop()
-
-bot = client.Client(loop, 'config')
+bot = client.Client('config')
 
 
 @bot.on('CLIENT_CONNECT')

@@ -20,11 +20,11 @@ RUN set -ex && \
     update-ca-certificates && \
     pip3 install aiohttp \
                  bottom \
-                 demjson \
+                 demjson3 \
                  dicttoxml \
                  html5lib \
                  lxml \
-                 pycrypto \
+                 pycryptodome \
                  romkan && \
     apk del .build-deps && \
     rm -rf /tmp/* && \
@@ -36,4 +36,4 @@ USER nobody
 
 VOLUME /data
 
-CMD python3 -u /data/ircbot/main.py
+CMD python3 -u /data/ircbot/python/main.py
