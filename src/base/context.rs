@@ -167,10 +167,10 @@ impl Context for Collector {
     async fn send_format(&self, _target: &str, message: Message<'_>) -> Result<(), Error> {
         self.sender
             .send(match message {
-                Message::Text(text) => text.into_iter().map(|m| m.text).collect::<String>(),
-                Message::Audio(data, _) | Message::Image(data) | Message::Video(data) => {
-                    data.text.unwrap_or(Default::default()).into_owned()
-                }
+                Message::Text(text)
+                | Message::Audio(_, text, _)
+                | Message::Image(_, text)
+                | Message::Video(_, text) => text.text(),
             })
             .context("Collector send error")?;
 

@@ -1,15 +1,14 @@
 use anyhow::Context as _;
 use async_trait::async_trait;
 use futures::{stream, StreamExt, TryFutureExt, TryStreamExt};
-use tracing::*;
 use matrix_sdk::{
     room::{Joined, RoomMember},
     ruma::{
         events::{
+            relation::{InReplyTo, Replacement},
             room::message::{
-                AudioInfo, AudioMessageEventContent, ImageMessageEventContent, InReplyTo,
-                MessageType, OriginalRoomMessageEvent, Relation, Replacement,
-                RoomMessageEventContent,
+                AudioInfo, AudioMessageEventContent, ForwardThread, ImageMessageEventContent,
+                MessageType, OriginalRoomMessageEvent, Relation, RoomMessageEventContent,
             },
             room::ImageInfo,
             AnyMessageLikeEvent, AnyMessageLikeEventContent, MessageLikeEvent,
@@ -21,10 +20,11 @@ use matrix_sdk::{
 use pest::Parser;
 use pest_derive::Parser;
 use std::borrow::Cow;
+use tracing::*;
 
 use super::normalize;
 use crate::{
-    base::{self, Color, Error, Message, MessageText, Style},
+    base::{self, Color, Error, Message, MessageItem, Style},
     command::scheme::Display,
 };
 
@@ -134,7 +134,7 @@ impl MessageContext {
                     }
                     _ => content.msgtype,
                 };
-                content.make_reply_to(&self.event)
+                content.make_reply_to(&self.event, ForwardThread::Yes)
             }
             Some(AnyMessageLikeEvent::RoomMessage(MessageLikeEvent::Original(event))) => {
                 content.msgtype = match content.msgtype {
@@ -149,10 +149,10 @@ impl MessageContext {
                     // NOTE replacement can only be applied to an original event
                     Some(Relation::Replacement(Replacement { new_content, .. })) => {
                         let mut new_event = event.clone();
-                        new_event.content = *new_content.clone();
-                        content.make_reply_to(&new_event)
+                        new_event.content.msgtype = new_content.clone();
+                        content.make_reply_to(&new_event, ForwardThread::Yes)
                     }
-                    _ => content.make_reply_to(event),
+                    _ => content.make_reply_to(event, ForwardThread::Yes),
                 }
             }
             Some(event) => {
@@ -215,20 +215,12 @@ impl base::Context for MessageContext {
 
         let result = match message {
             Message::Text(message) => {
-                let text = message
-                    .iter()
-                    .map(
-                        |MessageText {
-                             color: _,
-                             style: _,
-                             text,
-                         }| text.as_ref(),
-                    )
-                    .collect::<String>();
+                let text = message.text();
 
                 let html = message
+                    .items
                     .into_iter()
-                    .map(|MessageText { color, style, text }| {
+                    .map(|MessageItem { color, style, text }| {
                         use Style::*;
 
                         let text = match color.0.and_then(translate_color) {
@@ -279,27 +271,24 @@ impl base::Context for MessageContext {
 
                 Self::send(&room, content).await
             }
-            Message::Image(message) => {
+            Message::Image(message, text) => {
+                let len = message.data.len();
                 let uri = self
                     .client
                     .media()
-                    .upload(&message.mime, &mut &message.data[..])
+                    .upload(&message.mime, message.data)
                     .await
                     .context("upload error")?
                     .content_uri;
 
                 let content = RoomMessageEventContent::new(MessageType::Image(
                     ImageMessageEventContent::plain(
-                        message
-                            .text
-                            .map(|x| normalize(&x).join("\n"))
-                            .unwrap_or(String::new()),
+                        normalize(&text.text()).join("\n"),
                         uri,
                         Some({
                             let mut info = ImageInfo::new();
                             info.mimetype = Some(message.mime.essence_str().into());
-                            info.size =
-                                Some(message.data.len().try_into().context("convert error")?);
+                            info.size = Some(len.try_into().context("convert error")?);
                             info.into()
                         }),
                     ),
@@ -311,29 +300,26 @@ impl base::Context for MessageContext {
 
                 Self::send(&room, content).await
             }
-            Message::Audio(message, duration) => {
+            Message::Audio(message, text, duration) => {
+                let len = message.data.len();
                 let uri = self
                     .client
                     .media()
-                    .upload(&message.mime, &mut &message.data[..])
+                    .upload(&message.mime, message.data)
                     .await
                     .context("upload error")?
                     .content_uri;
 
                 let content = RoomMessageEventContent::new(MessageType::Audio(
                     AudioMessageEventContent::plain(
-                        message
-                            .text
-                            .map(|x| normalize(&x).join("\n"))
-                            .unwrap_or(String::new()),
+                        normalize(&text.text()).join("\n"),
                         uri,
                         Some({
                             let mut info = AudioInfo::new();
                             info.duration = duration;
                             // make mautrix happy
                             info.mimetype = Some(message.mime.essence_str().into());
-                            info.size =
-                                Some(message.data.len().try_into().context("convert error")?);
+                            info.size = Some(len.try_into().context("convert error")?);
                             info.into()
                         }),
                     ),
@@ -364,14 +350,15 @@ impl base::Context for MessageContext {
             .try_fold((0, Vec::new()), |(ind, mut buffer), message| async move {
                 match message {
                     Message::Text(text) => {
-                        buffer.extend(text.into_iter());
+                        buffer.extend(text.items.into_iter());
                         buffer.push("\n".into());
                         Ok((ind + 1, buffer))
                     }
                     _ => {
                         buffer.pop();
                         if !buffer.is_empty() {
-                            self.send_format(target, Message::Text(buffer)).await?;
+                            self.send_format(target, Message::Text(buffer.into()))
+                                .await?;
                         }
 
                         self.send_format(target, message)
@@ -387,7 +374,8 @@ impl base::Context for MessageContext {
                 } else {
                     buffer.pop();
                     if !buffer.is_empty() {
-                        self.send_format(target, Message::Text(buffer)).await?;
+                        self.send_format(target, Message::Text(buffer.into()))
+                            .await?;
                     }
 
                     Ok(())

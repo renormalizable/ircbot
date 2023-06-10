@@ -9,7 +9,7 @@ use tracing::*;
 
 use super::{normalize, LineBreaker};
 use crate::{
-    base::{self, Color, Error, Message, MessageData, MessageText, Style},
+    base::{self, Color, Error, Message, MessageData, MessageItem, Style},
     command::scheme::Display,
 };
 
@@ -132,31 +132,36 @@ impl base::Context for MessageContext {
 
     async fn send_format(&self, target: &str, message: Message<'_>) -> Result<(), Error> {
         let message = match message {
-            Message::Text(text) => text,
+            Message::Text(text) => text.items,
             #[allow(unused_variables)]
             Message::Audio(
                 MessageData {
                     link: Some(url),
-                    text,
+                    name,
                     mime,
                     data,
                 },
+                text,
                 _,
             )
-            | Message::Image(MessageData {
-                link: Some(url),
+            | Message::Image(
+                MessageData {
+                    link: Some(url),
+                    name,
+                    mime,
+                    data,
+                },
                 text,
-                mime,
-                data,
-            }) => {
+            ) => {
                 let mut vec = vec![
                     format!("{} [", mime.essence_str()).into(),
-                    MessageText::url(format!(" {url} ").into()),
+                    MessageItem::url(format!(" {url} ").into()),
                     "]".into(),
                 ];
 
-                if let Some(text) = text {
-                    vec.push(format!(" {text}").into());
+                if !text.items.is_empty() {
+                    vec.push(" ".into());
+                    vec.extend(text.items);
                 }
 
                 vec
@@ -166,7 +171,7 @@ impl base::Context for MessageContext {
 
         let message = message
             .into_iter()
-            .map(|MessageText { color, style, text }| {
+            .map(|MessageItem { color, style, text }| {
                 use Style::*;
 
                 let text = match (

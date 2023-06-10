@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde_json::value::RawValue;
 use std::borrow::Cow;
 use tracing::*;
-use wana_kana::{to_hiragana, to_romaji};
+use wana_kana::ConvertJapanese;
 
 use super::*;
 
@@ -41,9 +41,7 @@ mod kana {
             parameter: Self::Parameter<'_>,
         ) -> Result<(), Error> {
             context
-                .send_fmt(to_hiragana::to_hiragana(
-                    parameter.get(&Rule::romaji).unwrap(),
-                ))
+                .send_fmt(parameter.get(&Rule::romaji).unwrap().to_hiragana())
                 .await
         }
     }
@@ -74,7 +72,7 @@ mod romaji {
             parameter: Self::Parameter<'_>,
         ) -> Result<(), Error> {
             context
-                .send_fmt(to_romaji::to_romaji(parameter.get(&Rule::kana).unwrap()))
+                .send_fmt(parameter.get(&Rule::kana).unwrap().to_romaji())
                 .await
         }
     }
@@ -189,7 +187,7 @@ mod ja {
             .context("parse error")?
             .map(|pair| match pair.as_rule() {
                 Rule::text | Rule::comment => Element::String(pair.as_str().into()),
-                Rule::script => Element::Script(to_hiragana::to_hiragana(pair.as_str()).into()),
+                Rule::script => Element::Script(pair.as_str().to_hiragana().into()),
                 _ => unreachable!(),
             })
             .collect::<Vec<_>>();

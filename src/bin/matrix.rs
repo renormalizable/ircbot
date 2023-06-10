@@ -5,21 +5,22 @@ use matrix_sdk::{
     room::Room,
     ruma::{
         events::{
-            room::message::{InReplyTo, Relation, Replacement, SyncRoomMessageEvent},
+            relation::{InReplyTo, Replacement},
+            room::message::{Relation, SyncRoomMessageEvent},
             AnyTimelineEvent,
         },
         UserId,
     },
-    store, Client,
+    Client, RoomMemberships,
 };
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File, io::Read, path::Path, sync::Arc};
+use std::{collections::HashMap, fs::File, io::Read, path::Path, sync::Arc, thread, time};
 use tracing::*;
 use tracing_subscriber::prelude::*;
 
 use ircbot::{
-    base::{BoxCommandObject, Context as _, Interpreter},
+    base::{BoxCommandObject, CommandObject, Context as _, Interpreter},
     client::matrix::MessageContext,
     command::{api, input, language, music, random, scheme, utility, Config as CommandConfig},
 };
@@ -52,21 +53,6 @@ async fn main() -> anyhow::Result<()> {
 
         file
     };
-
-    let user = UserId::parse(matrix.user_id)?;
-
-    let store = store::make_store_config(matrix.store_path.unwrap(), None)?;
-
-    let client = Client::builder()
-        .server_name(&user.server_name())
-        .store_config(store)
-        .build()
-        .await?;
-
-    client
-        .login_username(&user, &matrix.password)
-        .send()
-        .await?;
 
     let command: Vec<BoxCommandObject> = vec![
         Box::new(input::Kana),
@@ -136,9 +122,9 @@ async fn main() -> anyhow::Result<()> {
     let interpreter = {
         let mut map = HashMap::new();
 
-        map.insert("disable", Interpreter::new(Vec::new()));
-        map.insert("default", Interpreter::new(command));
-        map.insert("test_matrix", Interpreter::new(command_test));
+        map.insert("disable".to_string(), Interpreter::new(Vec::new()));
+        map.insert("default".to_string(), Interpreter::new(command));
+        map.insert("test_matrix".to_string(), Interpreter::new(command_test));
 
         Arc::new(map)
     };
@@ -160,7 +146,42 @@ async fn main() -> anyhow::Result<()> {
             .collect::<Result<Vec<_>, _>>()?,
     );
 
-    client.sync_once(config::SyncSettings::default()).await?;
+    loop {
+        match client(&matrix, Arc::clone(&interpreter), Arc::clone(&router)).await {
+            Ok(_) => break,
+            Err(err) => {
+                warn!("reconnect: {err:?}");
+                thread::sleep(time::Duration::from_secs(10));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn client<T>(
+    matrix: &Config,
+    interpreter: Arc<HashMap<String, Interpreter<T>>>,
+    router: Arc<Vec<(Regex, Regex, String)>>,
+) -> anyhow::Result<()>
+where
+    T: CommandObject + Send + 'static,
+{
+    let user = UserId::parse(&matrix.user_id)?;
+
+    let client = Client::builder()
+        .server_name(&user.server_name())
+        //.sqlite_store(matrix.store_path.clone().unwrap(), None)
+        .build()
+        .await?;
+
+    client
+        .login_username(&user, &matrix.password)
+        .send()
+        .await?;
+
+    // discard old events
+    let response = client.sync_once(config::SyncSettings::default()).await?;
     client.add_event_handler(
         move |event: SyncRoomMessageEvent, room: Room, client: Client| {
             let interpreter = Arc::clone(&interpreter);
@@ -178,8 +199,7 @@ async fn main() -> anyhow::Result<()> {
                             "[{}{}] {event:?}",
                             room.room_id(),
                             room.name()
-                                .map(|x| format!(" / {x}"))
-                                .unwrap_or(String::new())
+                                .map_or_else(|| String::new(), |x| format!(" / {x}")),
                         );
                         return;
                     }
@@ -188,7 +208,7 @@ async fn main() -> anyhow::Result<()> {
                     Ok(Some(member)) => member,
                     _ => return,
                 };
-                let members = match room.members_no_sync().await {
+                let members = match room.members_no_sync(RoomMemberships::JOIN).await {
                     Ok(members) => members,
                     _ => return,
                 };
@@ -197,8 +217,7 @@ async fn main() -> anyhow::Result<()> {
                     "[{}{}] <{}> {event:?}",
                     room.room_id(),
                     room.name()
-                        .map(|x| format!(" / {x}"))
-                        .unwrap_or(String::new()),
+                        .map_or_else(|| String::new(), |x| format!(" / {x}")),
                     member.name()
                 );
 
@@ -242,9 +261,8 @@ async fn main() -> anyhow::Result<()> {
             }
         },
     );
-    // NOTE sync_token() should always success as we have already called sync_once() before
     client
-        .sync(config::SyncSettings::default().token(client.sync_token().await.unwrap()))
+        .sync(config::SyncSettings::default().token(response.next_batch))
         .await?;
 
     Ok(())

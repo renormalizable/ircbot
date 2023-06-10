@@ -94,7 +94,7 @@ mod wandbox {
             } else {
                 context
                     .send_fmt([
-                        MessageText {
+                        MessageItem {
                             color: (Some(Color::Red), None),
                             text: "error:".into(),
                             ..Default::default()
@@ -1071,7 +1071,7 @@ mod rust {
                 } => {
                     context
                         .send_fmt([
-                            MessageText {
+                            MessageItem {
                                 color: (Some(Color::Red), None),
                                 text: "error:".into(),
                                 ..Default::default()
@@ -1218,7 +1218,7 @@ mod go {
                 } => {
                     context
                         .send_fmt([
-                            MessageText {
+                            MessageItem {
                                 color: (Some(Color::Red), None),
                                 text: "error:".into(),
                                 ..Default::default()

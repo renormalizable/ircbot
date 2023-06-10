@@ -68,12 +68,10 @@ mod wolfram {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
             let length = parameter
                 .get(&Rule::length)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(2);
+                .map_or(2, |x| x.parse().unwrap());
 
             let text = reqwest::Client::new()
                 .get("https://api.wolframalpha.com/v2/query")
@@ -132,7 +130,7 @@ mod wolfram {
 
                 let output = items.skip(offset).map(|item| {
                     [
-                        MessageText {
+                        MessageItem {
                             style: Some(vec![Style::Bold]),
                             text: format!("{}:", item.0).into(),
                             ..Default::default()
@@ -355,12 +353,10 @@ mod google {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
             let length = parameter
                 .get(&Rule::length)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(1);
+                .map_or(1, |x| x.parse().unwrap());
 
             let text = reqwest::Client::new()
                 .get("https://customsearch.googleapis.com/customsearch/v1")
@@ -396,7 +392,7 @@ mod google {
                 [
                     item.title.into(),
                     " [".into(),
-                    MessageText::url(format!(" {} ", item.link).into()),
+                    MessageItem::url(format!(" {} ", item.link).into()),
                     "] ".into(),
                     item.snippet.unwrap_or("".into()).into(),
                 ]
@@ -503,12 +499,10 @@ mod urban {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
             let length = parameter
                 .get(&Rule::length)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(1);
+                .map_or(1, |x| x.parse().unwrap());
 
             let text = reqwest::Client::new()
                 .get("https://api.urbandictionary.com/v0/define")
@@ -527,7 +521,7 @@ mod urban {
 
             let output = items.skip(offset).map(|item| {
                 [
-                    MessageText {
+                    MessageItem {
                         style: Some(vec![Style::Bold]),
                         text: format!("{}:", item.word).into(),
                         ..Default::default()
@@ -701,12 +695,10 @@ mod crates_io {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
             let length = parameter
                 .get(&Rule::length)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(1);
+                .map_or(1, |x| x.parse().unwrap());
 
             let text = reqwest::Client::builder()
                 .user_agent("user/agent")
@@ -737,7 +729,7 @@ mod crates_io {
             let output = crates.skip(offset).map(|item| {
                 [
                     format!("{} [", item.name).into(),
-                    MessageText::url(format!(" https://crates.io/crates/{} ", item.id).into()),
+                    MessageItem::url(format!(" https://crates.io/crates/{} ", item.id).into()),
                     format!(
                         "] {} / {} recently / {}",
                         item.max_version, item.recent_downloads, item.description
@@ -808,8 +800,7 @@ mod movie {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
 
             let text = reqwest::Client::new()
                 .get("https://api.wmdb.tv/api/v1/movie/search")
@@ -834,7 +825,7 @@ mod movie {
                 .send_fmt([
                     item.original_name.as_ref().into(),
                     " [".into(),
-                    MessageText::url(
+                    MessageItem::url(
                         format!(" https://movie.douban.com/subject/{}/ ", item.douban_id).into(),
                     ),
                     format!("] {}", {
@@ -861,14 +852,15 @@ mod movie {
                 ])
                 .await?;
 
-            let mut data = MessageData::from_request_builder(
+            let data = MessageData::from_request_builder(
                 reqwest::Client::new().get(item.data[0].poster.as_ref()),
                 mime::IMAGE_JPEG,
             )
             .await?;
-            data.text = Some(item.original_name.into());
 
-            context.send_fmt(Message::Image(data)).await?;
+            context
+                .send_fmt(Message::Image(data, item.original_name.into()))
+                .await?;
 
             Ok(())
         }
@@ -1065,7 +1057,7 @@ mod gtran {
                         return Err(Error::Message("input is toooooooooo long".into()));
                     }
 
-                    let mut data = MessageData::from_request_builder(
+                    let data = MessageData::from_request_builder(
                         reqwest::Client::builder()
                             .user_agent(super::USER_AGENT)
                             .build()
@@ -1086,9 +1078,10 @@ mod gtran {
                         "audio/mpeg".parse().unwrap(),
                     )
                     .await?;
-                    data.text = Some(text.into());
 
-                    context.send_fmt(Message::Audio(data, None)).await
+                    context
+                        .send_fmt(Message::Audio(data, text.into(), None))
+                        .await
                 }
                 _ => {
                     let text = reqwest::Client::builder()
@@ -1285,8 +1278,8 @@ mod btran {
             let gtk = captures.get(2).unwrap().as_str().to_owned();
 
             let mut split = gtk.split(".");
-            let n1 = split.next().map(|x| x.parse().unwrap()).unwrap_or(0);
-            let n2 = split.next().map(|x| x.parse().unwrap()).unwrap_or(0);
+            let n1 = split.next().map_or(0, |x| x.parse().unwrap());
+            let n2 = split.next().map_or(0, |x| x.parse().unwrap());
 
             Ok((token, n1, n2))
         }
@@ -1490,8 +1483,7 @@ mod speedrun {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
 
             let text = reqwest::Client::new()
                 .get("https://www.speedrun.com/ajax_search.php")
@@ -1516,7 +1508,7 @@ mod speedrun {
                     .send_fmt([
                         item.label.as_ref().into(),
                         " [".into(),
-                        MessageText::url(format!(" https://www.speedrun.com/{} ", item.url).into()),
+                        MessageItem::url(format!(" https://www.speedrun.com/{} ", item.url).into()),
                         format!("] {}", item.category).into(),
                     ])
                     .await
@@ -1566,8 +1558,7 @@ mod bangumi {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
 
             let text = reqwest::Client::new()
                 .get(format!(
@@ -1593,7 +1584,7 @@ mod bangumi {
                 .send_fmt([
                     item.name.as_ref().into(),
                     " [".into(),
-                    MessageText::url(format!(" https://bgm.tv/subject/{} ", item.id).into()),
+                    MessageItem::url(format!(" https://bgm.tv/subject/{} ", item.id).into()),
                     format!("] {}", {
                         let mut buffer = Vec::new();
 
@@ -1627,14 +1618,15 @@ mod bangumi {
                 ])
                 .await?;
 
-            let mut data = MessageData::from_request_builder(
+            let data = MessageData::from_request_builder(
                 reqwest::Client::new().get(item.images.large.as_ref()),
                 mime::IMAGE_JPEG,
             )
             .await?;
-            data.text = Some(item.name.into());
 
-            context.send_fmt(Message::Image(data)).await?;
+            context
+                .send_fmt(Message::Image(data, item.name.into()))
+                .await?;
 
             Ok(())
         }
@@ -1773,14 +1765,13 @@ mod poke {
             context.send_fmt(vec).await?;
 
             if let Some(url) = url {
-                let mut data = MessageData::from_request_builder(
+                let data = MessageData::from_request_builder(
                     reqwest::Client::new().get(url),
                     mime::IMAGE_PNG,
                 )
                 .await?;
-                data.text = Some(tag.into());
 
-                context.send_fmt(Message::Image(data)).await?;
+                context.send_fmt(Message::Image(data, tag.into())).await?;
             }
 
             Ok(())
@@ -1791,13 +1782,13 @@ mod poke {
         use super::*;
 
         #[allow(dead_code)]
-        pub(super) fn parse(text: &str) -> Result<(&str, Vec<MessageText>, Option<&str>), Error> {
+        pub(super) fn parse(text: &str) -> Result<(&str, Vec<MessageItem>, Option<&str>), Error> {
             let result = serde_json::from_str::<ResponsePokemon>(&text)
                 .context(format!("json error: {text}"))?;
 
             let mut vec = vec![
                 format!("#{} ", result.id).into(),
-                MessageText {
+                MessageItem {
                     style: Some(vec![Style::Bold]),
                     text: result.name.into(),
                     ..Default::default()
@@ -1808,7 +1799,7 @@ mod poke {
 
             // types
             vec.extend({
-                let mut text = result.types.iter().map(|x| MessageText {
+                let mut text = result.types.iter().map(|x| MessageItem {
                     color: (
                         Some(Color::Rgba(match x.r#type.name {
                             "normal" => 0xa8a878ff,
@@ -1856,37 +1847,37 @@ mod poke {
 
             // stats
             vec.extend([
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xff5959ff)), None),
                     text: result.stats[0].base_stat.to_string().into(),
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xf5ac78ff)), None),
                     text: result.stats[1].base_stat.to_string().into(),
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xfae078ff)), None),
                     text: result.stats[2].base_stat.to_string().into(),
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0x9db7f5ff)), None),
                     text: result.stats[3].base_stat.to_string().into(),
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xa7db8dff)), None),
                     text: result.stats[4].base_stat.to_string().into(),
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xfa92b2ff)), None),
                     text: result.stats[5].base_stat.to_string().into(),
                     ..Default::default()
@@ -2048,7 +2039,7 @@ mod poke {
         #[allow(dead_code)]
         pub(super) fn parse(
             text: &str,
-        ) -> Result<(String, Vec<MessageText>, Option<String>), Error> {
+        ) -> Result<(String, Vec<MessageItem>, Option<String>), Error> {
             let result = serde_json::from_str::<Response>(&text)
                 .context(format!("json error: {text}"))?
                 .data
@@ -2064,7 +2055,7 @@ mod poke {
 
             let mut vec = vec![
                 format!("#{} ", result.id).into(),
-                MessageText {
+                MessageItem {
                     style: Some(vec![Style::Bold]),
                     text: tag.into(),
                     ..Default::default()
@@ -2076,7 +2067,7 @@ mod poke {
 
             // types
             vec.extend({
-                let mut text = result.pokemon_v2_pokemontypes.iter().map(|x| MessageText {
+                let mut text = result.pokemon_v2_pokemontypes.iter().map(|x| MessageItem {
                     color: (
                         Some(Color::Rgba(match x.pokemon_v2_type.name {
                             "normal" => 0xa8a878ff,
@@ -2124,7 +2115,7 @@ mod poke {
 
             // stats
             vec.extend([
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xff5959ff)), None),
                     text: result.pokemon_v2_pokemonstats[0]
                         .base_stat
@@ -2133,7 +2124,7 @@ mod poke {
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xf5ac78ff)), None),
                     text: result.pokemon_v2_pokemonstats[1]
                         .base_stat
@@ -2142,7 +2133,7 @@ mod poke {
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xfae078ff)), None),
                     text: result.pokemon_v2_pokemonstats[2]
                         .base_stat
@@ -2151,7 +2142,7 @@ mod poke {
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0x9db7f5ff)), None),
                     text: result.pokemon_v2_pokemonstats[3]
                         .base_stat
@@ -2160,7 +2151,7 @@ mod poke {
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xa7db8dff)), None),
                     text: result.pokemon_v2_pokemonstats[4]
                         .base_stat
@@ -2169,7 +2160,7 @@ mod poke {
                     ..Default::default()
                 },
                 "·".into(),
-                MessageText {
+                MessageItem {
                     color: (Some(Color::Rgba(0xfa92b2ff)), None),
                     text: result.pokemon_v2_pokemonstats[5]
                         .base_stat

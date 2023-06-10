@@ -1,7 +1,7 @@
 use anyhow::Context as _;
 use async_trait::async_trait;
 use pest_derive::Parser;
-use regex::Regex;
+//use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{borrow::Cow, collections::HashMap, fmt, time::Duration};
@@ -79,8 +79,7 @@ mod music {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
 
             let provider = match parameter.get(&Rule::provider) {
                 Some(&"qq") => "qq",
@@ -115,22 +114,25 @@ mod music {
                 .next()
                 .ok_or(Error::NoOutput)?;
 
-            let mut data = Self::get_song(provider, &song.original_id).await?;
-            data.text = Some(
-                format!(
-                    "{} / by {} / in {}",
-                    song.name,
-                    song.artists
-                        .iter()
-                        .map(|x| x.name.as_ref())
-                        .collect::<Vec<_>>()
-                        .join(" "),
-                    song.album.name
-                )
-                .into(),
-            );
+            let data = Self::get_song(provider, &song.original_id).await?;
 
-            context.send_fmt(Message::Audio(data, None)).await
+            context
+                .send_fmt(Message::Audio(
+                    data,
+                    format!(
+                        "{} / by {} / in {}",
+                        song.name,
+                        song.artists
+                            .iter()
+                            .map(|x| x.name.as_ref())
+                            .collect::<Vec<_>>()
+                            .join(" "),
+                        song.album.name
+                    )
+                    .into(),
+                    None,
+                ))
+                .await
         }
     }
 
@@ -310,11 +312,20 @@ mod music_163 {
                     .get(source.url)
                     .header("Referer", "https://music.163.com")
                     .header("X-Real-IP", "118.88.88.88"),
-                "audio/mpeg".parse().unwrap(),
+                "audio/mp4".parse().unwrap(),
             )
             .await?;
-            // NOTE the api reports wrong mime for aac
-            data.mime = "audio/mp4".parse().unwrap();
+            // NOTE the api reports wrong mime
+            data.mime = infer::get(&data.data).map_or_else(
+                || "audio/mp4".parse().unwrap(),
+                |x| {
+                    x.mime_type()
+                        .replace("video", "audio")
+                        .replace("m4a", "mp4")
+                        .parse()
+                        .unwrap()
+                },
+            );
 
             Ok(data)
         }
@@ -330,8 +341,7 @@ mod music_163 {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
 
             let text = Self::weapi(
                 "/search/get",
@@ -357,24 +367,25 @@ mod music_163 {
                 .next()
                 .ok_or(Error::NoOutput)?;
 
-            let mut data = Self::get_song(&song.id).await?;
-            data.text = Some(
-                format!(
-                    "{} / by {} / in {}",
-                    song.name,
-                    song.artists
-                        .iter()
-                        .map(|x| x.name.as_ref())
-                        .collect::<Vec<_>>()
-                        .join(" "),
-                    song.album.name
-                )
-                .into(),
-            );
+            let data = Self::get_song(&song.id).await?;
 
             context
                 .send_fmt(Message::Audio(
                     data,
+                    format!(
+                        "{} / by {} / in {}",
+                        song.name,
+                        song.artists
+                            .iter()
+                            .map(|x| x.name.as_ref())
+                            .collect::<Vec<_>>()
+                            .join(" "),
+                        song.album.name
+                    )
+                    // NOTE workaround file extension detection in matrix-rust-sdk
+                    // see https://github.com/matrix-org/matrix-rust-sdk/blob/main/crates/matrix-sdk/src/media.rs
+                    .replace(".", "")
+                    .into(),
                     Some(Duration::from_millis(song.duration)),
                 ))
                 .await
@@ -460,6 +471,9 @@ mod music_163 {
 
     mod encryption {
         use super::*;
+        use base64::Engine;
+
+        const BASE64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
         const IV: &'static [u8] = b"0102030405060708";
         const MODULUS: &'static [u8] = b"00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7";
@@ -481,7 +495,7 @@ mod music_163 {
 
             let encryptor = Aes128CbcEnc::new(key.into(), IV.into());
 
-            base64::encode(encryptor.encrypt_padded_vec_mut::<Pkcs7>(data))
+            BASE64.encode(encryptor.encrypt_padded_vec_mut::<Pkcs7>(data))
         }
 
         fn rsa(data: &[u8], pubkey: &[u8], modulus: &[u8]) -> String {
@@ -574,10 +588,11 @@ mod music_qq {
                 .purl;
 
             // change to a faster host
-            Ok(Regex::new(r"http.*?qq\.com")
-                .unwrap()
-                .replace(&url, "http://ws.stream.qqmusic.qq.com")
-                .into())
+            //Ok(Regex::new(r"http.*?qq\.com")
+            //    .unwrap()
+            //    .replace(&url, "http://ws.stream.qqmusic.qq.com")
+            //    .into())
+            Ok(url.into())
         }
 
         async fn get_song<'a, T>(id: &T) -> Result<MessageData<'a>, Error>
@@ -598,7 +613,11 @@ mod music_qq {
             )
             .await?;
 
-            Ok(data)
+            if data.data.len() > 0 {
+                Ok(data)
+            } else {
+                Err(Error::Message("rate limited?".into()))
+            }
         }
     }
 
@@ -612,8 +631,7 @@ mod music_qq {
         ) -> Result<(), Error> {
             let offset = parameter
                 .get(&Rule::offset)
-                .map(|x| x.parse().unwrap())
-                .unwrap_or(0);
+                .map_or(0, |x| x.parse().unwrap());
 
             let text = Self::musicu(&json!({
                 "music.search.SearchCgiService": {
@@ -647,25 +665,22 @@ mod music_qq {
 
             //info!("song: {song:?}");
 
-            let mut data = Self::get_song(&song.mid).await?;
-            info!("data: {}, {}", song.mid, data.data.len());
-            data.text = Some(
-                format!(
-                    "{} / by {} / in {}",
-                    song.name,
-                    song.singer
-                        .iter()
-                        .map(|x| x.name.as_ref())
-                        .collect::<Vec<_>>()
-                        .join(" "),
-                    song.album.name
-                )
-                .into(),
-            );
+            let data = Self::get_song(&song.mid).await?;
 
             context
                 .send_fmt(Message::Audio(
                     data,
+                    format!(
+                        "{} / by {} / in {}",
+                        song.name,
+                        song.singer
+                            .iter()
+                            .map(|x| x.name.as_ref())
+                            .collect::<Vec<_>>()
+                            .join(" "),
+                        song.album.name
+                    )
+                    .into(),
                     Some(Duration::from_secs(song.interval)),
                 ))
                 .await

@@ -4,22 +4,28 @@ use std::{borrow::Cow, time::Duration};
 // modeled after MSC1767
 // see [](https://github.com/matrix-org/matrix-spec-proposals/pull/1767)
 pub enum Message<'a> {
-    Audio(MessageData<'a>, Option<Duration>),
-    Image(MessageData<'a>),
-    Text(Vec<MessageText<'a>>),
-    Video(MessageData<'a>),
+    Audio(MessageData<'a>, MessageText<'a>, Option<Duration>),
+    Image(MessageData<'a>, MessageText<'a>),
+    Text(MessageText<'a>),
+    Video(MessageData<'a>, MessageText<'a>),
 }
 
 #[derive(Default)]
-pub struct MessageText<'a> {
+pub struct MessageItem<'a> {
     pub color: (Option<Color>, Option<Color>),
     pub style: Option<Vec<Style>>,
     pub text: Cow<'a, str>,
 }
 
+#[derive(Default)]
+pub struct MessageText<'a> {
+    pub items: Vec<MessageItem<'a>>,
+}
+
+// see [](https://github.com/matrix-org/matrix-spec-proposals/pull/3551)
 pub struct MessageData<'a> {
     pub link: Option<Cow<'a, str>>,
-    pub text: Option<Cow<'a, str>>,
+    pub name: Cow<'a, str>,
     pub mime: Mime,
     pub data: Vec<u8>,
 }
@@ -58,7 +64,7 @@ pub enum Style {
     Spoiler,
 }
 
-impl<'a> MessageText<'a> {
+impl<'a> MessageItem<'a> {
     pub fn url(text: Cow<'a, str>) -> Self {
         Self {
             color: (Some(Color::Navy), None),
@@ -68,7 +74,13 @@ impl<'a> MessageText<'a> {
     }
 }
 
-impl<'a> From<String> for MessageText<'a> {
+impl<'a> MessageText<'a> {
+    pub fn text(&self) -> String {
+        self.items.iter().map(|m| m.text.as_ref()).collect::<String>()
+    }
+}
+
+impl<'a> From<String> for MessageItem<'a> {
     fn from(text: String) -> Self {
         Self {
             text: Cow::Owned(text),
@@ -77,7 +89,7 @@ impl<'a> From<String> for MessageText<'a> {
     }
 }
 
-impl<'a> From<&'a str> for MessageText<'a> {
+impl<'a> From<&'a str> for MessageItem<'a> {
     fn from(text: &'a str) -> Self {
         Self {
             text: Cow::Borrowed(text),
@@ -86,11 +98,33 @@ impl<'a> From<&'a str> for MessageText<'a> {
     }
 }
 
-impl<'a> From<Cow<'a, str>> for MessageText<'a> {
+impl<'a> From<Cow<'a, str>> for MessageItem<'a> {
     fn from(text: Cow<'a, str>) -> Self {
         Self {
             text,
             ..Default::default()
+        }
+    }
+}
+
+impl<'a> From<MessageItem<'a>> for MessageText<'a> {
+    fn from(message: MessageItem<'a>) -> Self {
+        Self {
+            items: vec![message],
+        }
+    }
+}
+
+impl<'a> From<Vec<MessageItem<'a>>> for MessageText<'a> {
+    fn from(message: Vec<MessageItem<'a>>) -> Self {
+        Self { items: message }
+    }
+}
+
+impl<'a, const N: usize> From<[MessageItem<'a>; N]> for MessageText<'a> {
+    fn from(message: [MessageItem<'a>; N]) -> Self {
+        Self {
+            items: message.into_iter().collect(),
         }
     }
 }
@@ -106,19 +140,27 @@ impl<'a> From<Cow<'a, str>> for MessageText<'a> {
 
 impl<'a> From<MessageText<'a>> for Message<'a> {
     fn from(message: MessageText<'a>) -> Self {
-        Self::Text(vec![message])
-    }
-}
-
-impl<'a> From<Vec<MessageText<'a>>> for Message<'a> {
-    fn from(message: Vec<MessageText<'a>>) -> Self {
         Self::Text(message)
     }
 }
 
-impl<'a, const N: usize> From<[MessageText<'a>; N]> for Message<'a> {
-    fn from(message: [MessageText<'a>; N]) -> Self {
-        Self::Text(message.into_iter().collect())
+// extra
+
+impl<'a> From<String> for MessageText<'a> {
+    fn from(text: String) -> Self {
+        MessageItem::from(text).into()
+    }
+}
+
+impl<'a> From<&'a str> for MessageText<'a> {
+    fn from(text: &'a str) -> Self {
+        MessageItem::from(text).into()
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for MessageText<'a> {
+    fn from(text: Cow<'a, str>) -> Self {
+        MessageItem::from(text).into()
     }
 }
 
@@ -137,5 +179,23 @@ impl<'a> From<&'a str> for Message<'a> {
 impl<'a> From<Cow<'a, str>> for Message<'a> {
     fn from(text: Cow<'a, str>) -> Self {
         MessageText::from(text).into()
+    }
+}
+
+impl<'a> From<MessageItem<'a>> for Message<'a> {
+    fn from(message: MessageItem<'a>) -> Self {
+        MessageText::from(message).into()
+    }
+}
+
+impl<'a> From<Vec<MessageItem<'a>>> for Message<'a> {
+    fn from(message: Vec<MessageItem<'a>>) -> Self {
+        MessageText::from(message).into()
+    }
+}
+
+impl<'a, const N: usize> From<[MessageItem<'a>; N]> for Message<'a> {
+    fn from(message: [MessageItem<'a>; N]) -> Self {
+        MessageText::from(message).into()
     }
 }

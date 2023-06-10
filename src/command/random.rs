@@ -83,7 +83,7 @@ mod leetcode {
             context
                 .send_fmt([
                     format!("#{} [", question.stat.frontend_question_id).into(),
-                    MessageText::url(
+                    MessageItem::url(
                         format!(
                             " https://leetcode.com/problems/{}/ ",
                             question.stat.question_title_slug,

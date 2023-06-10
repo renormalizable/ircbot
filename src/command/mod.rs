@@ -1,4 +1,4 @@
-use crate::base::{Color, Command, Context, Error, Message, MessageData, MessageText, Style};
+use crate::base::{Color, Command, Context, Error, Message, MessageData, MessageItem, Style};
 
 mod config;
 
@@ -25,6 +25,12 @@ impl<'a> MessageData<'a> {
         let response = request_builder.send().await.context("send error")?;
 
         let url = response.url().as_str().to_owned();
+        let name = response
+            .url()
+            .path_segments()
+            .and_then(|x| x.last())
+            .unwrap_or("")
+            .to_owned();
         let mime = response
             .headers()
             .get(header::CONTENT_TYPE)
@@ -35,8 +41,8 @@ impl<'a> MessageData<'a> {
 
         Ok(MessageData {
             link: Some(url.into()),
-            text: None,
-            mime,
+            name: name.into(),
+            mime: mime,
             data: bytes.to_vec(),
         })
     }

@@ -8,7 +8,7 @@ pub use command::{
     BoxCommandObject, Command, CommandObject, CommandParser, Interpreter, LocalBoxCommandObject,
 };
 pub use context::{BoxContext, Collector, Context, LocalBoxContext};
-pub use message::{Color, Message, MessageData, MessageText, Style};
+pub use message::{Color, Message, MessageData, MessageItem, Style};
 
 #[derive(Error, Debug)]
 pub enum Error {

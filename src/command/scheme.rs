@@ -176,7 +176,7 @@ mod display {
                 context
                     .send_fmt([
                         "[".into(),
-                        MessageText::url(format!(" {url} ").into()),
+                        MessageItem::url(format!(" {url} ").into()),
                         "]".into(),
                     ])
                     .await

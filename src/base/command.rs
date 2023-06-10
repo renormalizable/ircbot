@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::prelude::*;
 use pest::{iterators::Pairs, Parser, RuleType};
 use pest_derive::Parser;
-use std::{borrow::Cow, collections::HashMap, fmt::Debug};
+use std::{borrow::Cow, collections::HashMap, fmt::Debug, sync::Arc};
 use tracing::*;
 
 use super::{BoxContext, Collector, Context, Error};
@@ -90,6 +90,45 @@ pub type BoxCommandObject<'a> = Box<dyn CommandObject + Send + 'a>;
 #[allow(dead_code)]
 pub type LocalBoxCommandObject<'a> = Box<dyn CommandObject + 'a>;
 
+#[async_trait]
+impl<'a> CommandObject for BoxCommandObject<'a> {
+    async fn execute(&self, context: &BoxContext, message: &str) -> Result<(), Error> {
+        self.as_ref().execute(context, message).await
+    }
+    fn name(&self) -> Option<&str> {
+        self.as_ref().name()
+    }
+    fn help(&self) -> Option<&str> {
+        self.as_ref().help()
+    }
+}
+
+#[async_trait]
+impl<'a> CommandObject for LocalBoxCommandObject<'a> {
+    async fn execute(&self, context: &BoxContext, message: &str) -> Result<(), Error> {
+        self.as_ref().execute(context, message).await
+    }
+    fn name(&self) -> Option<&str> {
+        self.as_ref().name()
+    }
+    fn help(&self) -> Option<&str> {
+        self.as_ref().help()
+    }
+}
+
+#[async_trait]
+impl<'a> CommandObject for Arc<BoxCommandObject<'a>> {
+    async fn execute(&self, context: &BoxContext, message: &str) -> Result<(), Error> {
+        self.as_ref().execute(context, message).await
+    }
+    fn name(&self) -> Option<&str> {
+        self.as_ref().name()
+    }
+    fn help(&self) -> Option<&str> {
+        self.as_ref().help()
+    }
+}
+
 #[derive(Debug, Parser)]
 #[grammar = "base/command.pest"]
 enum Node<'a> {
@@ -117,12 +156,18 @@ impl<'a> Node<'a> {
     }
 }
 
-pub struct Interpreter<'t> {
-    commands: Vec<BoxCommandObject<'t>>,
+pub struct Interpreter<T>
+where
+    T: CommandObject + Send,
+{
+    commands: Vec<T>,
 }
 
-impl<'t> Interpreter<'t> {
-    pub fn new(commands: Vec<BoxCommandObject<'t>>) -> Self {
+impl<T> Interpreter<T>
+where
+    T: CommandObject + Send,
+{
+    pub fn new(commands: Vec<T>) -> Self {
         Self { commands }
     }
 
@@ -166,7 +211,6 @@ impl<'t> Interpreter<'t> {
         'a: 'c,
         'b: 'c,
         's: 'c,
-        't: 'c,
     {
         debug!("{nodes:?}");
 
