@@ -67,6 +67,7 @@ async fn main() -> anyhow::Result<()> {
         Box::new(api::Bangumi),
         Box::new(api::Speedrun),
         Box::new(api::Movie),
+        Box::new(api::Room),
         Box::new(music::Music),
         Box::new(music::Music163),
         Box::new(music::MusicQQ),

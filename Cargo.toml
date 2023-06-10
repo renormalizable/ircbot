@@ -26,6 +26,7 @@ irc = { git = "https://github.com/aatxe/irc", branch = "develop", default-featur
 matrix-sdk = { git = "https://github.com/matrix-org/matrix-rust-sdk", branch = "main" }
 mime = "0.3"
 num-bigint-dig = "0.8"
+percent-encoding = "2.2"
 pest = "2.6"
 pest_derive = "2.6"
 rand = "0.8"

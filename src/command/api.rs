@@ -1,6 +1,7 @@
 use anyhow::Context as _;
 use async_trait::async_trait;
 use fuzzy_matcher::{skim, FuzzyMatcher};
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use pest_derive::Parser;
 use rand::prelude::*;
 use regex::{Captures, Regex};
@@ -19,6 +20,7 @@ pub use gtran::{Gtran, GtranConfig};
 pub use ipapi::Ipapi;
 pub use movie::Movie;
 pub use poke::Poke;
+pub use room::Room;
 pub use speedrun::Speedrun;
 pub use urban::Urban;
 pub use wolfram::{Wolfram, WolframConfig};
@@ -1563,7 +1565,7 @@ mod bangumi {
             let text = reqwest::Client::new()
                 .get(format!(
                     "https://api.bgm.tv/search/subject/{}",
-                    parameter.get(&Rule::text).unwrap()
+                    utf8_percent_encode(parameter.get(&Rule::text).unwrap(), NON_ALPHANUMERIC)
                 ))
                 .query(&[("responseGroup", "large")])
                 .send()
@@ -1682,6 +1684,100 @@ mod bangumi {
         small: Cow<'a, str>,
         #[serde(borrow)]
         grid: Cow<'a, str>,
+    }
+}
+
+mod room {
+    use super::*;
+
+    #[derive(Parser)]
+    #[grammar_inline = r##"
+        input = _{ ^"room" ~ WHITE_SPACE+ ~ text ~ (WHITE_SPACE+ ~ pager)? }
+        text = { (!(WHITE_SPACE+ ~ pager) ~ ANY)+ }
+        pager = _{ "+" ~ offset }
+        offset = { ASCII_DIGIT+ }
+    "##]
+    pub struct Room;
+
+    impl Default for Rule {
+        fn default() -> Self {
+            Self::input
+        }
+    }
+
+    #[async_trait]
+    impl Command for Room {
+        type Key = Rule;
+        async fn execute(
+            &self,
+            context: &impl Context,
+            parameter: Self::Parameter<'_>,
+        ) -> Result<(), Error> {
+            let offset = parameter
+                .get(&Rule::offset)
+                .map_or(0, |x| x.parse().unwrap());
+
+            let text = reqwest::Client::new()
+                .get("https://apicdn.matrixrooms.info/search")
+                .query(&[
+                    ("s", "-_score,-members"),
+                    ("q", parameter.get(&Rule::text).unwrap()),
+                ])
+                .send()
+                .await
+                .context("send error")?
+                .text()
+                .await
+                .context("read error")?;
+
+            let items = serde_json::from_str::<Vec<Item>>(&text)
+                .context(format!("json error: {text}"))?
+                .into_iter();
+
+            let item = items.skip(offset).next().ok_or(Error::NoOutput)?;
+
+            context
+                .send_fmt([
+                    item.name.as_ref().into(),
+                    " [".into(),
+                    MessageItem::url(
+                        format!(
+                            " https://matrix.to/#/{} ",
+                            if item.alias.is_empty() {
+                                item.id
+                            } else {
+                                item.alias
+                            }
+                        )
+                        .into(),
+                    ),
+                    format!("] {} / {}", item.members, item.topic).into(),
+                ])
+                .await?;
+
+            Ok(())
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Deserialize)]
+    struct Item<'a> {
+        id: &'a str,
+        r#type: &'a str,
+        alias: &'a str,
+        #[serde(borrow)]
+        name: Cow<'a, str>,
+        #[serde(borrow)]
+        topic: Cow<'a, str>,
+        #[serde(borrow)]
+        avatar: Cow<'a, str>,
+        #[serde(borrow)]
+        avatar_url: Cow<'a, str>,
+        server: &'a str,
+        members: u64,
+        language: &'a str,
+        #[serde(borrow)]
+        preview_url: Cow<'a, str>,
     }
 }
 
@@ -2050,7 +2146,10 @@ mod poke {
 
             let tag = result
                 .pokemon_v2_pokemonspecy
-                .pokemon_v2_pokemonspeciesnames[3]
+                .pokemon_v2_pokemonspeciesnames
+                .iter()
+                .nth(3)
+                .ok_or(Error::NoOutput)?
                 .name;
 
             let mut vec = vec![
@@ -2197,6 +2296,15 @@ mod poke {
             .official_artwork
             .front_default
             .map(|x| x.to_owned());
+
+            // NOTE workaround relative url
+            // see [](https://github.com/PokeAPI/pokeapi/commit/28354a973c3e3d586ccf2ddbd098df8972fbfe24)
+            let url = url.map(|x| {
+                x.replace(
+                    "/media",
+                    "https://raw.githubusercontent.com/PokeAPI/sprites/master",
+                )
+            });
 
             Ok((tag.to_string(), vec, url))
         }
