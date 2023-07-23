@@ -2,7 +2,7 @@ use anyhow::Context as _;
 use async_trait::async_trait;
 use futures::{stream, StreamExt, TryFutureExt, TryStreamExt};
 use matrix_sdk::{
-    room::{Joined, RoomMember},
+    room::{Room, RoomMember},
     ruma::{
         events::{
             relation::{InReplyTo, Replacement},
@@ -42,7 +42,7 @@ pub struct MessageContext {
     receiver: Option<RoomMember>,
     message: String,
     // send
-    room: Joined,
+    room: Room,
     // upload
     client: Client,
 }
@@ -52,11 +52,13 @@ impl MessageContext {
         event: OriginalRoomMessageEvent,
         reply: Option<AnyMessageLikeEvent>,
         members: Vec<RoomMember>,
-        room: Joined,
+        room: Room,
         client: Client,
     ) -> Vec<Self> {
         let content = match &event.content.relates_to {
-            Some(Relation::Replacement(Replacement { new_content, .. })) => new_content.body(),
+            Some(Relation::Replacement(Replacement { new_content, .. })) => {
+                new_content.msgtype.body()
+            }
             _ => event.content.body(),
         };
         match MessageParser::parse(Rule::input, content) {
@@ -107,11 +109,11 @@ impl MessageContext {
         &self.message
     }
 
-    pub fn room(&self) -> &Joined {
+    pub fn room(&self) -> &Room {
         &self.room
     }
 
-    fn get_joined_room(&self, target: &str) -> Option<Joined> {
+    fn get_room(&self, target: &str) -> Option<Room> {
         use base::Context;
 
         if target == self.target() {
@@ -119,7 +121,7 @@ impl MessageContext {
         } else {
             <&RoomId>::try_from(target)
                 .ok()
-                .and_then(|room_id| self.client.get_joined_room(room_id))
+                .and_then(|room_id| self.client.get_room(room_id))
         }
     }
     // NOTE matrix-appservice-irc uses text for reply while uses html for normal message
@@ -149,7 +151,7 @@ impl MessageContext {
                     // NOTE replacement can only be applied to an original event
                     Some(Relation::Replacement(Replacement { new_content, .. })) => {
                         let mut new_event = event.clone();
-                        new_event.content.msgtype = new_content.clone();
+                        new_event.content.msgtype = new_content.msgtype.clone();
                         content.make_reply_to(&new_event, ForwardThread::Yes)
                     }
                     _ => content.make_reply_to(event, ForwardThread::Yes),
@@ -174,7 +176,7 @@ impl MessageContext {
             format!(r#"tl;dr [<font color="navy"> {url} </font>] {len}KB"#),
         ))
     }
-    async fn send(room: &Joined, content: RoomMessageEventContent) -> Result<(), Error> {
+    async fn send(room: &Room, content: RoomMessageEventContent) -> Result<(), Error> {
         let event = AnyMessageLikeEventContent::RoomMessage(content);
 
         room.send(event, None)
@@ -209,7 +211,7 @@ impl base::Context for MessageContext {
     }
 
     async fn send_format(&self, target: &str, message: Message<'_>) -> Result<(), Error> {
-        let room = self.get_joined_room(target).ok_or(Error::SendError)?;
+        let room = self.get_room(target).ok_or(Error::SendError)?;
 
         let _ = room.typing_notice(true).await;
 
@@ -282,15 +284,13 @@ impl base::Context for MessageContext {
                     .content_uri;
 
                 let content = RoomMessageEventContent::new(MessageType::Image(
-                    ImageMessageEventContent::plain(
-                        normalize(&text.text()).join("\n"),
-                        uri,
-                        Some({
+                    ImageMessageEventContent::plain(normalize(&text.text()).join("\n"), uri).info(
+                        {
                             let mut info = ImageInfo::new();
                             info.mimetype = Some(message.mime.essence_str().into());
                             info.size = Some(len.try_into().context("convert error")?);
-                            info.into()
-                        }),
+                            Box::new(info)
+                        },
                     ),
                 ));
                 let content = match (&self.receiver, &self.reply) {
@@ -311,17 +311,15 @@ impl base::Context for MessageContext {
                     .content_uri;
 
                 let content = RoomMessageEventContent::new(MessageType::Audio(
-                    AudioMessageEventContent::plain(
-                        normalize(&text.text()).join("\n"),
-                        uri,
-                        Some({
+                    AudioMessageEventContent::plain(normalize(&text.text()).join("\n"), uri).info(
+                        {
                             let mut info = AudioInfo::new();
                             info.duration = duration;
                             // make mautrix happy
                             info.mimetype = Some(message.mime.essence_str().into());
                             info.size = Some(len.try_into().context("convert error")?);
-                            info.into()
-                        }),
+                            Box::new(info)
+                        },
                     ),
                 ));
                 let content = match (&self.receiver, &self.reply) {
@@ -382,6 +380,26 @@ impl base::Context for MessageContext {
                 }
             })
             .await
+    }
+
+    async fn send_direct(&self, target: &str, message: Message<'_>) -> Result<(), Error> {
+        let room = self.get_room(target).ok_or(Error::SendError)?;
+
+        let _ = room.typing_notice(true).await;
+
+        let message = match message {
+            Message::Text(text)
+            | Message::Audio(_, text, _)
+            | Message::Image(_, text)
+            | Message::Video(_, text) => text.text(),
+        };
+
+        let result = Self::send(&room, RoomMessageEventContent::text_plain(message)).await;
+
+        // NOTE sometimes this doesn't clear the notice
+        let _ = room.typing_notice(false).await;
+
+        result
     }
 }
 

@@ -31,6 +31,10 @@ pub trait Context: Sync {
             .try_for_each(|msg| self.send_format(target, msg))
             .await
     }
+    // send direct message
+    async fn send_direct(&self, target: &str, message: Message<'_>) -> Result<(), Error> {
+        self.send_format(target, message).await
+    }
 
     async fn send_fmt<'a>(&self, message: impl Into<Message<'a>> + Send) -> Result<(), Error>
     where
@@ -95,6 +99,11 @@ where
 
         future.await
     }
+    async fn send_direct(&self, target: &str, message: Message<'_>) -> Result<(), Error> {
+        let future = (**self).send_direct(target, message);
+
+        future.await
+    }
 }
 
 #[async_trait]
@@ -126,6 +135,11 @@ where
         stream: stream::BoxStream<'a, Message<'a>>,
     ) -> Result<(), Error> {
         let future = (**self).send_stream(target, stream);
+
+        future.await
+    }
+    async fn send_direct(&self, target: &str, message: Message<'_>) -> Result<(), Error> {
+        let future = (**self).send_direct(target, message);
 
         future.await
     }

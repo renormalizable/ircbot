@@ -53,7 +53,7 @@ mod leetcode {
             let question = if let Some(id) = parameter.get(&Rule::id) {
                 let question_id = id.parse::<u64>().unwrap();
                 match questions
-                    .filter(|question| question.stat.frontend_question_id == question_id)
+                    .filter(|question| question.stat.frontend_question_id == Some(question_id))
                     .next()
                 {
                     Some(question) => question,
@@ -82,7 +82,7 @@ mod leetcode {
 
             context
                 .send_fmt([
-                    format!("#{} [", question.stat.frontend_question_id).into(),
+                    format!("#{} [", question.stat.frontend_question_id.unwrap_or(0)).into(),
                     MessageItem::url(
                         format!(
                             " https://leetcode.com/problems/{}/ ",
@@ -136,7 +136,7 @@ mod leetcode {
     #[derive(Debug, Deserialize)]
     struct QuestionStat<'a> {
         question_id: u64,
-        frontend_question_id: u64,
+        frontend_question_id: Option<u64>,
         total_acs: u64,
         total_submitted: u64,
         // sometimes question__title needs to be owned

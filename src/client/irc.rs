@@ -256,6 +256,17 @@ impl base::Context for MessageContext {
             Err(result) => result,
         }
     }
+
+    async fn send_direct(&self, target: &str, message: Message<'_>) -> Result<(), Error> {
+        let message = match message {
+            Message::Text(text)
+            | Message::Audio(_, text, _)
+            | Message::Image(_, text)
+            | Message::Video(_, text) => text.text(),
+        };
+
+        self.send(target, &message).await
+    }
 }
 
 fn translate_color(color: Color) -> Option<Cow<'static, str>> {

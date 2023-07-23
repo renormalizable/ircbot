@@ -11,7 +11,7 @@ use matrix_sdk::{
         },
         UserId,
     },
-    Client, RoomMemberships,
+    Client, RoomMemberships, RoomState,
 };
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -27,14 +27,9 @@ use ircbot::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .finish()
-        .with(
-            tracing_subscriber::filter::Targets::default()
-                .with_default(Level::INFO)
-                .with_target("matrix_sdk_base", Level::WARN)
-                .with_target("matrix_sdk_sled", Level::WARN),
-        )
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     let matrix = {
@@ -178,6 +173,7 @@ where
         .await?;
 
     client
+        .matrix_auth()
         .login_username(&user, &matrix.password)
         .send()
         .await?;
@@ -190,10 +186,10 @@ where
             let router = Arc::clone(&router);
 
             async move {
-                let room = match room {
-                    Room::Joined(room) => room,
+                match room.state() {
+                    RoomState::Joined => (),
                     _ => return,
-                };
+                }
                 let event = match event {
                     SyncRoomMessageEvent::Original(event) => event,
                     _ => {

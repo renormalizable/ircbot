@@ -33,7 +33,10 @@ mod echo {
             parameter: Self::Parameter<'_>,
         ) -> Result<(), Error> {
             context
-                .send_fmt(*parameter.get(&Rule::content).unwrap())
+                .send_direct(
+                    context.target(),
+                    (*parameter.get(&Rule::content).unwrap()).into(),
+                )
                 .await
         }
     }

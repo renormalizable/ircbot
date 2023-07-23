@@ -14,9 +14,9 @@ use ircbot::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .finish()
-        .with(tracing_subscriber::filter::Targets::default().with_default(Level::INFO))
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     let irc = {
