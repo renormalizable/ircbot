@@ -5,6 +5,7 @@ use super::*;
 
 pub use echo::Echo;
 pub use lower::Lower;
+pub use sleep::Sleep;
 pub use upper::Upper;
 pub use utc::Utc;
 
@@ -137,6 +138,39 @@ mod utc {
             context
                 .send_fmt(chrono::Utc::now().with_timezone(&timezone).to_rfc3339())
                 .await
+        }
+    }
+}
+
+mod sleep {
+    use super::*;
+
+    #[derive(Parser)]
+    #[grammar_inline = r#"
+        input = _{ ^"sleep" ~ WHITE_SPACE+ ~ duration }
+        duration = { ASCII_DIGIT+ }
+    "#]
+    pub struct Sleep;
+
+    impl Default for Rule {
+        fn default() -> Self {
+            Self::input
+        }
+    }
+
+    #[async_trait]
+    impl Command for Sleep {
+        type Key = Rule;
+        async fn execute(
+            &self,
+            context: &impl Context,
+            parameter: Self::Parameter<'_>,
+        ) -> Result<(), Error> {
+            let duration = parameter.get(&Rule::duration).unwrap().parse().unwrap();
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(duration)).await;
+
+            context.send_fmt("wake up").await
         }
     }
 }

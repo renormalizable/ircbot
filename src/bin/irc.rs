@@ -46,6 +46,7 @@ async fn main() -> anyhow::Result<()> {
         Box::new(utility::Lower),
         Box::new(utility::Upper),
         Box::new(utility::Utc),
+        Box::new(utility::Sleep),
         Box::new(scheme::Newline),
         Box::new(scheme::Include),
         Box::new(scheme::Display),
