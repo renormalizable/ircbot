@@ -11,7 +11,7 @@ anyhow = "1.0"
 async-trait = "0.1"
 base64 = "0.21"
 cbc = "0.1"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 futures = { version = "0.3", default-features = false }
 #futures-channel = { version = "0.3", default-features = false }
 fuzzy-matcher = "0.3"
@@ -29,14 +29,21 @@ num-bigint-dig = "0.8"
 percent-encoding = "2.3"
 pest = "2.7"
 pest_derive = "2.7"
+quick-xml = { version = "0.30", features = ["serialize"] }
 rand = "0.8"
 regex = "1.9"
 reqwest = { version = "0.11", features = ["cookies", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 serde_yaml = "0.9"
+tempfile = "3.8"
 thiserror = "1.0"
-tokio = { version = "1.29", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.32", features = [
+    "macros",
+    "process",
+    "rt-multi-thread",
+    "sync",
+] }
 tokio-stream = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

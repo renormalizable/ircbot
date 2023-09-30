@@ -1,5 +1,6 @@
 use anyhow::Context as _;
 use async_trait::async_trait;
+use chrono::{serde::ts_seconds, DateTime, Utc};
 use fuzzy_matcher::{skim, FuzzyMatcher};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use pest_derive::Parser;
@@ -1487,9 +1488,51 @@ mod speedrun {
                 .get(&Rule::offset)
                 .map_or(0, |x| x.parse().unwrap());
 
+            let text = v2::get_search(parameter.get(&Rule::text).unwrap(), offset + 1).await?;
+
+            info!("speedrun: {text:?}");
+
+            let items = serde_json::from_str::<v2::Response>(&text)
+                .context(format!("json error: {text}"))?
+                .game_list
+                .into_iter();
+
+            let item = items.skip(offset).next().ok_or(Error::NoOutput)?;
+
+            context
+                .send_fmt([
+                    item.name.as_ref().into(),
+                    " [".into(),
+                    MessageItem::url(format!(" https://www.speedrun.com/{} ", item.url).into()),
+                    format!("] {} / {}", item.release_date.format("%F"), item.run_count).into(),
+                ])
+                .await?;
+
+            let data = MessageData::from_request_builder(
+                reqwest::Client::new().get(format!(
+                    "https://www.speedrun.com{}",
+                    item.cover_path.replace("gameasset", "static/game")
+                )),
+                mime::IMAGE_PNG,
+            )
+            .await?;
+
+            context
+                .send_fmt(Message::Image(data, item.name.into()))
+                .await?;
+
+            Ok(())
+        }
+    }
+
+    mod v1 {
+        use super::*;
+
+        #[allow(dead_code)]
+        pub(super) async fn ajax_search(query: &str) -> Result<String, Error> {
             let text = reqwest::Client::new()
                 .get("https://www.speedrun.com/ajax_search.php")
-                .query(&[("term", parameter.get(&Rule::text).unwrap())])
+                .query(&[("term", query)])
                 .send()
                 .await
                 .context("send error")?
@@ -1497,38 +1540,97 @@ mod speedrun {
                 .await
                 .context("read error")?;
 
-            let items = serde_json::from_str::<Vec<Item>>(&text)
-                .context(format!("json error: {text}"))?
-                .into_iter();
+            Ok(text)
+        }
 
-            let item = items.skip(offset).next().ok_or(Error::NoOutput)?;
-
-            if item.category == "No results" {
-                Err(Error::NoOutput)
-            } else {
-                context
-                    .send_fmt([
-                        item.label.as_ref().into(),
-                        " [".into(),
-                        MessageItem::url(format!(" https://www.speedrun.com/{} ", item.url).into()),
-                        format!("] {}", item.category).into(),
-                    ])
-                    .await
-            }
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        pub(super) struct Item<'a> {
+            #[serde(borrow)]
+            label: Cow<'a, str>,
+            #[serde(borrow)]
+            url: Cow<'a, str>,
+            category: &'a str,
+            #[serde(borrow)]
+            #[serde(flatten)]
+            raw: HashMap<&'a str, Value>,
         }
     }
 
-    #[allow(dead_code)]
-    #[derive(Debug, Deserialize)]
-    struct Item<'a> {
-        #[serde(borrow)]
-        label: Cow<'a, str>,
-        #[serde(borrow)]
-        url: Cow<'a, str>,
-        category: &'a str,
-        #[serde(borrow)]
-        #[serde(flatten)]
-        raw: HashMap<&'a str, Value>,
+    mod v2 {
+        use super::*;
+        use base64::Engine;
+
+        const BASE64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
+
+        #[allow(dead_code)]
+        pub(super) async fn api<T>(path: &str, data: &T) -> Result<String, Error>
+        where
+            T: Serialize + ?Sized,
+        {
+            let text = reqwest::Client::new()
+                .get(format!("https://www.speedrun.com/api/v2{path}"))
+                .query(&[(
+                    "_r",
+                    BASE64
+                        .encode(serde_json::to_vec(data).context("json error")?)
+                        .trim_end_matches('='),
+                )])
+                .send()
+                .await
+                .context("send error")?
+                .text()
+                .await
+                .context("read error")?;
+
+            Ok(text)
+        }
+
+        #[allow(dead_code)]
+        pub(super) async fn get_search(query: &str, limit: usize) -> Result<String, Error> {
+            api(
+                "/GetSearch",
+                &serde_json::json!({
+                    "query": query,
+                    "limit": limit,
+                    "includeGames": true,
+                    "includeNews": true,
+                    "includePages": true,
+                    "includeSeries": true,
+                    "includeUsers": true,
+                }),
+            )
+            .await
+        }
+
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        pub(super) struct Response<'a> {
+            #[serde(borrow)]
+            #[serde(rename = "gameList")]
+            pub game_list: Vec<Item<'a>>,
+        }
+
+        #[allow(dead_code)]
+        #[derive(Debug, Deserialize)]
+        pub(super) struct Item<'a> {
+            pub id: &'a str,
+            #[serde(borrow)]
+            pub name: Cow<'a, str>,
+            #[serde(borrow)]
+            pub url: Cow<'a, str>,
+            #[serde(rename = "releaseDate")]
+            #[serde(with = "ts_seconds")]
+            pub release_date: DateTime<Utc>,
+            #[serde(borrow)]
+            #[serde(rename = "coverPath")]
+            pub cover_path: Cow<'a, str>,
+            #[serde(rename = "runCount")]
+            pub run_count: u64,
+            #[serde(borrow)]
+            #[serde(flatten)]
+            pub raw: HashMap<&'a str, Value>,
+        }
     }
 }
 
@@ -1891,7 +1993,7 @@ mod poke {
                 },
             ];
 
-            vec.extend([" / ".into()]);
+            vec.push(" / ".into());
 
             // types
             vec.extend({
@@ -1939,7 +2041,7 @@ mod poke {
                 buffer
             });
 
-            vec.extend([" / ".into()]);
+            vec.push(" / ".into());
 
             // stats
             vec.extend([
@@ -1980,7 +2082,7 @@ mod poke {
                 },
             ]);
 
-            vec.extend([" / ".into()]);
+            vec.push(" / ".into());
 
             // abilities
             vec.extend([result
@@ -2162,7 +2264,7 @@ mod poke {
                 format!(" aka {}", result.name).into(),
             ];
 
-            vec.extend([" / ".into()]);
+            vec.push(" / ".into());
 
             // types
             vec.extend({
@@ -2210,7 +2312,7 @@ mod poke {
                 buffer
             });
 
-            vec.extend([" / ".into()]);
+            vec.push(" / ".into());
 
             // stats
             vec.extend([
@@ -2269,7 +2371,7 @@ mod poke {
                 },
             ]);
 
-            vec.extend([" / ".into()]);
+            vec.push(" / ".into());
 
             // abilities
             vec.extend([result

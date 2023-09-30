@@ -2,13 +2,20 @@ use anyhow::Context as _;
 use async_trait::async_trait;
 use pest_derive::Parser;
 //use regex::Regex;
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{borrow::Cow, collections::HashMap, fmt, time::Duration};
+use std::{borrow::Cow, collections::HashMap, fmt, process::Stdio, time::Duration};
+use tokio::{
+    fs,
+    io::{self, AsyncBufReadExt, AsyncReadExt},
+    process, task,
+};
 use tracing::*;
 
 use super::*;
 
+pub use dlp::Dlp;
 pub use music::Music;
 pub use music_163::Music163;
 pub use music_qq::MusicQQ;
@@ -845,5 +852,194 @@ mod music_qq {
         msg: &'a str,
         #[serde(borrow)]
         purl: Cow<'a, str>,
+    }
+}
+
+mod dlp {
+    use super::*;
+
+    #[derive(Parser)]
+    #[grammar_inline = r##"
+        input = _{ ^"dlp" ~ (WHITE_SPACE+ ~ link | (":" ~ option)? ~ WHITE_SPACE+ ~ text ~ (WHITE_SPACE+ ~ pager)?) }
+        link = { "http" ~ "s"? ~ "://" ~ ANY+ }
+        option = { (!WHITE_SPACE ~ ANY)+ }
+        text = { (!(WHITE_SPACE+ ~ pager) ~ ANY)+ }
+        pager = _{ "+" ~ offset }
+        offset = { ASCII_DIGIT+ }
+    "##]
+    pub struct Dlp;
+
+    impl Default for Rule {
+        fn default() -> Self {
+            Self::input
+        }
+    }
+
+    #[async_trait]
+    impl Command for Dlp {
+        type Key = Rule;
+        async fn execute(
+            &self,
+            context: &impl Context,
+            parameter: Self::Parameter<'_>,
+        ) -> Result<(), Error> {
+            let directory = task::spawn_blocking(move || tempfile::tempdir())
+                .await
+                .context("spawn error")?
+                .context("spawn error")?;
+
+            let mut dlp = process::Command::new("yt-dlp");
+
+            dlp.args([
+                "--ignore-config",
+                "--no-playlist",
+                "--no-simulate",
+                "--no-warning",
+                "--match-filters",
+                "! is_live",
+                "-j",
+                "-o",
+                "data.mp4",
+                "-f",
+                "bestaudio[ext=m4a][filesize<100M]/bestaudio[ext=m4a][filesize_approx<100M]",
+            ]);
+
+            if let Some(&link) = parameter.get(&Rule::link) {
+                dlp.args([link]);
+            }
+
+            if let Some(&text) = parameter.get(&Rule::text) {
+                let offset = parameter
+                    .get(&Rule::offset)
+                    .map_or(0, |x| x.parse().unwrap());
+
+                let url = match *parameter.get(&Rule::option).unwrap_or(&"videos") {
+                    youtube @ ("albums" | "artists" | "episodes" | "podcasts" | "profiles"
+                    | "songs" | "videos") => {
+                        let mut url = url::Url::parse("https://music.youtube.com/search").unwrap();
+                        url.set_fragment(Some(youtube));
+                        url.query_pairs_mut().append_pair("q", text);
+
+                        String::from(url)
+                    }
+                    _ => return Err(Error::Message("unknown option".into())),
+                };
+
+                dlp.args([
+                    "-I",
+                    &format!("{}", offset + 1),
+                    &url,
+                ]);
+            }
+
+            info!("args: {:?}", dlp.as_std().get_args());
+
+            let mut dlp = dlp
+                .current_dir(&directory)
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .context("spawn error")?;
+
+            let text = {
+                let mut buf = String::new();
+
+                // NOTE stderr if output to stdout
+                if let Some(pipe) = dlp.stdout.take() {
+                    io::BufReader::new(pipe)
+                        .read_line(&mut buf)
+                        .await
+                        .context("read error")?;
+                }
+
+                buf
+            };
+
+            let info =
+                serde_json::from_str::<Output>(&text).context(format!("json error: {text}"))?;
+
+            info!("info: {info:?}");
+
+            dlp.wait().await.context("read error")?;
+
+            let data = {
+                let mut buf = Vec::new();
+
+                fs::File::open(directory.path().join("data.mp4"))
+                    .await
+                    .context("read error")?
+                    .read_to_end(&mut buf)
+                    .await
+                    .context("read error")?;
+
+                buf
+            };
+
+            context
+                .send_fmt(Message::Audio(
+                    MessageData {
+                        link: Some(info.webpage_url),
+                        name: info.title.clone(),
+                        mime: format!("audio/{}", info.audio_ext)
+                            .replace("m4a", "mp4")
+                            .parse()
+                            .unwrap(),
+                        data,
+                    },
+                    format!(
+                        "{} / by {}{} / on {}",
+                        info.track.unwrap_or(info.title),
+                        info.artist.unwrap_or(info.uploader),
+                        info.album
+                            .map(|x| format!(" / in {x}"))
+                            .unwrap_or(String::new()),
+                        info.upload_date.format("%F"),
+                    )
+                    .into(),
+                    Some(Duration::from_secs_f64(info.duration)),
+                ))
+                .await
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Deserialize)]
+    struct Output<'a> {
+        audio_ext: &'a str,
+        comment_count: Option<u64>,
+        duration: f64,
+        ext: &'a str,
+        like_count: Option<u64>,
+        #[serde(borrow)]
+        title: Cow<'a, str>,
+        #[serde(borrow)]
+        uploader: Cow<'a, str>,
+        #[serde(deserialize_with = "date")]
+        upload_date: NaiveDate,
+        #[serde(borrow)]
+        url: Cow<'a, str>,
+        video_ext: &'a str,
+        view_count: Option<u64>,
+        #[serde(borrow)]
+        webpage_url: Cow<'a, str>,
+        // youtube music
+        #[serde(borrow)]
+        album: Option<Cow<'a, str>>,
+        #[serde(borrow)]
+        artist: Option<Cow<'a, str>>,
+        #[serde(borrow)]
+        track: Option<Cow<'a, str>>,
+        #[serde(borrow)]
+        #[serde(flatten)]
+        raw: HashMap<&'a str, Value>,
+    }
+
+    fn date<'de, D>(de: D) -> Result<NaiveDate, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let tmp = <&str>::deserialize(de)?;
+        NaiveDate::parse_from_str(tmp, "%Y%m%d").map_err(serde::de::Error::custom)
     }
 }

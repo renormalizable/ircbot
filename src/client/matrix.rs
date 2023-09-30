@@ -7,8 +7,9 @@ use matrix_sdk::{
         events::{
             relation::{InReplyTo, Replacement},
             room::message::{
-                AudioInfo, AudioMessageEventContent, ForwardThread, ImageMessageEventContent,
-                MessageType, OriginalRoomMessageEvent, Relation, RoomMessageEventContent,
+                AddMentions, AudioInfo, AudioMessageEventContent, ForwardThread,
+                ImageMessageEventContent, MessageType, OriginalRoomMessageEvent, Relation,
+                RoomMessageEventContent,
             },
             room::ImageInfo,
             AnyMessageLikeEvent, AnyMessageLikeEventContent, MessageLikeEvent,
@@ -136,7 +137,7 @@ impl MessageContext {
                     }
                     _ => content.msgtype,
                 };
-                content.make_reply_to(&self.event, ForwardThread::Yes)
+                content.make_reply_to(&self.event, ForwardThread::Yes, AddMentions::Yes)
             }
             Some(AnyMessageLikeEvent::RoomMessage(MessageLikeEvent::Original(event))) => {
                 content.msgtype = match content.msgtype {
@@ -152,9 +153,9 @@ impl MessageContext {
                     Some(Relation::Replacement(Replacement { new_content, .. })) => {
                         let mut new_event = event.clone();
                         new_event.content.msgtype = new_content.msgtype.clone();
-                        content.make_reply_to(&new_event, ForwardThread::Yes)
+                        content.make_reply_to(&new_event, ForwardThread::Yes, AddMentions::Yes)
                     }
-                    _ => content.make_reply_to(event, ForwardThread::Yes),
+                    _ => content.make_reply_to(event, ForwardThread::Yes, AddMentions::Yes),
                 }
             }
             Some(event) => {

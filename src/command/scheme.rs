@@ -1,7 +1,6 @@
 use anyhow::Context as _;
 use async_trait::async_trait;
 use pest_derive::Parser;
-use url::Url;
 
 use super::*;
 
@@ -85,7 +84,7 @@ mod include {
             context: &impl Context,
             parameter: Self::Parameter<'_>,
         ) -> Result<(), Error> {
-            let url = Url::parse(*parameter.get(&Rule::url).unwrap()).context("parse error")?;
+            let url = url::Url::parse(*parameter.get(&Rule::url).unwrap()).context("parse error")?;
             let text = match url.host_str() {
                 Some("dpaste.org") | Some("paste.mozilla.org") => {
                     Self::dpaste(url.as_str()).await?

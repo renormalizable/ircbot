@@ -57,6 +57,8 @@ async fn main() -> anyhow::Result<()> {
         Box::new(language::ReplPython),
         Box::new(language::ReplRust),
         Box::new(random::Leetcode),
+        Box::new(random::Solar),
+        Box::new(random::Roll),
         Box::new(api::Urban),
         Box::new(api::Ipapi),
         Box::new(api::Poke),
@@ -72,6 +74,7 @@ async fn main() -> anyhow::Result<()> {
         Box::new(music::Music),
         Box::new(music::Music163),
         Box::new(music::MusicQQ),
+        Box::new(music::Dlp),
     ];
 
     let command_test: Vec<BoxCommandObject> = vec![
@@ -119,13 +122,15 @@ async fn main() -> anyhow::Result<()> {
                     tags: _,
                     prefix: Some(Prefix::Nickname(source, _, _)),
                     command: Command::PRIVMSG(target, message),
-                } => Some((source, target, message)),
+                } => {
+                    info!("[{target}] <{source}> {message:?}");
+
+                    Some((source, target, message))
+                }
                 _ => None,
             })
         })
         .try_for_each_concurrent(None, |(source, target, message)| async {
-            info!("[{target}] <{source}> {message:?}");
-
             let context = MessageContext::new(
                 client.current_nickname().to_owned(),
                 source,

@@ -433,7 +433,7 @@ int main() {{ {{
                     [
                         (Key::lang, lang.as_ref()),
                         (Key::code, code.as_ref()),
-                        (Key::opts, "c++2b,cpp-no-pedantic"),
+                        (Key::opts, "c++2c,cpp-no-pedantic"),
                     ]
                     .into_iter()
                     .chain(

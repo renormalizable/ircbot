@@ -69,6 +69,8 @@ async fn main() -> anyhow::Result<()> {
         Box::new(language::ReplPython),
         Box::new(language::ReplRust),
         Box::new(random::Leetcode),
+        Box::new(random::Solar),
+        Box::new(random::Roll),
         Box::new(api::Urban),
         Box::new(api::Ipapi),
         Box::new(api::Poke),
@@ -84,6 +86,7 @@ async fn main() -> anyhow::Result<()> {
         Box::new(music::Music),
         Box::new(music::Music163),
         Box::new(music::MusicQQ),
+        Box::new(music::Dlp),
     ];
 
     let command_test: Vec<BoxCommandObject> = vec![
@@ -104,6 +107,8 @@ async fn main() -> anyhow::Result<()> {
         Box::new(language::ReplPython),
         Box::new(language::ReplRust),
         Box::new(random::Leetcode),
+        Box::new(random::Solar),
+        Box::new(random::Roll),
         Box::new(api::Urban),
         Box::new(api::Ipapi),
         Box::new(api::Poke),
@@ -116,6 +121,7 @@ async fn main() -> anyhow::Result<()> {
         Box::new(music::Music),
         Box::new(music::Music163),
         Box::new(music::MusicQQ),
+        Box::new(music::Dlp),
     ];
 
     let interpreter = {
@@ -183,44 +189,42 @@ where
     // discard old events
     let response = client.sync_once(config::SyncSettings::default()).await?;
     client.add_event_handler(
-        move |event: SyncRoomMessageEvent, room: Room, client: Client| {
-            let interpreter = Arc::clone(&interpreter);
-            let router = Arc::clone(&router);
-
-            async move {
-                match room.state() {
-                    RoomState::Joined => (),
-                    _ => return,
+        move |event: SyncRoomMessageEvent, room: Room, client: Client| async move {
+            match room.state() {
+                RoomState::Joined => (),
+                _ => return,
+            }
+            let event = match event {
+                SyncRoomMessageEvent::Original(event) => event,
+                _ => {
+                    info!(
+                        "[{}{}] {event:?}",
+                        room.room_id(),
+                        room.name()
+                            .map_or_else(|| String::new(), |x| format!(" / {x}")),
+                    );
+                    return;
                 }
-                let event = match event {
-                    SyncRoomMessageEvent::Original(event) => event,
-                    _ => {
-                        info!(
-                            "[{}{}] {event:?}",
-                            room.room_id(),
-                            room.name()
-                                .map_or_else(|| String::new(), |x| format!(" / {x}")),
-                        );
-                        return;
-                    }
-                };
-                let member = match room.get_member_no_sync(&event.sender).await {
-                    Ok(Some(member)) => member,
-                    _ => return,
-                };
-                let members = match room.members_no_sync(RoomMemberships::JOIN).await {
-                    Ok(members) => members,
-                    _ => return,
-                };
+            };
+            let member = match room.get_member_no_sync(&event.sender).await {
+                Ok(Some(member)) => member,
+                _ => return,
+            };
+            let members = match room.members_no_sync(RoomMemberships::JOIN).await {
+                Ok(members) => members,
+                _ => return,
+            };
 
-                info!(
-                    "[{}{}] <{}> {event:?}",
-                    room.room_id(),
-                    room.name()
-                        .map_or_else(|| String::new(), |x| format!(" / {x}")),
-                    member.name()
-                );
+            info!(
+                "[{}{}] <{}> {event:?}",
+                room.room_id(),
+                room.name()
+                    .map_or_else(|| String::new(), |x| format!(" / {x}")),
+                member.name()
+            );
 
+            // process each event concurrently while keeping the order of commands within the event
+            tokio::spawn(async move {
                 let event = event.into_full_event(room.room_id().to_owned());
                 let reply = match &event.content.relates_to {
                     Some(
@@ -238,7 +242,7 @@ where
                 };
 
                 stream::iter(MessageContext::new(event, reply, members, room, client))
-                    .for_each(|context| {
+                    .for_each(move |context| {
                         let interpreter = Arc::clone(&interpreter);
                         let router = Arc::clone(&router);
 
@@ -258,7 +262,7 @@ where
                         }
                     })
                     .await
-            }
+            });
         },
     );
     client
